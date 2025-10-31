@@ -75,7 +75,7 @@ class SimpleNeuralSystem:
         predictions = self._make_prediction()
         return predictions
     
-    def add_data_and_retrain(self, new_group: str, retrain_epochs: int = 10) -> List[Tuple[Tuple[int, int, int, int], float]]:
+    def add_data_and_retrain(self, new_group: str, retrain_epochs: int = 5) -> List[Tuple[Tuple[int, int, int, int], float]]:
         """Добавление данных и дообучение УСИЛЕННОЙ модели с возвратом прогнозов"""
         from model.data_loader import load_dataset, save_dataset, validate_group
         
@@ -107,6 +107,7 @@ class SimpleNeuralSystem:
                 self.trainer.set_progress_callback(self.progress_callback)
             
             self.trainer.train(dataset, epochs=retrain_epochs)
+            # self.trainer.train(dataset, epochs=5)
             self.predictor.load_model()
             self._report_progress("✅ Модель дообучена!")
             
