@@ -16,19 +16,22 @@ class EnhancedTrainer:
     def __init__(self, model_path: str = "data/simple_model.pth"):
         self.model_path = model_path
         self.device = torch.device('cpu')
+        print(f"🔧 Используется устройство: {self.device}")
         self.model = None
         self.criterion = nn.CrossEntropyLoss()
         self.progress_callback = None  # Добавляем callback
-        
-    def __init__(self, model_path: str = "data/simple_model.pth"):
-        self.model_path = model_path
-        self.device = torch.device('cpu')
-        self.model = None
-        self.criterion = nn.CrossEntropyLoss()
-        self.progress_callback = None  # Добавляем callback
-
-    def train(self, groups: List[str], epochs: int = 25, batch_size: int = 128):
-        """Обучение модели с выводом прогресса"""
+    
+    def set_progress_callback(self, callback):
+        """Установка callback для прогресса"""
+        self.progress_callback = callback
+    
+    def _report_progress(self, message):
+        """Отправка сообщения о прогрессе"""
+        if self.progress_callback:
+            self.progress_callback(message)
+    
+    def train(self, groups: List[str], epochs: int = 25, batch_size: int = 128) -> None:
+        """Обучение модели с улучшенными параметрами"""
         processor = DataProcessor(history_size=25)
         
         self._report_progress("📊 Подготовка данных для упрощенной нейросети...")
@@ -39,7 +42,7 @@ class EnhancedTrainer:
             return
         
         if len(features) < 100:
-            self._report_progress(f"❌ Недостаточно данных: {len(features)} примеров")
+            self._report_progress(f"❌ Недостаточно данных: {len(features)} примеров (нужно минимум 100)")
             return
         
         self._report_progress(f"✅ Обработано {len(groups)} групп, {len(groups)*4} чисел")
@@ -47,15 +50,16 @@ class EnhancedTrainer:
         self._report_progress(f"📊 Размер features: {features.shape}")
         self._report_progress(f"📊 Размер targets: {targets.shape}")
         
-        # Создаем модель если ее нет
-        if self.model is None or self.model.feature_extractor[0].in_features != features.shape[1]:
-            self.model = EnhancedNumberPredictor(input_size=features.shape[1])
-            self.model.to(self.device)
-            self._report_progress(f"🆕 Создана новая модель с input_size: {features.shape[1]}")
+        # Всегда создаем новую модель для чистого обучения
+        self.model = EnhancedNumberPredictor(input_size=features.shape[1])
+        self.model.to(self.device)
+        self._report_progress(f"🆕 Создана новая модель с input_size: {features.shape[1]}")
         
+        # Улучшенный optimizer с learning rate scheduling
         self.optimizer = optim.AdamW(self.model.parameters(), lr=0.001, weight_decay=1e-4)
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=3)
         
+        # Используем CPU тензоры
         features_tensor = torch.tensor(features, dtype=torch.float32)
         targets_tensor = torch.tensor(targets, dtype=torch.long) - 1
         
@@ -69,7 +73,7 @@ class EnhancedTrainer:
         self.model.train()
         best_loss = float('inf')
         patience_counter = 0
-        patience = 5
+        patience = 5  # Ранняя остановка
         
         for epoch in range(epochs):
             # Перемешиваем данные каждый эпох
@@ -83,6 +87,7 @@ class EnhancedTrainer:
             for i in range(0, len(features), batch_size):
                 batch_end = min(i + batch_size, len(features))
                 
+                # Пропускаем слишком маленькие батчи
                 if batch_end - i < 2:
                     continue
                     
@@ -92,16 +97,20 @@ class EnhancedTrainer:
                 self.optimizer.zero_grad()
                 outputs = self.model(batch_features)
                 
+                # Вычисляем loss с весами для каждой позиции
                 loss = 0
                 for j in range(4):
                     loss += self.criterion(outputs[:, j, :], batch_targets[:, j])
                 loss = loss / 4
                 
+                # L2 regularization
                 l2_lambda = 0.001
                 l2_norm = sum(p.pow(2.0).sum() for p in self.model.parameters())
                 loss = loss + l2_lambda * l2_norm
                 
                 loss.backward()
+                
+                # Gradient clipping
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                 self.optimizer.step()
                 
@@ -112,9 +121,9 @@ class EnhancedTrainer:
                 avg_loss = total_loss / num_batches
                 current_lr = self.optimizer.param_groups[0]['lr']
                 
-                # РЕАЛЬНЫЙ ВЫВОД ПРОГРЕССА ЭПОХИ
                 self._report_progress(f"📈 Эпоха {epoch+1}/{epochs}, Loss: {avg_loss:.4f}, LR: {current_lr:.6f}")
                 
+                # Learning rate scheduling
                 self.scheduler.step(avg_loss)
                 
                 if avg_loss < best_loss:
@@ -151,11 +160,11 @@ class EnhancedTrainer:
             correct = (predictions == test_targets).float()
             accuracy = correct.mean().item()
             
-            print(f"📊 Accuracy на тестовых данных: {accuracy:.4f}")
+            self._report_progress(f"📊 Accuracy на тестовых данных: {accuracy:.4f}")
             
             # Анализируем распределение предсказаний
             unique_predictions = len(torch.unique(predictions))
-            print(f"📊 Уникальных предсказанных чисел: {unique_predictions}/26")
+            self._report_progress(f"📊 Уникальных предсказанных чисел: {unique_predictions}/26")
     
     def _save_model(self):
         """Сохранение модели"""
