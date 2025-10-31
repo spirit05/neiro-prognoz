@@ -5,7 +5,11 @@
 
 import json
 import os
+import sys
 from typing import List, Tuple, Dict
+
+# Добавляем родительскую директорию в путь для импортов
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 DATASET_PATH = os.path.join(DATA_DIR, 'dataset.json')
@@ -25,7 +29,6 @@ def load_dataset() -> List[str]:
             print("❌ Неверный формат dataset.json")
             return []
         
-        print(f"✅ Загружено {len(data)} групп из dataset.json")
         return data
         
     except Exception as e:
@@ -37,7 +40,6 @@ def save_dataset(data: List[str]) -> None:
     os.makedirs(os.path.dirname(DATASET_PATH), exist_ok=True)
     with open(DATASET_PATH, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
-    print(f"✅ Данные сохранены в dataset.json ({len(data)} групп)")
 
 def validate_group(group_str: str) -> bool:
     """Валидация группы чисел"""

@@ -59,13 +59,13 @@ class WebInterface:
             except:
                 pass
         else:
-            st.sidebar.error("❌ Системa AI: Не инициализирована")
+            st.sidebar.error("❌ Система AI: Не инициализирована")
     
     def show_sequences(self):
         """Показать последние последовательности"""
         st.header("📊 Обзор данных")
         
-        # Показываем последние прогнозы
+        # Показываем последние прогнозы из кэша
         try:
             from data_loader import load_predictions
             predictions = load_predictions()
@@ -80,9 +80,12 @@ class WebInterface:
                             f"{group[0]} {group[1]} {group[2]} {group[3]}",
                             f"Уверенность: {score:.6f}"
                         )
+            else:
+                st.info("📝 Нет сохраненных прогнозов в кэше")
         except Exception as e:
             st.error(f"Ошибка загрузки прогнозов: {e}")
         
+        # Показываем последние группы
         try:
             from data_loader import load_dataset
             dataset = load_dataset()
@@ -131,23 +134,30 @@ class WebInterface:
                     sequence_tuple = tuple(sequence_numbers)
                     
                     previous_predictions = load_predictions()
-                    if previous_predictions:
-                        matches_found = []
-                        for pred_group, score in previous_predictions:
-                            comparison = compare_groups(pred_group, sequence_tuple)
-                            if comparison['total_matches'] > 0:
-                                matches_found.append((pred_group, comparison))
-                        
-                        if matches_found:
-                            st.success(f"🔍 Найдено совпадений с {len(matches_found)} предсказаниями:")
-                            for i, (pred_group, comparison) in enumerate(matches_found[:3], 1):
-                                st.write(f"  {i}) Прогноз: {pred_group[0]} {pred_group[1]} {pred_group[2]} {pred_group[3]}")
-                                st.write(f"     Совпадения по парам: {comparison['total_matches']}/4")
-                                st.write(f"     Точные совпадения: {comparison['exact_matches']}/4")
-                        else:
-                            st.info("📝 Совпадений с предыдущими прогнозами нет")
                     
-                    # Создаем контейнер для прогресса
+                    # Создаем контейнер для результатов сравнения (остается видимым)
+                    comparison_container = st.container()
+                    
+                    with comparison_container:
+                        if previous_predictions:
+                            matches_found = []
+                            for pred_group, score in previous_predictions:
+                                comparison = compare_groups(pred_group, sequence_tuple)
+                                if comparison['total_matches'] > 0:
+                                    matches_found.append((pred_group, comparison))
+                            
+                            if matches_found:
+                                st.success(f"🔍 Найдено совпадений с {len(matches_found)} предсказаниями:")
+                                for i, (pred_group, comparison) in enumerate(matches_found[:3], 1):
+                                    st.write(f"  {i}) Прогноз: {pred_group[0]} {pred_group[1]} {pred_group[2]} {pred_group[3]}")
+                                    st.write(f"     Совпадения по парам: {comparison['total_matches']}/4")
+                                    st.write(f"     Точные совпадения: {comparison['exact_matches']}/4")
+                            else:
+                                st.info("📝 Совпадений с предыдущими прогнозами нет")
+                        else:
+                            st.info("📝 Нет предыдущих прогнозов для сравнения")
+                    
+                    # Создаем контейнер для прогресса обучения
                     progress_container = st.empty()
                     dynamic_output = st.empty()
                     
@@ -169,8 +179,9 @@ class WebInterface:
                     if predictions:
                         save_predictions(predictions)
                         dynamic_output.text("💾 Сохраняем новые прогнозы в кэш...")
+                        time.sleep(1)  # Небольшая пауза чтобы увидеть сообщение
                     
-                    # Очищаем анимацию и показываем реальный результат
+                    # Очищаем анимацию прогресса
                     dynamic_output.empty()
                     progress_container.empty()
                     
@@ -239,8 +250,27 @@ class WebInterface:
         
         if st.button("Сгенерировать прогнозы", type="primary"):
             try:
-                with st.spinner("AI анализирует паттерны..."):
-                    predictions = self.system.predict()
+                # Создаем контейнер для прогресса
+                progress_container = st.empty()
+                dynamic_output = st.empty()
+                
+                # Лоадер сверху
+                with progress_container:
+                    st.info("🔄 AI анализирует паттерны...")
+                
+                # Callback для реального прогресса
+                def progress_callback(message):
+                    dynamic_output.text(f"▶️ {message}")
+                
+                # Устанавливаем callback в систему
+                self.system.set_progress_callback(progress_callback)
+                
+                # Реальное прогнозирование
+                predictions = self.system.predict()
+                
+                # Очищаем анимацию
+                dynamic_output.empty()
+                progress_container.empty()
                 
                 if predictions:
                     st.success(f"✅ Сгенерировано {len(predictions)} прогнозов")
@@ -253,6 +283,11 @@ class WebInterface:
                             f"{group[0]} {group[1]} {group[2]} {group[3]}",
                             f"Уверенность: {confidence}"
                         )
+                    
+                    # Сохраняем прогнозы в кэш
+                    from data_loader import save_predictions
+                    save_predictions(predictions)
+                    st.info("💾 Прогнозы сохранены в кэш")
                 else:
                     st.warning("⚠️ Нет доступных прогнозов")
                     
