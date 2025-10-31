@@ -16,10 +16,9 @@ class EnhancedTrainer:
     def __init__(self, model_path: str = "data/simple_model.pth"):
         self.model_path = model_path
         self.device = torch.device('cpu')
-        print(f"🔧 Используется устройство: {self.device}")
         self.model = None
         self.criterion = nn.CrossEntropyLoss()
-        self.progress_callback = None  # Добавляем callback
+        self.progress_callback = None
     
     def set_progress_callback(self, callback):
         """Установка callback для прогресса"""
@@ -73,7 +72,7 @@ class EnhancedTrainer:
         self.model.train()
         best_loss = float('inf')
         patience_counter = 0
-        patience = 5  # Ранняя остановка
+        patience = 5
         
         for epoch in range(epochs):
             # Перемешиваем данные каждый эпох
@@ -87,7 +86,6 @@ class EnhancedTrainer:
             for i in range(0, len(features), batch_size):
                 batch_end = min(i + batch_size, len(features))
                 
-                # Пропускаем слишком маленькие батчи
                 if batch_end - i < 2:
                     continue
                     
@@ -97,20 +95,16 @@ class EnhancedTrainer:
                 self.optimizer.zero_grad()
                 outputs = self.model(batch_features)
                 
-                # Вычисляем loss с весами для каждой позиции
                 loss = 0
                 for j in range(4):
                     loss += self.criterion(outputs[:, j, :], batch_targets[:, j])
                 loss = loss / 4
                 
-                # L2 regularization
                 l2_lambda = 0.001
                 l2_norm = sum(p.pow(2.0).sum() for p in self.model.parameters())
                 loss = loss + l2_lambda * l2_norm
                 
                 loss.backward()
-                
-                # Gradient clipping
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                 self.optimizer.step()
                 
@@ -123,7 +117,6 @@ class EnhancedTrainer:
                 
                 self._report_progress(f"📈 Эпоха {epoch+1}/{epochs}, Loss: {avg_loss:.4f}, LR: {current_lr:.6f}")
                 
-                # Learning rate scheduling
                 self.scheduler.step(avg_loss)
                 
                 if avg_loss < best_loss:
@@ -148,21 +141,18 @@ class EnhancedTrainer:
         """Анализ производительности модели"""
         self.model.eval()
         with torch.no_grad():
-            # Берем небольшой subset для анализа
             test_size = min(1000, len(features_tensor))
             test_features = features_tensor[:test_size]
-            test_targets = targets_tensor[:test_size] + 1  # Возвращаем к 1-26
+            test_targets = targets_tensor[:test_size] + 1
             
             outputs = self.model(test_features)
-            predictions = torch.argmax(outputs, dim=-1) + 1  # [batch_size, 4]
+            predictions = torch.argmax(outputs, dim=-1) + 1
             
-            # Вычисляем accuracy
             correct = (predictions == test_targets).float()
             accuracy = correct.mean().item()
             
             self._report_progress(f"📊 Accuracy на тестовых данных: {accuracy:.4f}")
             
-            # Анализируем распределение предсказаний
             unique_predictions = len(torch.unique(predictions))
             self._report_progress(f"📊 Уникальных предсказанных чисел: {unique_predictions}/26")
     

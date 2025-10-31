@@ -21,20 +21,9 @@ class SimpleNeuralSystem:
         self.trainer = EnhancedTrainer(self.model_path)
         self.predictor = EnhancedPredictor(self.model_path)
         self.is_trained = False
-        self.progress_callback = None  # Добавляем callback
+        self.progress_callback = None
         self._auto_load_model()
     
-    def set_progress_callback(self, callback):
-        """Установка callback для прогресса"""
-        self.progress_callback = callback
-        if hasattr(self.trainer, 'set_progress_callback'):
-            self.trainer.set_progress_callback(callback)
-    
-    def _report_progress(self, message):
-        """Отправка сообщения о прогрессе"""
-        if self.progress_callback:
-            self.progress_callback(message)
-
     def _auto_load_model(self):
         """Автоматическая загрузка модели при инициализации"""
         if os.path.exists(self.model_path):
@@ -46,8 +35,48 @@ class SimpleNeuralSystem:
         else:
             print("📝 Модель еще не обучена")
     
+    def set_progress_callback(self, callback):
+        """Установка callback для прогресса"""
+        self.progress_callback = callback
+        if hasattr(self.trainer, 'set_progress_callback'):
+            self.trainer.set_progress_callback(callback)
+    
+    def _report_progress(self, message):
+        """Отправка сообщения о прогрессе"""
+        if self.progress_callback:
+            self.progress_callback(message)
+    
+    def train(self, epochs: int = 25) -> List[Tuple[Tuple[int, int, int, int], float]]:
+        """Обучение УСИЛЕННОЙ системы с возвратом прогнозов"""
+        groups = load_dataset()
+        if not groups:
+            self._report_progress("❌ Нет данных для обучения")
+            return []
+        
+        if len(groups) < 50:
+            self._report_progress(f"❌ Недостаточно данных для обучения: {len(groups)} групп (нужно минимум 50)")
+            return []
+        
+        self._report_progress(f"🧠 Обучение УСИЛЕННОЙ нейросети на {len(groups)} группах...")
+        
+        # Устанавливаем callback в trainer
+        if hasattr(self.trainer, 'set_progress_callback'):
+            self.trainer.set_progress_callback(self.progress_callback)
+        
+        self.trainer.train(groups, epochs=epochs)
+        self.is_trained = True
+        
+        # Перезагружаем модель после обучения
+        self.predictor.load_model()
+        self._report_progress("✅ Обучение завершено и модель загружена!")
+        
+        # Делаем прогноз после обучения
+        self._report_progress("🔮 Делаем прогноз после обучения...")
+        predictions = self._make_prediction()
+        return predictions
+    
     def add_data_and_retrain(self, new_group: str, retrain_epochs: int = 10) -> List[Tuple[Tuple[int, int, int, int], float]]:
-        """Добавление данных и дообучение с прогрессом"""
+        """Добавление данных и дообучение УСИЛЕННОЙ модели с возвратом прогнозов"""
         from model.data_loader import load_dataset, save_dataset, validate_group
         
         if not validate_group(new_group):
@@ -86,36 +115,9 @@ class SimpleNeuralSystem:
             predictions = self._make_prediction()
             
         elif not self.is_trained and len(dataset) >= 50:
-            self._report_progress("🎯 Достаточно данных для первого обучения!")
+            self._report_progress("🎯 Достаточно данных для первого обучения УСИЛЕННОЙ модели!")
             predictions = self.train(epochs=20)
         
-        return predictions
-    
-    def train(self, epochs: int = 25) -> List[Tuple[Tuple[int, int, int, int], float]]:
-        """Обучение системы с прогрессом"""
-        groups = load_dataset()
-        if not groups:
-            self._report_progress("❌ Нет данных для обучения")
-            return []
-        
-        if len(groups) < 50:
-            self._report_progress(f"❌ Недостаточно данных для обучения: {len(groups)} групп")
-            return []
-        
-        self._report_progress(f"🧠 Обучение УСИЛЕННОЙ нейросети на {len(groups)} группах...")
-        
-        # Устанавливаем callback в trainer
-        if hasattr(self.trainer, 'set_progress_callback'):
-            self.trainer.set_progress_callback(self.progress_callback)
-        
-        self.trainer.train(groups, epochs=epochs)
-        self.is_trained = True
-        self.predictor.load_model()
-        self._report_progress("✅ Обучение завершено и модель загружена!")
-        
-        # Делаем прогноз после обучения
-        self._report_progress("🔮 Делаем прогноз после обучения...")
-        predictions = self._make_prediction()
         return predictions
     
     def _make_prediction(self) -> List[Tuple[Tuple[int, int, int, int], float]]:
@@ -126,7 +128,7 @@ class SimpleNeuralSystem:
         
         # Берем больше истории для лучшего предсказания
         recent_numbers = []
-        for group_str in groups[-25:]:  # Увеличили историю для усиленной модели
+        for group_str in groups[-25:]:
             try:
                 numbers = [int(x) for x in group_str.strip().split()]
                 if len(numbers) == 4:
@@ -134,17 +136,17 @@ class SimpleNeuralSystem:
             except:
                 continue
         
-        if len(recent_numbers) < 50:  # Увеличили минимальную историю
-            print("❌ Недостаточно данных для предсказания")
+        if len(recent_numbers) < 50:
+            self._report_progress("❌ Недостаточно данных для предсказания")
             return []
         
-        predictions = self.predictor.predict_group(recent_numbers, 15)  # Берем больше кандидатов
+        predictions = self.predictor.predict_group(recent_numbers, 15)
         
         # Фильтруем слишком слабые предсказания
-        filtered_predictions = [(group, score) for group, score in predictions if score > 0.0005]  # Повысили порог
+        filtered_predictions = [(group, score) for group, score in predictions if score > 0.0005]
         
         if not filtered_predictions:
-            print("⚠️  Все предсказания имеют низкую уверенность")
+            self._report_progress("⚠️  Все предсказания имеют низкую уверенность")
             # Возвращаем топ-4 даже если слабые, но с лучшими score
             best_predictions = sorted(predictions, key=lambda x: x[1], reverse=True)[:4]
             return best_predictions
@@ -161,7 +163,7 @@ class SimpleNeuralSystem:
         """Предсказание групп УСИЛЕННОЙ моделью"""
         if not self.is_trained:
             if not self.load():
-                print("❌ Модель не обучена и не может быть загружена")
+                self._report_progress("❌ Модель не обучена и не может быть загружена")
                 return []
         
         return self._make_prediction()
