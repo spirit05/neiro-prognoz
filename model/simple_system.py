@@ -21,8 +21,20 @@ class SimpleNeuralSystem:
         self.trainer = EnhancedTrainer(self.model_path)
         self.predictor = EnhancedPredictor(self.model_path)
         self.is_trained = False
+        self.progress_callback = None  # Добавляем callback
         self._auto_load_model()
     
+    def set_progress_callback(self, callback):
+        """Установка callback для прогресса"""
+        self.progress_callback = callback
+        if hasattr(self.trainer, 'set_progress_callback'):
+            self.trainer.set_progress_callback(callback)
+    
+    def _report_progress(self, message):
+        """Отправка сообщения о прогрессе"""
+        if self.progress_callback:
+            self.progress_callback(message)
+
     def _auto_load_model(self):
         """Автоматическая загрузка модели при инициализации"""
         if os.path.exists(self.model_path):
@@ -34,61 +46,76 @@ class SimpleNeuralSystem:
         else:
             print("📝 Модель еще не обучена")
     
-    def train(self, epochs: int = 25) -> List[Tuple[Tuple[int, int, int, int], float]]:
-        """Обучение УСИЛЕННОЙ системы с возвратом прогнозов"""
-        groups = load_dataset()
-        if not groups:
-            print("❌ Нет данных для обучения")
-            return []
-        
-        if len(groups) < 50:
-            print(f"❌ Недостаточно данных для обучения: {len(groups)} групп (нужно минимум 50)")
-            return []
-        
-        print(f"🧠 Обучение УСИЛЕННОЙ нейросети на {len(groups)} группах...")
-        self.trainer.train(groups, epochs=epochs)
-        self.is_trained = True
-        
-        # Перезагружаем модель после обучения
-        self.predictor.load_model()
-        print("✅ Обучение завершено и модель загружена!")
-        
-        # Делаем прогноз после обучения
-        print("🔮 Делаем прогноз после обучения...")
-        predictions = self._make_prediction()
-        return predictions
-    
     def add_data_and_retrain(self, new_group: str, retrain_epochs: int = 10) -> List[Tuple[Tuple[int, int, int, int], float]]:
-        """Добавление данных и дообучение УСИЛЕННОЙ модели с возвратом прогнозов"""
+        """Добавление данных и дообучение с прогрессом"""
         from model.data_loader import load_dataset, save_dataset, validate_group
         
         if not validate_group(new_group):
-            print("❌ Неверный формат группы")
+            self._report_progress("❌ Неверный формат группы")
             return []
         
         # Загружаем текущие данные
         dataset = load_dataset()
+        old_count = len(dataset)
+        
+        self._report_progress(f"✅ Загружено {old_count} групп из dataset.json")
+        
         dataset.append(new_group)
         save_dataset(dataset)
         
-        print(f"✅ Группа добавлена. Всего групп: {len(dataset)}")
+        new_count = len(dataset)
+        self._report_progress(f"✅ Данные сохранены в dataset.json ({new_count} групп)")
+        self._report_progress(f"✅ Группа добавлена. Всего групп: {new_count}")
         
         predictions = []
         
         # Дообучаем модель если она уже была обучена и есть достаточно данных
         if self.is_trained and len(dataset) >= 50:
-            print("🔄 Дообучение УСИЛЕННОЙ модели на новых данных...")
+            self._report_progress("🔄 Дообучение УСИЛЕННОЙ модели на новых данных...")
+            
+            # Устанавливаем callback в trainer
+            if hasattr(self.trainer, 'set_progress_callback'):
+                self.trainer.set_progress_callback(self.progress_callback)
+            
             self.trainer.train(dataset, epochs=retrain_epochs)
-            self.predictor.load_model()  # Перезагружаем обновленную модель
-            print("✅ Модель дообучена!")
+            self.predictor.load_model()
+            self._report_progress("✅ Модель дообучена!")
             
             # Делаем прогноз после дообучения
-            print("🔮 Делаем прогноз после дообучения...")
+            self._report_progress("🔮 Делаем прогноз после дообучения...")
             predictions = self._make_prediction()
+            
         elif not self.is_trained and len(dataset) >= 50:
-            print("🎯 Достаточно данных для первого обучения УСИЛЕННОЙ модели!")
+            self._report_progress("🎯 Достаточно данных для первого обучения!")
             predictions = self.train(epochs=20)
         
+        return predictions
+    
+    def train(self, epochs: int = 25) -> List[Tuple[Tuple[int, int, int, int], float]]:
+        """Обучение системы с прогрессом"""
+        groups = load_dataset()
+        if not groups:
+            self._report_progress("❌ Нет данных для обучения")
+            return []
+        
+        if len(groups) < 50:
+            self._report_progress(f"❌ Недостаточно данных для обучения: {len(groups)} групп")
+            return []
+        
+        self._report_progress(f"🧠 Обучение УСИЛЕННОЙ нейросети на {len(groups)} группах...")
+        
+        # Устанавливаем callback в trainer
+        if hasattr(self.trainer, 'set_progress_callback'):
+            self.trainer.set_progress_callback(self.progress_callback)
+        
+        self.trainer.train(groups, epochs=epochs)
+        self.is_trained = True
+        self.predictor.load_model()
+        self._report_progress("✅ Обучение завершено и модель загружена!")
+        
+        # Делаем прогноз после обучения
+        self._report_progress("🔮 Делаем прогноз после обучения...")
+        predictions = self._make_prediction()
         return predictions
     
     def _make_prediction(self) -> List[Tuple[Tuple[int, int, int, int], float]]:
