@@ -1,36 +1,31 @@
-# [file name]: app.py (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+# [file name]: app.py (ИСПРАВЛЕННАЯ ВЕРСИЯ - КЛЮЧЕВЫЕ ИЗМЕНЕНИЯ)
 import streamlit as st
 import sys
 import os
 import logging
-import asyncio
 import threading
+import time
 from datetime import datetime
 
-# Настройка логирования для systemd
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# Настройка логирования
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('SequencePredictorWeb')
 
-# Критически важно: добавляем путь к проекту ПЕРВЫМ делом
+# Добавляем пути
 project_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, project_path)
 sys.path.insert(0, os.path.join(project_path, 'model'))
 
-# Конфигурация Streamlit для systemd
-st.set_page_config(
-    page_title="AI Прогноз Последовательностей",
-    page_icon="🔢", 
-    layout="wide"
-)
+st.set_page_config(page_title="AI Прогноз Последовательностей", page_icon="🔢", layout="wide")
 
 class WebInterface:
     def __init__(self):
         self.system = None
         self._init_system()
         self.progress_messages = []
+        self.thread_result = None
+        self.thread_error = None
+        self.thread_complete = False
     
     def _init_system(self):
         """Инициализация системы"""
@@ -38,10 +33,7 @@ class WebInterface:
             logger.info("Инициализация AI системы...")
             from simple_system import SimpleNeuralSystem
             self.system = SimpleNeuralSystem()
-            
-            # Устанавливаем callback для прогресса
             self.system.set_progress_callback(self._progress_callback)
-            
             logger.info("✅ Система AI успешно инициализирована")
             return True
         except Exception as e:
@@ -50,8 +42,111 @@ class WebInterface:
     
     def _progress_callback(self, message):
         """Callback для отображения прогресса"""
-        self.progress_messages.append(message)
+        self.progress_messages.append(f"{datetime.now().strftime('%H:%M:%S')} - {message}")
         logger.info(f"📢 {message}")
+    
+    def _run_training_thread(self):
+        """Запуск обучения в отдельном потоке"""
+        try:
+            self.thread_result = self.system.train(epochs=20)
+            self.thread_error = None
+        except Exception as e:
+            self.thread_result = None
+            self.thread_error = str(e)
+            logger.error(f"❌ Ошибка в потоке обучения: {e}")
+        finally:
+            self.thread_complete = True
+    
+    def _run_prediction_thread(self):
+        """Запуск прогнозирования в отдельном потоке"""
+        try:
+            self.thread_result = self.system.predict()
+            self.thread_error = None
+        except Exception as e:
+            self.thread_result = None
+            self.thread_error = str(e)
+            logger.error(f"❌ Ошибка в потоке прогнозирования: {e}")
+        finally:
+            self.thread_complete = True
+    
+    def _run_add_data_thread(self, sequence_input):
+        """Запуск добавления данных в отдельном потоке"""
+        try:
+            self.thread_result = self.system.add_data_and_retrain(sequence_input)
+            self.thread_error = None
+        except Exception as e:
+            self.thread_result = None
+            self.thread_error = str(e)
+            logger.error(f"❌ Ошибка в потоке добавления данных: {e}")
+        finally:
+            self.thread_complete = True
+    
+    def show_progress_with_timeout(self, operation_name, timeout_seconds=600):
+        """Показ прогресса с таймаутом"""
+        progress_placeholder = st.empty()
+        messages_placeholder = st.empty()
+        
+        # Сбрасываем состояние
+        self.thread_result = None
+        self.thread_error = None
+        self.thread_complete = False
+        self.progress_messages.clear()
+        
+        # Запускаем соответствующий поток
+        if operation_name == "training":
+            thread = threading.Thread(target=self._run_training_thread)
+        elif operation_name == "prediction":
+            thread = threading.Thread(target=self._run_prediction_thread)
+        elif operation_name == "add_data":
+            thread = threading.Thread(target=lambda: self._run_add_data_thread(st.session_state.get('current_sequence', '')))
+        else:
+            st.error("Неизвестная операция")
+            return None
+        
+        thread.daemon = True
+        thread.start()
+        
+        start_time = time.time()
+        
+        # Отображаем прогресс
+        with progress_placeholder.container():
+            st.info(f"🔄 Запущена операция: {operation_name}")
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            time_text = st.empty()
+            
+            # Обновляем интерфейс пока поток работает
+            while thread.is_alive():
+                elapsed = time.time() - start_time
+                if elapsed > timeout_seconds:
+                    status_text.error("⏰ Таймаут операции!")
+                    self.thread_error = "Таймаут операции"
+                    break
+                
+                # Обновляем прогресс
+                progress_percent = min(95, int((elapsed / timeout_seconds) * 100))
+                progress_bar.progress(progress_percent)
+                
+                # Показываем последние сообщения
+                if self.progress_messages:
+                    recent_messages = self.progress_messages[-3:]  # Последние 3 сообщения
+                    status_text.text("\n".join(recent_messages))
+                
+                time_text.text(f"⏱️ Прошло: {int(elapsed)} сек.")
+                time.sleep(0.5)
+            
+            # Завершаем прогресс-бар
+            if self.thread_complete and not self.thread_error:
+                progress_bar.progress(100)
+                status_text.success("✅ Операция завершена!")
+            elif self.thread_error:
+                progress_bar.progress(100)
+                status_text.error(f"❌ Ошибка: {self.thread_error}")
+        
+        # Ждем завершения потока
+        thread.join(timeout=5)
+        
+        return self.thread_result
     
     def show_status(self):
         """Показать статус системы"""
@@ -240,6 +335,69 @@ class WebInterface:
         
         return thread
 
+    def train_model(self):
+        """Обучить модель"""
+        st.header("🧠 Обучить модель AI")
+        st.info("Полное обучение модели на всех данных")
+        
+        if st.button("Начать обучение", type="primary", key="train_model_btn"):
+            with st.spinner("Запуск обучения..."):
+                result = self.show_progress_with_timeout("training", timeout_seconds=600)  # 10 минут
+            
+            if self.thread_error:
+                st.error(f"❌ Ошибка обучения: {self.thread_error}")
+            elif result:
+                st.success("✅ Обучение завершено!")
+                st.subheader("Результаты обучения")
+                for i, (group, score) in enumerate(result, 1):
+                    confidence = "🟢 Высокая" if score > 0.01 else "🟡 Средняя" if score > 0.001 else "🔴 Низкая"
+                    st.write(f"{i}. `{group[0]} {group[1]} {group[2]} {group[3]}` (уверенность: {score:.6f}) {confidence}")
+                
+                # Сохраняем прогнозы
+                try:
+                    from data_loader import save_predictions
+                    save_predictions(result)
+                    st.info("💾 Прогнозы сохранены в кэш")
+                except Exception as e:
+                    st.warning(f"⚠️ Не удалось сохранить прогнозы: {e}")
+            else:
+                st.warning("⚠️ Обучение завершено, но прогнозы не получены")
+
+    def make_prediction(self):
+        """Сделать прогноз"""
+        st.header("🔮 Получить прогнозы")
+        st.info("AI проанализирует паттерны и сгенерирует прогнозы")
+        
+        if st.button("Сгенерировать прогнозы", type="primary", key="predict_btn"):
+            with st.spinner("Запуск прогнозирования..."):
+                result = self.show_progress_with_timeout("prediction", timeout_seconds=300)  # 5 минут
+            
+            if self.thread_error:
+                st.error(f"❌ Ошибка прогнозирования: {self.thread_error}")
+            elif result:
+                st.success(f"✅ Сгенерировано {len(result)} прогнозов")
+                st.subheader("Топ прогнозы:")
+                
+                cols = st.columns(2)
+                for i, (group, score) in enumerate(result):
+                    with cols[i % 2]:
+                        confidence = "🟢 Высокая" if score > 0.01 else "🟡 Средняя" if score > 0.001 else "🔴 Низкая"
+                        st.metric(
+                            f"Прогноз {i+1}",
+                            f"{group[0]} {group[1]} {group[2]} {group[3]}",
+                            f"Уверенность: {score:.4f}"
+                        )
+                
+                # Сохраняем прогнозы
+                try:
+                    from data_loader import save_predictions
+                    save_predictions(result)
+                    st.info("💾 Прогнозы сохранены в кэш")
+                except Exception as e:
+                    st.warning(f"⚠️ Не удалось сохранить прогнозы: {e}")
+            else:
+                st.warning("⚠️ Прогнозы не сгенерированы")
+
     def add_sequence(self):
         """Добавить новую последовательность"""
         st.header("➕ Добавить новую последовательность")
@@ -263,218 +421,66 @@ class WebInterface:
                 return
                 
             try:
-                from data_loader import validate_group, compare_groups, load_predictions, save_predictions
+                from data_loader import validate_group, compare_groups, load_predictions
                 
-                if validate_group(sequence_input):
-                    # === 1. СРАВНЕНИЕ С ПРЕДЫДУЩИМИ ПРОГНОЗАМИ ===
-                    sequence_numbers = [int(x) for x in sequence_input.strip().split()]
-                    sequence_tuple = tuple(sequence_numbers)
-                    
-                    previous_predictions = load_predictions()
-                    
-                    # Создаем контейнер для результатов сравнения
-                    comparison_container = st.container()
-                    
-                    with comparison_container:
-                        if previous_predictions:
-                            matches_found = []
-                            for pred_group, score in previous_predictions:
-                                comparison = compare_groups(pred_group, sequence_tuple)
-                                if comparison['total_matches'] > 0:
-                                    matches_found.append((pred_group, comparison))
-                            
-                            if matches_found:
-                                st.success(f"🔍 Найдено совпадений с {len(matches_found)} предсказаниями:")
-                                for i, (pred_group, comparison) in enumerate(matches_found[:3], 1):
-                                    st.write(f"  {i}) Прогноз: {pred_group[0]} {pred_group[1]} {pred_group[2]} {pred_group[3]}")
-                                    st.write(f"     Совпадения по парам: {comparison['total_matches']}/4")
-                                    st.write(f"     Точные совпадения: {comparison['exact_matches']}/4")
-                            else:
-                                st.info("📝 Совпадений с предыдущими прогнозами нет")
-                        else:
-                            st.info("📝 Нет предыдущих прогнозов для сравнения")
-                    
-                    # === 2. ЗАПУСК В ОТДЕЛЬНОМ ПОТОКЕ ===
-                    progress_placeholder = st.empty()
-                    status_placeholder = st.empty()
-                    
-                    # Очищаем предыдущие сообщения
-                    self.progress_messages.clear()
-                    
-                    # Запускаем в отдельном потоке
-                    thread = self._run_in_thread(self.system.add_data_and_retrain, sequence_input)
-                    
-                    # Отображаем прогресс
-                    with progress_placeholder.container():
-                        progress_bar = st.progress(0)
-                        status_text = st.empty()
-                        
-                        # Обновляем прогресс пока поток работает
-                        import time
-                        for i in range(100):
-                            if not thread.is_alive():
-                                break
-                                
-                            # Обновляем статус из сообщений
-                            if self.progress_messages:
-                                latest_message = self.progress_messages[-1]
-                                status_text.text(f"📢 {latest_message}")
-                            
-                            progress_bar.progress(i + 1)
-                            time.sleep(0.5)
-                    
-                    # Ждем завершения потока
-                    thread.join(timeout=300)  # 5 минут таймаут
-                    
-                    if self.thread_success:
-                        predictions = self.result
-                        
-                        # === 3. СОХРАНЕНИЕ НОВЫХ ПРОГНОЗОВ ===
-                        if predictions:
-                            save_predictions(predictions)
-                            st.success("💾 Новые прогнозы сохранены в кэш")
-                        
-                        st.success("✅ Последовательность добавлена и модель дообучена!")
-                        
-                        # === 4. ПОКАЗ НОВЫХ ПРОГНОЗОВ ===
-                        if predictions:
-                            st.subheader("🎯 Новые прогнозы после дообучения")
-                            for i, (group, score) in enumerate(predictions, 1):
-                                confidence = "🟢 Высокая" if score > 0.01 else "🟡 Средняя" if score > 0.001 else "🔴 Низкая"
-                                st.write(f"{i}. `{group[0]} {group[1]} {group[2]} {group[3]}` (уверенность: {score:.6f}) {confidence}")
-                            
-                            st.info("💾 Эти прогнозы сохранены для сравнения при следующем добавлении")
-                        else:
-                            st.warning("⚠️ Не удалось сгенерировать новые прогнозы")
-                    else:
-                        st.error(f"❌ Ошибка при обработке: {self.thread_error}")
-                        
-                else:
+                if not validate_group(sequence_input):
                     st.error("❌ Неверный формат последовательности. Должно быть 4 числа 1-26 через пробел")
+                    return
+                
+                # Сохраняем последовательность в session state
+                st.session_state.current_sequence = sequence_input
+                
+                # Сравнение с предыдущими прогнозами
+                sequence_numbers = [int(x) for x in sequence_input.strip().split()]
+                sequence_tuple = tuple(sequence_numbers)
+                previous_predictions = load_predictions()
+                
+                if previous_predictions:
+                    matches_found = []
+                    for pred_group, score in previous_predictions:
+                        comparison = compare_groups(pred_group, sequence_tuple)
+                        if comparison['total_matches'] > 0:
+                            matches_found.append((pred_group, comparison))
                     
-            except Exception as e:
-                st.error(f"Ошибка: {e}")
-
-    def train_model(self):
-        """Обучить модель"""
-        st.header("🧠 Обучить модель AI")
-        st.info("Полное обучение модели на всех данных")
-        
-        if st.button("Начать обучение", type="primary", key="train_model_btn"):
-            try:
-                # Запускаем в отдельном потоке
-                progress_placeholder = st.empty()
-                status_placeholder = st.empty()
-                
-                # Очищаем предыдущие сообщения
-                self.progress_messages.clear()
-                
-                # Запускаем в отдельном потоке
-                thread = self._run_in_thread(self.system.train, epochs=20)
-                
-                # Отображаем прогресс
-                with progress_placeholder.container():
-                    progress_bar = st.progress(0)
-                    status_text = st.empty()
-                    
-                    # Обновляем прогресс пока поток работает
-                    import time
-                    for i in range(100):
-                        if not thread.is_alive():
-                            break
-                            
-                        # Обновляем статус из сообщений
-                        if self.progress_messages:
-                            latest_message = self.progress_messages[-1]
-                            status_text.text(f"📢 {latest_message}")
-                        
-                        progress_bar.progress(i + 1)
-                        time.sleep(1)  # Медленнее для обучения
-                
-                # Ждем завершения потока
-                thread.join(timeout=600)  # 10 минут таймаут для обучения
-                
-                if self.thread_success:
-                    predictions = self.result
-                    st.success("✅ Обучение завершено!")
-                    
-                    if predictions:
-                        st.subheader("Результаты обучения")
-                        for i, (group, score) in enumerate(predictions, 1):
-                            confidence = "🟢 Высокая" if score > 0.01 else "🟡 Средняя" if score > 0.001 else "🔴 Низкая"
-                            st.write(f"{i}. `{group[0]} {group[1]} {group[2]} {group[3]}` (уверенность: {score:.6f})")
+                    if matches_found:
+                        st.success(f"🔍 Найдено совпадений с {len(matches_found)} предсказаниями:")
+                        for i, (pred_group, comparison) in enumerate(matches_found[:3], 1):
+                            st.write(f"  {i}) Прогноз: {pred_group[0]} {pred_group[1]} {pred_group[2]} {pred_group[3]}")
+                            st.write(f"     Совпадения по парам: {comparison['total_matches']}/4")
+                            st.write(f"     Точные совпадения: {comparison['exact_matches']}/4")
                     else:
-                        st.warning("⚠️ Не удалось получить прогнозы после обучения")
+                        st.info("📝 Совпадений с предыдущими прогнозами нет")
                 else:
-                    st.error(f"❌ Ошибка обучения: {self.thread_error}")
-                        
-            except Exception as e:
-                st.error(f"Ошибка обучения: {e}")
-
-    def make_prediction(self):
-        """Сделать прогноз"""
-        st.header("🔮 Получить прогнозы")
-        st.info("AI проанализирует паттерны и сгенерирует прогнозы")
-        
-        if st.button("Сгенерировать прогнозы", type="primary", key="predict_btn"):
-            try:
-                # Запускаем в отдельном потоке
-                progress_placeholder = st.empty()
+                    st.info("📝 Нет предыдущих прогнозов для сравнения")
                 
-                # Очищаем предыдущие сообщения
-                self.progress_messages.clear()
+                # Запускаем добавление данных
+                with st.spinner("Запуск обработки данных..."):
+                    result = self.show_progress_with_timeout("add_data", timeout_seconds=300)  # 5 минут
                 
-                # Запускаем в отдельном потоке
-                thread = self._run_in_thread(self.system.predict)
-                
-                # Отображаем прогресс
-                with progress_placeholder.container():
-                    progress_bar = st.progress(0)
-                    status_text = st.empty()
+                if self.thread_error:
+                    st.error(f"❌ Ошибка при обработке: {self.thread_error}")
+                elif result:
+                    st.success("✅ Последовательность добавлена и модель дообучена!")
                     
-                    # Обновляем прогресс пока поток работает
-                    import time
-                    for i in range(100):
-                        if not thread.is_alive():
-                            break
-                            
-                        # Обновляем статус из сообщений
-                        if self.progress_messages:
-                            latest_message = self.progress_messages[-1]
-                            status_text.text(f"📢 {latest_message}")
-                        
-                        progress_bar.progress(i + 1)
-                        time.sleep(0.3)  # Быстрее для прогноза
-                
-                # Ждем завершения потока
-                thread.join(timeout=180)  # 3 минуты таймаут для прогноза
-                
-                if self.thread_success:
-                    predictions = self.result
-                    
-                    if predictions:
-                        st.success(f"✅ Сгенерировано {len(predictions)} прогнозов")
-                        
-                        st.subheader("Топ прогнозы:")
-                        for i, (group, score) in enumerate(predictions, 1):
-                            confidence = "🟢 Высокая" if score > 0.01 else "🟡 Средняя" if score > 0.001 else "🔴 Низкая"
-                            st.metric(
-                                f"Прогноз {i}",
-                                f"{group[0]} {group[1]} {group[2]} {group[3]}",
-                                f"Уверенность: {confidence}"
-                            )
-                        
-                        # Сохраняем прогнозы в кэш
+                    # Сохраняем прогнозы
+                    try:
                         from data_loader import save_predictions
-                        save_predictions(predictions)
-                        st.info("💾 Прогнозы сохранены в кэш")
-                    else:
-                        st.warning("⚠️ Нет доступных прогнозов")
+                        save_predictions(result)
+                        st.info("💾 Новые прогнозы сохранены в кэш")
+                    except Exception as e:
+                        st.warning(f"⚠️ Не удалось сохранить прогнозы: {e}")
+                    
+                    # Показываем новые прогнозы
+                    st.subheader("🎯 Новые прогнозы после дообучения")
+                    for i, (group, score) in enumerate(result, 1):
+                        confidence = "🟢 Высокая" if score > 0.01 else "🟡 Средняя" if score > 0.001 else "🔴 Низкая"
+                        st.write(f"{i}. `{group[0]} {group[1]} {group[2]} {group[3]}` (уверенность: {score:.6f}) {confidence}")
                 else:
-                    st.error(f"❌ Ошибка прогнозирования: {self.thread_error}")
+                    st.warning("⚠️ Обработка завершена, но новые прогнозы не получены")
                     
             except Exception as e:
-                st.error(f"Ошибка прогнозирования: {e}")
+                st.error(f"❌ Ошибка: {e}")
+
 
 def main():
     st.title("🔢 AI Прогноз Числовых Последовательностей")
