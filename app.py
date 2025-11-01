@@ -1,4 +1,4 @@
-# [file name]: app.py (ПЕРЕПИСАННАЯ ВЕРСИЯ)
+# [file name]: app.py (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 import streamlit as st
 import sys
 import os
@@ -106,7 +106,7 @@ def show_progress_ui(operation_name, timeout_seconds=1200):
     
     with progress_placeholder.container():
         st.info(f"🔄 Запущена операция: {operation_name}")
-        progress_bar = st.progress(0, key=f"progress_{operation_id}")
+        progress_bar = st.progress(0)
         status_text = st.empty()
         time_text = st.empty()
         
@@ -129,8 +129,7 @@ def show_progress_ui(operation_name, timeout_seconds=1200):
                 messages_placeholder.text_area(
                     "📝 Ход выполнения:", 
                     "\n".join(recent_messages), 
-                    height=150,
-                    key=f"messages_{operation_id}"
+                    height=150
                 )
             
             # Динамический статус
@@ -227,7 +226,7 @@ def train_model():
         """)
     
     # Кнопка обучения
-    if st.button("🚀 Начать полное обучение", type="primary", key="train_btn"):
+    if st.button("🚀 Начать полное обучение", type="primary"):
         if not st.session_state.system_initialized:
             st.error("❌ Система не инициализирована")
             return
@@ -277,7 +276,7 @@ def make_prediction():
     """)
     
     # Кнопка прогнозирования
-    if st.button("🎯 Сгенерировать прогнозы", type="primary", key="predict_btn"):
+    if st.button("🎯 Сгенерировать прогнозы", type="primary"):
         if not st.session_state.system_initialized:
             st.error("❌ Система не инициализирована")
             return
@@ -352,12 +351,11 @@ def add_sequence():
     sequence_input = st.text_input(
         "Числовая последовательность:",
         placeholder="1 9 22 19",
-        key="sequence_input",
         help="Пример: 1 9 22 19 - 4 числа через пробел, от 1 до 26"
     )
     
     # Кнопка добавления
-    if st.button("✅ Добавить и дообучить", type="primary", key="add_btn"):
+    if st.button("✅ Добавить и дообучить", type="primary"):
         if not st.session_state.system_initialized:
             st.error("❌ Система не инициализирована")
             return
@@ -451,8 +449,7 @@ def main():
     
     menu_option = st.sidebar.selectbox(
         "Выберите действие:",
-        ["Обзор данных", "Обучить модель", "Получить прогнозы", "Добавить группу"],
-        key="main_menu"
+        ["Обзор данных", "Обучить модель", "Получить прогнозы", "Добавить группу"]
     )
     
     # Основной контент
