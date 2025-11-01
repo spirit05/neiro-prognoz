@@ -29,7 +29,7 @@ class EnhancedTrainer:
         if self.progress_callback:
             self.progress_callback(message)
     
-    def train(self, groups: List[str], epochs: int = 25, batch_size: int = 128) -> None:
+    def train(self, groups: List[str], epochs: int = 25, batch_size: int = 32) -> None:
         """Обучение модели с улучшенными параметрами"""
         processor = DataProcessor(history_size=25)
         

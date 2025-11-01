@@ -100,7 +100,7 @@ class SimpleNeuralSystem:
         else:
             print(f"📢 {message}")
     
-    def train(self, epochs: int = 25) -> List[Tuple[Tuple[int, int, int, int], float]]:
+    def train(self, epochs: int = 20) -> List[Tuple[Tuple[int, int, int, int], float]]:
         """Обучение УСИЛЕННОЙ системы с возвратом прогнозов"""
         groups = load_dataset()
         if not groups:
