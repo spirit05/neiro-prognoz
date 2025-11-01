@@ -1,7 +1,28 @@
 # [file name]: app.py (ИСПРАВЛЕННАЯ ВЕРСИЯ)
-import streamlit as st
 import sys
 import os
+
+# ⚡ ПРИНУДИТЕЛЬНО УСТАНАВЛИВАЕМ ПУТЬ К VENV
+VENV_PATH = '/opt/project/env'
+if os.path.exists(VENV_PATH):
+    # Добавляем venv в путь
+    sys.path.insert(0, os.path.join(VENV_PATH, 'lib/python3.12/site-packages'))
+    # Устанавливаем правильный Python executable
+    os.environ['PYTHONPATH'] = f"{VENV_PATH}/bin:{os.environ.get('PYTHONPATH', '')}"
+    
+    # Проверяем доступность torch
+    try:
+        import torch
+        print(f"✅ PyTorch загружен: {torch.__version__}")
+    except ImportError as e:
+        print(f"❌ PyTorch ошибка: {e}")
+        # Пытаемся добавить site-packages вручную
+        site_packages = os.path.join(VENV_PATH, 'lib/python3.12/site-packages')
+        if site_packages not in sys.path:
+            sys.path.insert(0, site_packages)
+
+# Остальные импорты
+import streamlit as st
 import logging
 import threading
 import time
