@@ -9,6 +9,8 @@ import torch.optim as optim
 import numpy as np
 from typing import List
 import os
+import time
+import gc
 from .model import EnhancedNumberPredictor
 from .data_processor import DataProcessor
 
@@ -28,13 +30,24 @@ class EnhancedTrainer:
         """Отправка сообщения о прогрессе"""
         if self.progress_callback:
             self.progress_callback(message)
+        else:
+            print(f"📢 {message}")
     
-    def train(self, groups: List[str], epochs: int = 25, batch_size: int = 32) -> None:
-        """Обучение модели с улучшенными параметрами"""
-        processor = DataProcessor(history_size=25)
+    def train(self, groups: List[str], epochs: int = 20, batch_size: int = 32) -> None:
+        """Обучение модели с улучшенными параметрами и детальным логированием"""
+        total_start_time = time.time()
         
-        self._report_progress("📊 Подготовка данных для упрощенной нейросети...")
+        self._report_progress(f"🚀 СТАРТ обучения: {len(groups)} групп, {epochs} эпох, batch_size={batch_size}")
+        
+        # ⚡ Этап 1: Подготовка данных
+        stage1_start = time.time()
+        self._report_progress("📊 Этап 1: Подготовка данных...")
+        
+        processor = DataProcessor(history_size=25)
         features, targets = processor.prepare_training_data(groups)
+        
+        stage1_time = time.time() - stage1_start
+        self._report_progress(f"✅ Этап 1 завершен: {stage1_time:.1f} сек")
         
         if len(features) == 0:
             self._report_progress("❌ Не удалось подготовить данные для обучения")
@@ -49,20 +62,40 @@ class EnhancedTrainer:
         self._report_progress(f"📊 Размер features: {features.shape}")
         self._report_progress(f"📊 Размер targets: {targets.shape}")
         
+        # ⚡ Этап 2: Создание модели
+        stage2_start = time.time()
+        self._report_progress("🔧 Этап 2: Создание модели...")
+        
         # Всегда создаем новую модель для чистого обучения
-        self.model = EnhancedNumberPredictor(input_size=features.shape[1])
+        self.model = EnhancedNumberPredictor(input_size=features.shape[1], hidden_size=256)
         self.model.to(self.device)
+        
+        # Оптимизация памяти для 4 ГБ RAM
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        
+        stage2_time = time.time() - stage2_start
+        self._report_progress(f"✅ Этап 2 завершен: {stage2_time:.1f} сек")
         self._report_progress(f"🆕 Создана новая модель с input_size: {features.shape[1]}")
+        
+        # ⚡ Этап 3: Настройка оптимизатора
+        stage3_start = time.time()
+        self._report_progress("⚙️ Этап 3: Настройка оптимизатора...")
         
         # Улучшенный optimizer с learning rate scheduling
         self.optimizer = optim.AdamW(self.model.parameters(), lr=0.001, weight_decay=1e-4)
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=3)
         
+        stage3_time = time.time() - stage3_start
+        self._report_progress(f"✅ Этап 3 завершен: {stage3_time:.1f} сек")
+        
         # Используем CPU тензоры
         features_tensor = torch.tensor(features, dtype=torch.float32)
         targets_tensor = torch.tensor(targets, dtype=torch.long) - 1
         
-        self._report_progress(f"🧠 Начало обучения УСИЛЕННОЙ нейросети...")
+        # ⚡ Этап 4: Обучение модели
+        stage4_start = time.time()
+        self._report_progress("🧠 Этап 4: Обучение модели...")
         self._report_progress(f"   • Эпохи: {epochs}")
         self._report_progress(f"   • Batch size: {batch_size}")
         self._report_progress(f"   • Примеров для обучения: {len(features)}")
@@ -75,6 +108,8 @@ class EnhancedTrainer:
         patience = 5
         
         for epoch in range(epochs):
+            epoch_start_time = time.time()
+            
             # Перемешиваем данные каждый эпох
             indices = torch.randperm(len(features))
             features_shuffled = features_tensor[indices]
@@ -84,13 +119,14 @@ class EnhancedTrainer:
             num_batches = 0
             
             for i in range(0, len(features), batch_size):
+                batch_start = i
                 batch_end = min(i + batch_size, len(features))
                 
-                if batch_end - i < 2:
+                if batch_end - batch_start < 2:
                     continue
                     
-                batch_features = features_shuffled[i:batch_end]
-                batch_targets = targets_shuffled[i:batch_end]
+                batch_features = features_shuffled[batch_start:batch_end]
+                batch_targets = targets_shuffled[batch_start:batch_end]
                 
                 self.optimizer.zero_grad()
                 outputs = self.model(batch_features)
@@ -100,6 +136,7 @@ class EnhancedTrainer:
                     loss += self.criterion(outputs[:, j, :], batch_targets[:, j])
                 loss = loss / 4
                 
+                # L2 регуляризация
                 l2_lambda = 0.001
                 l2_norm = sum(p.pow(2.0).sum() for p in self.model.parameters())
                 loss = loss + l2_lambda * l2_norm
@@ -111,11 +148,13 @@ class EnhancedTrainer:
                 total_loss += loss.item()
                 num_batches += 1
             
+            epoch_time = time.time() - epoch_start_time
+            
             if num_batches > 0:
                 avg_loss = total_loss / num_batches
                 current_lr = self.optimizer.param_groups[0]['lr']
                 
-                self._report_progress(f"📈 Эпоха {epoch+1}/{epochs}, Loss: {avg_loss:.4f}, LR: {current_lr:.6f}")
+                self._report_progress(f"📈 Эпоха {epoch+1}/{epochs}, Loss: {avg_loss:.4f}, LR: {current_lr:.6f}, Время: {epoch_time:.1f} сек")
                 
                 self.scheduler.step(avg_loss)
                 
@@ -123,7 +162,7 @@ class EnhancedTrainer:
                     best_loss = avg_loss
                     self._save_model()
                     patience_counter = 0
-                    self._report_progress(f"📈 Эпоха {epoch+1}, Сохранена лучшая модель (loss: {avg_loss:.4f})")
+                    self._report_progress(f"💾 Сохранена лучшая модель (loss: {avg_loss:.4f})")
                 else:
                     patience_counter += 1
                     if patience_counter >= patience:
@@ -132,18 +171,46 @@ class EnhancedTrainer:
             else:
                 self._report_progress(f"⚠️  Эпоха {epoch+1}/{epochs}: нет валидных батчей")
         
+        stage4_time = time.time() - stage4_start
+        self._report_progress(f"✅ Этап 4 завершен: {stage4_time:.1f} сек")
         self._report_progress(f"✅ Обучение завершено! Лучший loss: {best_loss:.4f}")
         
-        # Анализируем качество модели
+        # ⚡ Этап 5: Анализ производительности
+        stage5_start = time.time()
+        self._report_progress("📊 Этап 5: Анализ производительности...")
+        
         self._analyze_model_performance(features_tensor, targets_tensor)
+        
+        stage5_time = time.time() - stage5_start
+        self._report_progress(f"✅ Этап 5 завершен: {stage5_time:.1f} сек")
+        
+        # ⚡ Этап 6: Очистка памяти
+        stage6_start = time.time()
+        self._report_progress("🧹 Этап 6: Очистка памяти...")
+        
+        # Очистка памяти
+        del features_tensor, targets_tensor, features_shuffled, targets_shuffled
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
+        stage6_time = time.time() - stage6_start
+        self._report_progress(f"✅ Этап 6 завершен: {stage6_time:.1f} сек")
+        
+        total_time = time.time() - total_start_time
+        self._report_progress(f"🎉 ВСЕ ЭТАПЫ ЗАВЕРШЕНЫ! Общее время: {total_time:.1f} сек")
     
     def _analyze_model_performance(self, features_tensor: torch.Tensor, targets_tensor: torch.Tensor):
-        """Анализ производительности модели"""
+        """Анализ производительности модели с логированием"""
+        self._report_progress("🔍 Запуск анализа производительности модели...")
+        
         self.model.eval()
         with torch.no_grad():
             test_size = min(1000, len(features_tensor))
             test_features = features_tensor[:test_size]
             test_targets = targets_tensor[:test_size] + 1
+            
+            self._report_progress(f"📊 Тестирование на {test_size} примерах...")
             
             outputs = self.model(test_features)
             predictions = torch.argmax(outputs, dim=-1) + 1
@@ -155,9 +222,21 @@ class EnhancedTrainer:
             
             unique_predictions = len(torch.unique(predictions))
             self._report_progress(f"📊 Уникальных предсказанных чисел: {unique_predictions}/26")
+            
+            # Анализ по позициям
+            pos_accuracy = []
+            for pos in range(4):
+                pos_correct = (predictions[:, pos] == test_targets[:, pos]).float().mean().item()
+                pos_accuracy.append(pos_correct)
+                self._report_progress(f"📊 Точность позиции {pos+1}: {pos_correct:.4f}")
+            
+            avg_pos_accuracy = sum(pos_accuracy) / len(pos_accuracy)
+            self._report_progress(f"📊 Средняя точность по позициям: {avg_pos_accuracy:.4f}")
     
     def _save_model(self):
-        """Сохранение модели"""
+        """Сохранение модели с логированием"""
+        self._report_progress("💾 Сохранение модели на диск...")
+        
         if self.model is not None:
             os.makedirs(os.path.dirname(self.model_path), exist_ok=True)
             torch.save({
@@ -167,3 +246,7 @@ class EnhancedTrainer:
                     'hidden_size': self.model.feature_extractor[0].out_features
                 }
             }, self.model_path)
+            
+            self._report_progress(f"✅ Модель сохранена: {self.model_path}")
+        else:
+            self._report_progress("❌ Не удалось сохранить модель: модель не инициализирована")
