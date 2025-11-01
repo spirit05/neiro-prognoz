@@ -2,19 +2,29 @@
 import streamlit as st
 import sys
 import os
-import json
-import time
+import logging
+
+# Настройка логирования для systemd
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger('SequencePredictorWeb')
 
 # Критически важно: добавляем путь к проекту ПЕРВЫМ делом
 project_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, project_path)
 sys.path.insert(0, os.path.join(project_path, 'model'))
 
+# Конфигурация Streamlit для systemd
 st.set_page_config(
     page_title="AI Прогноз Последовательностей",
     page_icon="🔢", 
     layout="wide"
 )
+
+# Отключаем предупреждение о запуске из скрипта
+st.write('<style>div[data-testid="stToolbar"] {display: none;}</style>', unsafe_allow_html=True)
 
 class WebInterface:
     def __init__(self):
@@ -24,15 +34,13 @@ class WebInterface:
     def _init_system(self):
         """Инициализация системы"""
         try:
-            # Прямой импорт чтобы избежать циклических зависимостей
+            logger.info("Инициализация AI системы...")
             from simple_system import SimpleNeuralSystem
             self.system = SimpleNeuralSystem()
-            st.success("✅ Система AI успешно инициализирована!")
+            logger.info("✅ Система AI успешно инициализирована")
             return True
         except Exception as e:
-            st.error(f"❌ Ошибка инициализации системы: {e}")
-            import traceback
-            st.code(traceback.format_exc())
+            logger.error(f"❌ Ошибка инициализации системы: {e}")
             return False
     
     def show_status(self):
@@ -411,6 +419,8 @@ class WebInterface:
                 st.error(f"Ошибка прогнозирования: {e}")
 
 def main():
+    logger.info("Запуск Streamlit веб-интерфейса")
+    
     st.title("🔢 AI Прогноз Числовых Последовательностей")
     st.write("Продвинутая нейросеть для анализа и прогнозирования числовых последовательностей с системой самообучения")
     
