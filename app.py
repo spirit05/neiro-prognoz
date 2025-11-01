@@ -45,11 +45,6 @@ from datetime import datetime
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('SequencePredictorWeb')
 
-# Добавляем пути
-project_path = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, project_path)
-sys.path.insert(0, os.path.join(project_path, 'model'))
-
 st.set_page_config(page_title="AI Прогноз Последовательностей", page_icon="🔢", layout="wide")
 
 # Инициализация session_state
@@ -75,7 +70,8 @@ def init_system():
         
     try:
         logger.info("Инициализация AI системы...")
-        from simple_system import SimpleNeuralSystem
+        # ⚡ ИСПРАВЛЕННЫЙ ИМПОРТ - используем model.simple_system вместо simple_system
+        from model.simple_system import SimpleNeuralSystem
         st.session_state.system = SimpleNeuralSystem()
         st.session_state.system.set_progress_callback(progress_callback)
         st.session_state.system_initialized = True
@@ -209,7 +205,6 @@ def show_status():
             
             # Показываем последнюю группу
             try:
-                from data_loader import load_dataset
                 dataset = load_dataset()
                 if dataset:
                     last_group = dataset[-1]
@@ -288,7 +283,6 @@ def train_model():
             
             # Сохраняем прогнозы
             try:
-                from data_loader import save_predictions
                 save_predictions(st.session_state.operation_result)
                 st.info("💾 Прогнозы сохранены в кэш")
             except Exception as e:
@@ -350,7 +344,6 @@ def make_prediction():
             
             # Сохраняем прогнозы
             try:
-                from data_loader import save_predictions
                 save_predictions(st.session_state.operation_result)
                 st.info("💾 Прогнозы сохранены для сравнения")
             except Exception as e:
@@ -364,7 +357,6 @@ def add_sequence():
     
     # Показываем последнюю группу
     try:
-        from data_loader import load_dataset
         dataset = load_dataset()
         if dataset:
             st.info(f"📋 **Последняя добавленная группа:** `{dataset[-1]}`")
@@ -398,8 +390,6 @@ def add_sequence():
             return
             
         try:
-            from data_loader import validate_group, compare_groups, load_predictions
-            
             if not validate_group(sequence_input):
                 st.error("❌ Неверный формат! Должно быть 4 числа 1-26 через пробел")
                 return
@@ -446,7 +436,6 @@ def add_sequence():
                 
                 # Сохраняем прогнозы
                 try:
-                    from data_loader import save_predictions
                     save_predictions(st.session_state.operation_result)
                     st.info("💾 Новые прогнозы сохранены в кэш")
                 except Exception as e:
