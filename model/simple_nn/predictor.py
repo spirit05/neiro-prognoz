@@ -1,4 +1,4 @@
-# [file name]: model/simple_nn/predictor.py (ОБНОВЛЕННАЯ ВЕРСИЯ)
+# [file name]: model/simple_nn/predictor.py
 """
 УСИЛЕННОЕ предсказание групп чисел с ансамблевыми методами
 """
@@ -10,13 +10,12 @@ import os
 import sys
 
 # Добавляем путь для импорта новых модулей
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
 
 from .model import EnhancedNumberPredictor
 from .features import FeatureExtractor
-from ..ensemble_predictor import EnsemblePredictor, FrequencyBasedPredictor
-from ..advanced_features import AdvancedPatternAnalyzer, SmartNumberSelector
-from ..data_loader import load_dataset
 
 class EnhancedPredictor:
     def __init__(self, model_path: str = "data/simple_model.pth"):
@@ -26,11 +25,33 @@ class EnhancedPredictor:
         self.feature_extractor = FeatureExtractor(history_size=25)
         self.is_trained = False
         
-        # НОВОЕ: Ансамблевая система
-        self.ensemble_predictor = EnsemblePredictor()
-        self.pattern_analyzer = AdvancedPatternAnalyzer()
-        self.use_ensemble = True  # Флаг для включения/выключения ансамбля
-        
+        # Ленивая загрузка ансамблевой системы
+        self._ensemble_predictor = None
+        self._pattern_analyzer = None
+        self.use_ensemble = True
+    
+    def _get_ensemble_predictor(self):
+        """Ленивая загрузка ансамблевого предсказателя"""
+        if self._ensemble_predictor is None:
+            try:
+                from ..ensemble_predictor import EnsemblePredictor
+                self._ensemble_predictor = EnsemblePredictor()
+            except ImportError as e:
+                print(f"⚠️  Не удалось загрузить ансамблевый предсказатель: {e}")
+                self._ensemble_predictor = None
+        return self._ensemble_predictor
+    
+    def _get_pattern_analyzer(self):
+        """Ленивая загрузка анализатора паттернов"""
+        if self._pattern_analyzer is None:
+            try:
+                from ..advanced_features import AdvancedPatternAnalyzer
+                self._pattern_analyzer = AdvancedPatternAnalyzer()
+            except ImportError as e:
+                print(f"⚠️  Не удалось загрузить анализатор паттернов: {e}")
+                self._pattern_analyzer = None
+        return self._pattern_analyzer
+    
     def load_model(self) -> bool:
         """Загрузка обученной модели"""
         if not os.path.exists(self.model_path):
@@ -50,9 +71,16 @@ class EnhancedPredictor:
             
             self.is_trained = True
             
-            # НОВОЕ: Обновляем ансамбль
-            self.ensemble_predictor.set_neural_predictor(self)
-            self._update_ensemble_data()
+            # НОВОЕ: Обновляем ансамбль если доступен
+            ensemble = self._get_ensemble_predictor()
+            if ensemble:
+                ensemble.set_neural_predictor(self)
+                try:
+                    from ..data_loader import load_dataset
+                    dataset = load_dataset()
+                    ensemble.update_ensemble(dataset)
+                except Exception as e:
+                    print(f"⚠️  Ошибка обновления ансамбля: {e}")
             
             print(f"✅ УСИЛЕННАЯ нейросеть загружена: {self.model_path}")
             return True
@@ -61,24 +89,18 @@ class EnhancedPredictor:
             print(f"❌ Ошибка загрузки модели: {e}")
             return False
     
-    def _update_ensemble_data(self):
-        """Обновление данных для ансамбля"""
-        try:
-            dataset = load_dataset()
-            self.ensemble_predictor.update_ensemble(dataset)
-        except Exception as e:
-            print(f"⚠️  Ошибка обновления ансамбля: {e}")
-    
     def predict_group(self, number_history: List[int], top_k: int = 10) -> List[Tuple[Tuple[int, int, int, int], float]]:
         """УСИЛЕННОЕ предсказание следующей группы чисел с ансамблевыми методами"""
         
         # НОВОЕ: Используем ансамбль если включен и есть достаточно данных
         if self.use_ensemble and len(number_history) >= 30:
             try:
-                ensemble_predictions = self.ensemble_predictor.predict_ensemble(number_history, top_k)
-                if ensemble_predictions:
-                    print(f"🎯 Ансамбль сгенерировал {len(ensemble_predictions)} предсказаний")
-                    return ensemble_predictions
+                ensemble = self._get_ensemble_predictor()
+                if ensemble:
+                    predictions = ensemble.predict_ensemble(number_history, top_k)
+                    if predictions:
+                        print(f"🎯 Ансамбль сгенерировал {len(predictions)} предсказаний")
+                        return predictions
             except Exception as e:
                 print(f"⚠️  Ошибка ансамблевого предсказания, используем базовую модель: {e}")
         
@@ -149,6 +171,9 @@ class EnhancedPredictor:
     def _generate_frequency_based_candidates(self, history: List[int], count: int) -> List[tuple]:
         """Генерация кандидатов на основе частотного анализа"""
         try:
+            from ..data_loader import load_dataset
+            from ..advanced_features import FrequencyBasedPredictor
+            
             dataset = load_dataset()
             if not dataset:
                 return []
@@ -214,7 +239,13 @@ class EnhancedPredictor:
             sequences.append(current_seq)
         
         # НОВОЕ: Временной анализ
-        temporal_patterns = self.pattern_analyzer.analyze_time_series(history)
+        temporal_patterns = {}
+        analyzer = self._get_pattern_analyzer()
+        if analyzer:
+            try:
+                temporal_patterns = analyzer.analyze_time_series(history)
+            except Exception as e:
+                print(f"⚠️  Ошибка анализа временных паттернов: {e}")
         
         return {
             'hot_numbers': hot_numbers,
@@ -239,9 +270,6 @@ class EnhancedPredictor:
             ])
         
         # Генерируем комбинации с приоритетом для "холодных" чисел
-        cold_bonus = 1.5
-        hot_penalty = 0.8
-        
         generated = 0
         for i, (n1, p1) in enumerate(top_numbers[0]):
             for j, (n2, p2) in enumerate(top_numbers[1]):
@@ -507,5 +535,3 @@ class EnhancedPredictor:
     def enable_ensemble(self, enable: bool = True):
         """Включение/выключение ансамблевого режима"""
         self.use_ensemble = enable
-        if enable:
-            self._update_ensemble_data()
