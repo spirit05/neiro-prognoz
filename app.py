@@ -1,29 +1,41 @@
-# [file name]: app.py (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+#!/usr/bin/env python3
 import sys
 import os
+import logging
 
-# ⚡ ПРИНУДИТЕЛЬНО УСТАНАВЛИВАЕМ ПУТЬ К VENV
-VENV_PATH = '/opt/project/env'
-if os.path.exists(VENV_PATH):
-    # Добавляем venv в путь
-    sys.path.insert(0, os.path.join(VENV_PATH, 'lib/python3.12/site-packages'))
-    # Устанавливаем правильный Python executable
-    os.environ['PYTHONPATH'] = f"{VENV_PATH}/bin:{os.environ.get('PYTHONPATH', '')}"
-    
-    # Проверяем доступность torch
-    try:
-        import torch
-        print(f"✅ PyTorch загружен: {torch.__version__}")
-    except ImportError as e:
-        print(f"❌ PyTorch ошибка: {e}")
-        # Пытаемся добавить site-packages вручную
-        site_packages = os.path.join(VENV_PATH, 'lib/python3.12/site-packages')
-        if site_packages not in sys.path:
-            sys.path.insert(0, site_packages)
+# ⚡ ПРИНУДИТЕЛЬНО УСТАНАВЛИВАЕМ ПУТИ
+PROJECT_PATH = '/opt/project'
+sys.path.insert(0, PROJECT_PATH)
+sys.path.insert(0, os.path.join(PROJECT_PATH, 'model'))
+
+# ⚡ ПРИНУДИТЕЛЬНО ДОБАВЛЯЕМ VENV В ПУТЬ
+VENV_PYTHON_PATH = '/opt/project/env/lib/python3.12/site-packages'
+if os.path.exists(VENV_PYTHON_PATH) and VENV_PYTHON_PATH not in sys.path:
+    sys.path.insert(0, VENV_PYTHON_PATH)
+
+# ⚡ ПРОВЕРЯЕМ TORCH ДО ВСЕХ ИМПОРТОВ
+try:
+    import torch
+    print(f"✅ PyTorch загружен: {torch.__version__}")
+except ImportError as e:
+    print(f"❌ PyTorch ошибка: {e}")
+    # Пробуем найти site-packages вручную
+    for path in sys.path:
+        if 'site-packages' in path and 'env' in path:
+            print(f"🔍 Найден venv путь: {path}")
+            break
+
+# ⚡ ТЕПЕРЬ ИМПОРТИРУЕМ НАШИ МОДУЛИ
+try:
+    from model.simple_system import SimpleNeuralSystem
+    from model.data_loader import load_dataset, save_dataset, validate_group, compare_groups, save_predictions, load_predictions
+    print("✅ Все импорты успешны")
+except ImportError as e:
+    print(f"❌ Ошибка импорта: {e}")
+    print(f"🔍 sys.path: {sys.path}")
 
 # Остальные импорты
 import streamlit as st
-import logging
 import threading
 import time
 import uuid
