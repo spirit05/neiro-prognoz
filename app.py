@@ -1,5 +1,4 @@
 # [file name]: app.py (ИСПРАВЛЕННАЯ ВЕРСИЯ)
-[file content begin]
 import streamlit as st
 import sys
 import os
@@ -506,4 +505,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-[file content end]
