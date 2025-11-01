@@ -1,4 +1,4 @@
-# model/data_loader.py
+# [file name]: model/data_loader.py (ДОБАВЛЯЕМ ОБРАБОТКУ ОШИБОК)
 """
 Загрузка и работа с данными
 """
@@ -9,16 +9,25 @@ import sys
 from typing import List, Tuple, Dict
 
 # Добавляем родительскую директорию в путь для импортов
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
+DATA_DIR = os.path.join(parent_dir, 'data')
 DATASET_PATH = os.path.join(DATA_DIR, 'dataset.json')
 STATE_PATH = os.path.join(DATA_DIR, 'predictions_state.json')
 
+def ensure_data_dir():
+    """Создание директории данных если не существует"""
+    os.makedirs(DATA_DIR, exist_ok=True)
+
 def load_dataset() -> List[str]:
     """Загрузка dataset.json"""
+    ensure_data_dir()
+    
     if not os.path.exists(DATASET_PATH):
-        print("❌ Файл dataset.json не найден")
+        print("❌ Файл dataset.json не найден, создаем новый")
         return []
     
     try:
@@ -37,9 +46,12 @@ def load_dataset() -> List[str]:
 
 def save_dataset(data: List[str]) -> None:
     """Сохранение dataset.json"""
-    os.makedirs(os.path.dirname(DATASET_PATH), exist_ok=True)
-    with open(DATASET_PATH, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    ensure_data_dir()
+    try:
+        with open(DATASET_PATH, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"❌ Ошибка сохранения dataset.json: {e}")
 
 def validate_group(group_str: str) -> bool:
     """Валидация группы чисел"""
@@ -58,12 +70,6 @@ def validate_group(group_str: str) -> bool:
 def compare_groups(pred_group: Tuple[int, int, int, int], actual_group: Tuple[int, int, int, int]) -> Dict[str, int]:
     """
     Сравнение двух групп с парным учетом
-    
-    Примеры:
-    "5 22 18 11" vs "18 10 5 14" = 0 совпадений (5 и 18 в разных парах)
-    "5 22 18 11" vs "19 5 10 4" = 1 совпадение (5 в первой паре)
-    "5 22 18 11" vs "19 1 10 18" = 1 совпадение (18 во второй паре) 
-    "5 22 18 11" vs "19 5 18 4" = 2 совпадения (5 в первой паре + 18 во второй паре)
     """
     pred_pair1 = set([pred_group[0], pred_group[1]])
     pred_pair2 = set([pred_group[2], pred_group[3]])
@@ -86,17 +92,22 @@ def compare_groups(pred_group: Tuple[int, int, int, int], actual_group: Tuple[in
 
 def save_predictions(predictions: List[tuple]) -> None:
     """Сохранение последних предсказаний"""
-    os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
-    state = {
-        'predictions': [
-            {'group': list(group), 'score': score} for group, score in predictions
-        ]
-    }
-    with open(STATE_PATH, 'w', encoding='utf-8') as f:
-        json.dump(state, f, ensure_ascii=False, indent=2)
+    ensure_data_dir()
+    try:
+        state = {
+            'predictions': [
+                {'group': list(group), 'score': score} for group, score in predictions
+            ]
+        }
+        with open(STATE_PATH, 'w', encoding='utf-8') as f:
+            json.dump(state, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"❌ Ошибка сохранения предсказаний: {e}")
 
 def load_predictions() -> List[tuple]:
     """Загрузка последних предсказаний"""
+    ensure_data_dir()
+    
     if not os.path.exists(STATE_PATH):
         return []
     

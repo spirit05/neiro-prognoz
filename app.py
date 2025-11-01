@@ -1,12 +1,14 @@
-# [file name]: app.py (ПОЛНОСТЬЮ ОБНОВЛЕННЫЙ)
+# [file name]: app.py
 import streamlit as st
 import sys
 import os
 import json
 import time
 
-# Добавляем путь к модели
-sys.path.append('model')
+# Критически важно: добавляем путь к проекту ПЕРВЫМ делом
+project_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, project_path)
+sys.path.insert(0, os.path.join(project_path, 'model'))
 
 st.set_page_config(
     page_title="AI Прогноз Последовательностей",
@@ -22,11 +24,15 @@ class WebInterface:
     def _init_system(self):
         """Инициализация системы"""
         try:
+            # Прямой импорт чтобы избежать циклических зависимостей
             from simple_system import SimpleNeuralSystem
             self.system = SimpleNeuralSystem()
+            st.success("✅ Система AI успешно инициализирована!")
             return True
         except Exception as e:
-            st.error(f"Ошибка инициализации системы: {e}")
+            st.error(f"❌ Ошибка инициализации системы: {e}")
+            import traceback
+            st.code(traceback.format_exc())
             return False
     
     def show_status(self):
@@ -34,37 +40,41 @@ class WebInterface:
         st.sidebar.header("Статус системы")
         
         if self.system:
-            status = self.system.get_status()
-            st.sidebar.success("✅ Система AI: Активна")
-            st.sidebar.info(f"Модель обучена: {'Да' if status['is_trained'] else 'Нет'}")
-            st.sidebar.info(f"Размер датасета: {status['dataset_size']}")
-            
-            # Показываем статистику самообучения
-            learning_stats = status.get('learning_stats', {})
-            if isinstance(learning_stats, dict) and 'recent_accuracy_avg' in learning_stats:
-                accuracy = learning_stats['recent_accuracy_avg']
-                st.sidebar.info(f"📊 Средняя точность: {accuracy:.1%}")
-            
-            # Показываем последнюю группу из датасета
             try:
-                from data_loader import load_dataset
-                dataset = load_dataset()
-                if dataset:
-                    last_group = dataset[-1] if dataset else "Нет данных"
-                    st.sidebar.info(f"Последняя группа: {last_group}")
-            except:
-                pass
-            
-            # Показываем последние прогнозы
-            try:
-                from data_loader import load_predictions
-                predictions = load_predictions()
-                if predictions:
-                    st.sidebar.info(f"Последние прогнозы: {len(predictions)}")
-                    for i, (group, score) in enumerate(predictions[:2], 1):
-                        st.sidebar.text(f"  {i}. {group[0]} {group[1]} {group[2]} {group[3]}")
-            except:
-                pass
+                status = self.system.get_status()
+                st.sidebar.success("✅ Система AI: Активна")
+                st.sidebar.info(f"Модель обучена: {'Да' if status['is_trained'] else 'Нет'}")
+                st.sidebar.info(f"Размер датасета: {status['dataset_size']}")
+                
+                # Показываем статистику самообучения
+                learning_stats = status.get('learning_stats', {})
+                if isinstance(learning_stats, dict) and 'recent_accuracy_avg' in learning_stats:
+                    accuracy = learning_stats['recent_accuracy_avg']
+                    st.sidebar.info(f"📊 Средняя точность: {accuracy:.1%}")
+                
+                # Показываем последнюю группу из датасета
+                try:
+                    from data_loader import load_dataset
+                    dataset = load_dataset()
+                    if dataset:
+                        last_group = dataset[-1] if dataset else "Нет данных"
+                        st.sidebar.info(f"Последняя группа: {last_group}")
+                except Exception as e:
+                    st.sidebar.warning(f"Не удалось загрузить данные: {e}")
+                
+                # Показываем последние прогнозы
+                try:
+                    from data_loader import load_predictions
+                    predictions = load_predictions()
+                    if predictions:
+                        st.sidebar.info(f"Последние прогнозы: {len(predictions)}")
+                        for i, (group, score) in enumerate(predictions[:2], 1):
+                            st.sidebar.text(f"  {i}. {group[0]} {group[1]} {group[2]} {group[3]}")
+                except Exception as e:
+                    st.sidebar.warning(f"Не удалось загрузить прогнозы: {e}")
+                    
+            except Exception as e:
+                st.sidebar.error(f"Ошибка получения статуса: {e}")
         else:
             st.sidebar.error("❌ Система AI: Не инициализирована")
     
@@ -74,75 +84,91 @@ class WebInterface:
         
         if st.sidebar.button("🔄 Обновить ансамблевую систему"):
             try:
-                self.system._update_full_ensemble()
-                st.sidebar.success("✅ Ансамблевая система обновлена!")
+                if hasattr(self.system, '_update_full_ensemble'):
+                    self.system._update_full_ensemble()
+                    st.sidebar.success("✅ Ансамблевая система обновлена!")
+                else:
+                    st.sidebar.warning("⚠️  Метод обновления ансамбля не доступен")
             except Exception as e:
                 st.sidebar.error(f"❌ Ошибка: {e}")
         
         # Переключение ансамблевого режима
-        current_mode = getattr(self.system, 'ensemble_enabled', True)
-        new_mode = st.sidebar.checkbox("Использовать ансамблевый режим", value=current_mode)
-        if new_mode != current_mode:
-            self.system.toggle_ensemble(new_mode)
-            st.sidebar.success(f"🔧 Ансамблевый режим {'включен' if new_mode else 'выключен'}")
+        if hasattr(self.system, 'ensemble_enabled'):
+            current_mode = getattr(self.system, 'ensemble_enabled', True)
+            new_mode = st.sidebar.checkbox("Использовать ансамблевый режим", value=current_mode)
+            if new_mode != current_mode:
+                try:
+                    self.system.toggle_ensemble(new_mode)
+                    st.sidebar.success(f"🔧 Ансамблевый режим {'включен' if new_mode else 'выключен'}")
+                except Exception as e:
+                    st.sidebar.error(f"❌ Ошибка переключения режима: {e}")
         
         # Кнопка сброса данных самообучения
         if st.sidebar.button("🗑️ Сбросить данные самообучения"):
             try:
-                self.system.reset_learning_data()
-                st.sidebar.success("✅ Данные самообучения сброшены!")
+                if hasattr(self.system, 'reset_learning_data'):
+                    self.system.reset_learning_data()
+                    st.sidebar.success("✅ Данные самообучения сброшены!")
+                else:
+                    st.sidebar.warning("⚠️  Метод сброса данных не доступен")
             except Exception as e:
                 st.sidebar.error(f"❌ Ошибка: {e}")
         
         # Информация о системе
         if st.sidebar.button("📊 Детальный статус"):
-            status = self.system.get_status()
-            st.sidebar.json(status)
+            try:
+                status = self.system.get_status()
+                st.sidebar.json(status)
+            except Exception as e:
+                st.sidebar.error(f"❌ Ошибка: {e}")
 
     def show_learning_analytics(self):
         """Показать аналитику самообучения"""
         st.header("📈 Аналитика самообучения")
         
         try:
-            insights = self.system.get_learning_insights()
-            
-            if isinstance(insights, dict):
-                if 'message' in insights:
-                    st.info(insights['message'])
-                else:
-                    # Показываем метрики
-                    col1, col2, col3 = st.columns(3)
-                    
-                    with col1:
-                        st.metric(
-                            "Проанализировано предсказаний",
-                            insights.get('total_predictions_analyzed', 0)
-                        )
-                    
-                    with col2:
-                        accuracy = insights.get('recent_accuracy_avg', 0)
-                        st.metric(
-                            "Средняя точность",
-                            f"{accuracy:.1%}"
-                        )
-                    
-                    with col3:
-                        best_acc = insights.get('best_accuracy', 0)
-                        st.metric(
-                            "Лучшая точность",
-                            f"{best_acc:.1%}"
-                        )
-                    
-                    # Рекомендации
-                    recommendations = insights.get('recommendations', [])
-                    if recommendations:
-                        st.subheader("💡 Рекомендации по улучшению")
-                        for rec in recommendations:
-                            st.write(f"• {rec}")
+            if hasattr(self.system, 'get_learning_insights'):
+                insights = self.system.get_learning_insights()
+                
+                if isinstance(insights, dict):
+                    if 'message' in insights:
+                        st.info(insights['message'])
                     else:
-                        st.info("📊 Собираем данные для анализа...")
+                        # Показываем метрики
+                        col1, col2, col3 = st.columns(3)
+                        
+                        with col1:
+                            st.metric(
+                                "Проанализировано предсказаний",
+                                insights.get('total_predictions_analyzed', 0)
+                            )
+                        
+                        with col2:
+                            accuracy = insights.get('recent_accuracy_avg', 0)
+                            st.metric(
+                                "Средняя точность",
+                                f"{accuracy:.1%}"
+                            )
+                        
+                        with col3:
+                            best_acc = insights.get('best_accuracy', 0)
+                            st.metric(
+                                "Лучшая точность",
+                                f"{best_acc:.1%}"
+                            )
+                        
+                        # Рекомендации
+                        recommendations = insights.get('recommendations', [])
+                        if recommendations:
+                            st.subheader("💡 Рекомендации по улучшению")
+                            for rec in recommendations:
+                                st.write(f"• {rec}")
+                        else:
+                            st.info("📊 Собираем данные для анализа...")
+                else:
+                    st.warning("Нет данных аналитики")
             else:
-                st.warning("Нет данных аналитики")
+                st.warning("⚠️  Система самообучения не доступна")
                 
         except Exception as e:
             st.error(f"Ошибка загрузки аналитики: {e}")
