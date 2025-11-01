@@ -1,10 +1,11 @@
-# [file name]: app.py (ОПТИМИЗИРОВАННАЯ ВЕРСИЯ)
+# [file name]: app.py (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 import streamlit as st
 import sys
 import os
 import logging
 import threading
 import time
+import uuid
 from datetime import datetime
 
 # Настройка логирования
@@ -26,6 +27,7 @@ class WebInterface:
         self.thread_result = None
         self.thread_error = None
         self.thread_complete = False
+        self.session_id = str(uuid.uuid4())[:8]  # Уникальный ID сессии
     
     def _init_system(self):
         """Инициализация системы"""
@@ -34,7 +36,7 @@ class WebInterface:
             from simple_system import SimpleNeuralSystem
             self.system = SimpleNeuralSystem()
             self.system.set_progress_callback(self._progress_callback)
-            logger.info("✅ Системa AI успешно инициализирована")
+            logger.info("✅ Система AI успешно инициализирована")
             
             # Проверяем статус системы
             status = self.system.get_status()
@@ -54,7 +56,7 @@ class WebInterface:
         self.progress_messages.append(formatted_message)
         logger.info(f"📢 {message}")
     
-    def _run_training_thread(self, epochs=15):  # Уменьшили эпохи для скорости
+    def _run_training_thread(self, epochs=15):
         """Запуск обучения в отдельном потоке"""
         try:
             logger.info(f"🎯 Запуск обучения на {epochs} эпох")
@@ -72,7 +74,7 @@ class WebInterface:
         """Запуск прогнозирования в отдельном потоке"""
         try:
             logger.info("🎯 Запуск прогнозирования")
-            self.thread_result = self.system.predict(top_k=8)  # Уменьшили количество прогнозов
+            self.thread_result = self.system.predict(top_k=8)
             logger.info(f"✅ Прогнозирование завершено, получено {len(self.thread_result) if self.thread_result else 0} прогнозов")
             self.thread_error = None
         except Exception as e:
@@ -86,7 +88,7 @@ class WebInterface:
         """Запуск добавления данных в отдельном потоке"""
         try:
             logger.info("🎯 Запуск добавления данных")
-            self.thread_result = self.system.add_data_and_retrain(sequence_input, retrain_epochs=3)  # Меньше эпох для дообучения
+            self.thread_result = self.system.add_data_and_retrain(sequence_input, retrain_epochs=3)
             logger.info(f"✅ Добавление данных завершено, получено {len(self.thread_result) if self.thread_result else 0} прогнозов")
             self.thread_error = None
         except Exception as e:
@@ -96,7 +98,7 @@ class WebInterface:
         finally:
             self.thread_complete = True
     
-    def show_progress_with_timeout(self, operation_name, timeout_seconds=1200):  # Увеличили до 20 минут
+    def show_progress_with_timeout(self, operation_name, timeout_seconds=1200):
         """Показ прогресса с таймаутом"""
         progress_placeholder = st.empty()
         messages_placeholder = st.empty()
@@ -125,14 +127,14 @@ class WebInterface:
         thread.start()
         
         start_time = time.time()
+        operation_id = f"{operation_name}_{int(time.time())}"  # Уникальный ID операции
         
         # Отображаем прогресс
         with progress_placeholder.container():
             st.info(f"🔄 Запущена операция: {operation_name} (ожидаемое время: {estimated_time})")
-            progress_bar = st.progress(0)
+            progress_bar = st.progress(0, key=f"progress_{operation_id}")
             status_text = st.empty()
             time_text = st.empty()
-            messages_text = st.empty()
             
             # Обновляем интерфейс пока поток работает
             while thread.is_alive():
@@ -146,10 +148,15 @@ class WebInterface:
                 progress_percent = min(95, int((elapsed / timeout_seconds) * 100))
                 progress_bar.progress(progress_percent)
                 
-                # Показываем последние сообщения
+                # Показываем последние сообщения с УНИКАЛЬНЫМ КЛЮЧОМ
                 if self.progress_messages:
-                    recent_messages = self.progress_messages[-5:]  # Последние 5 сообщений
-                    messages_text.text_area("📝 Ход выполнения:", "\n".join(recent_messages), height=150)
+                    recent_messages = self.progress_messages[-5:]
+                    messages_placeholder.text_area(
+                        "📝 Ход выполнения:", 
+                        "\n".join(recent_messages), 
+                        height=150,
+                        key=f"messages_{operation_id}_{int(time.time())}"  # Уникальный ключ
+                    )
                 
                 # Динамический статус
                 if elapsed < 60:
@@ -162,7 +169,7 @@ class WebInterface:
                     status_text.info("🎯 Финальная стадия...")
                 
                 time_text.text(f"⏱️ Прошло: {int(elapsed)} сек. / Лимит: {timeout_seconds} сек.")
-                time.sleep(1)  # Увеличили интервал обновления
+                time.sleep(1)
             
             # Завершаем прогресс-бар
             if self.thread_complete and not self.thread_error:
@@ -217,10 +224,10 @@ class WebInterface:
         """Показать расширенные контролы"""
         st.sidebar.header("🔧 Управление")
         
-        if st.sidebar.button("🔄 Обновить статус", key="refresh_status"):
+        if st.sidebar.button("🔄 Обновить статус", key=f"refresh_{self.session_id}"):
             st.rerun()
         
-        if st.sidebar.button("📊 Подробный статус", key="detailed_status"):
+        if st.sidebar.button("📊 Подробный статус", key=f"detailed_{self.session_id}"):
             try:
                 status = self.system.get_status()
                 st.sidebar.json(status, expanded=False)
@@ -249,9 +256,9 @@ class WebInterface:
             Процесс продолжится в фоне.
             """)
         
-        if st.button("🚀 Начать полное обучение", type="primary", key="train_full_btn"):
+        if st.button("🚀 Начать полное обучение", type="primary", key=f"train_full_{self.session_id}"):
             with st.spinner("Подготовка к обучению..."):
-                result = self.show_progress_with_timeout("training", timeout_seconds=1200)  # 20 минут
+                result = self.show_progress_with_timeout("training", timeout_seconds=1200)
             
             if self.thread_error:
                 st.error(f"❌ Ошибка обучения: {self.thread_error}")
@@ -261,11 +268,11 @@ class WebInterface:
                 st.success("🎉 Обучение успешно завершено!")
                 
                 st.subheader("🎯 Первые прогнозы после обучения")
-                for i, (group, score) in enumerate(result[:6], 1):  # Показываем только 6 лучших
+                for i, (group, score) in enumerate(result[:6], 1):
                     confidence = "🟢 ВЫСОКАЯ" if score > 0.01 else "🟡 СРЕДНЯЯ" if score > 0.001 else "🔴 НИЗКАЯ"
                     st.write(f"**{i}.** `{group[0]} {group[1]} {group[2]} {group[3]}`")
                     st.write(f"   Уверенность: `{score:.6f}` {confidence}")
-                    st.progress(min(1.0, score * 100))
+                    st.progress(min(1.0, score * 100), key=f"train_progress_{i}_{self.session_id}")
                 
                 # Сохраняем прогнозы
                 try:
@@ -289,7 +296,7 @@ class WebInterface:
         - **Время: 2-5 минут**
         """)
         
-        if st.button("🎯 Сгенерировать прогнозы", type="primary", key="predict_btn"):
+        if st.button("🎯 Сгенерировать прогнозы", type="primary", key=f"predict_{self.session_id}"):
             # Проверяем что модель обучена
             status = self.system.get_status()
             if not status['is_trained']:
@@ -297,7 +304,7 @@ class WebInterface:
                 return
             
             with st.spinner("Запуск анализа..."):
-                result = self.show_progress_with_timeout("prediction", timeout_seconds=300)  # 5 минут
+                result = self.show_progress_with_timeout("prediction", timeout_seconds=300)
             
             if self.thread_error:
                 st.error(f"❌ Ошибка прогнозирования: {self.thread_error}")
@@ -314,7 +321,8 @@ class WebInterface:
                         st.metric(
                             label=f"Прогноз #{i+1}",
                             value=f"{group[0]} {group[1]} {group[2]} {group[3]}",
-                            delta=f"{score:.4f} {confidence}"
+                            delta=f"{score:.4f} {confidence}",
+                            key=f"metric_{i}_{self.session_id}"
                         )
                 
                 # Сохраняем прогнозы
@@ -352,11 +360,11 @@ class WebInterface:
         sequence_input = st.text_input(
             "Числовая последовательность:",
             placeholder="1 9 22 19",
-            key="sequence_input",
+            key=f"sequence_input_{self.session_id}",
             help="Пример: 1 9 22 19 - 4 числа через пробел, от 1 до 26"
         )
         
-        if st.button("✅ Добавить и дообучить", type="primary", key="add_sequence_btn"):
+        if st.button("✅ Добавить и дообучить", type="primary", key=f"add_sequence_{self.session_id}"):
             if not sequence_input:
                 st.error("❌ Введите последовательность")
                 return
@@ -398,7 +406,7 @@ class WebInterface:
                 
                 # Запускаем добавление данных
                 with st.spinner("Запуск обработки..."):
-                    result = self.show_progress_with_timeout("add_data", timeout_seconds=420)  # 7 минут
+                    result = self.show_progress_with_timeout("add_data", timeout_seconds=420)
                 
                 if self.thread_error:
                     st.error(f"❌ Ошибка при обработке: {self.thread_error}")
@@ -416,7 +424,7 @@ class WebInterface:
                     
                     # Показываем новые прогнозы
                     st.subheader("🎯 Обновленные прогнозы")
-                    for i, (group, score) in enumerate(result[:8], 1):  # Показываем 8 лучших
+                    for i, (group, score) in enumerate(result[:8], 1):
                         confidence = "🟢 ВЫСОКАЯ" if score > 0.01 else "🟡 СРЕДНЯЯ" if score > 0.001 else "🔴 НИЗКАЯ"
                         st.write(f"**{i}.** `{group[0]} {group[1]} {group[2]} {group[3]}`")
                         st.write(f"   Уверенность: `{score:.6f}` {confidence}")
@@ -449,7 +457,6 @@ def main():
     # Основной контент
     if menu_option == "Обзор данных":
         st.header("📊 Обзор данных и аналитика")
-        # Здесь можно добавить показ данных когда система стабильно заработает
         st.info("📈 Раздел в разработке... Сначала обучите модель и получите прогнозы")
         
     elif menu_option == "Обучить модель":
