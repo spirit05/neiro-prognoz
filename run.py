@@ -1,4 +1,4 @@
-# [file name]: run.py (ОБНОВЛЕННЫЙ ДЛЯ SYSTEMD)
+# [file name]: run.py
 #!/usr/bin/env python3
 """
 Главный запускающий файл для УСИЛЕННОЙ нейросети с ансамблевыми методами
@@ -12,12 +12,23 @@ import logging
 from datetime import datetime
 
 # Настройка логирования для systemd
+log_dir = "/var/log"
+log_file = os.path.join(log_dir, "sequence-predictor.log")
+
+try:
+    # Пытаемся писать в /var/log, если нет прав - пишем в текущую директорию
+    if not os.access(log_dir, os.W_OK):
+        log_file = "sequence-predictor.log"
+        print(f"⚠️  Нет прав на запись в {log_dir}, логи в: {log_file}")
+except:
+    log_file = "sequence-predictor.log"
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler('/var/log/sequence-predictor.log')
+        logging.FileHandler(log_file)
     ]
 )
 logger = logging.getLogger('SequencePredictor')
@@ -32,8 +43,9 @@ def main():
         logger.info("   Теперь с ансамблевыми методами, самообучением и улучшенной точностью! 🎯")
         
         # Создаем необходимые директории
-        os.makedirs('data', exist_ok=True)
-        logger.info("✅ Директории проверены")
+        data_dir = os.path.join(current_dir, 'data')
+        os.makedirs(data_dir, exist_ok=True)
+        logger.info(f"✅ Директории проверены: {data_dir}")
         
         # Импортируем и запускаем систему
         from model.simple_system import SimpleNeuralSystem
@@ -51,7 +63,7 @@ def main():
         logger.info("⏹️  Остановка системы по запросу пользователя")
         sys.exit(0)
     except Exception as e:
-        logger.error(f"❌ Критическая ошибка при запуске: {e}")
+        logger.error(f"❌ Критическая ошибка при запуске: {e}", exc_info=True)
         sys.exit(1)
 
 if __name__ == "__main__":
