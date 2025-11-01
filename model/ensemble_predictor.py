@@ -1,26 +1,42 @@
-# [file name]: model/ensemble_predictor.py
+# [file name]: model/ensemble_predictor.py (ИСПРАВЛЕННЫЙ)
 """
 Ансамблевые предсказания с комбинированием моделей
 """
 
 import numpy as np
 from typing import List, Tuple, Dict
-from .advanced_features import FrequencyBasedPredictor, AdvancedPatternAnalyzer, SmartNumberSelector
-from .simple_nn.predictor import EnhancedPredictor
-from .data_loader import load_dataset
+import sys
+import os
+
+# Добавляем путь для импорта
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
 
 class StatisticalPredictor:
     """Статистический предсказатель на основе паттернов"""
     
     def __init__(self):
-        self.pattern_analyzer = AdvancedPatternAnalyzer()
+        self._pattern_analyzer = None
+    
+    def _get_pattern_analyzer(self):
+        """Ленивая загрузка анализатора паттернов"""
+        if self._pattern_analyzer is None:
+            try:
+                from .advanced_features import AdvancedPatternAnalyzer
+                self._pattern_analyzer = AdvancedPatternAnalyzer()
+            except ImportError as e:
+                print(f"⚠️  Не удалось загрузить анализатор паттернов: {e}")
+                self._pattern_analyzer = None
+        return self._pattern_analyzer
     
     def predict(self, history: List[int], top_k: int = 10) -> List[Tuple[Tuple[int, int, int, int], float]]:
         """Статистическое предсказание на основе паттернов"""
         if len(history) < 20:
             return []
         
-        patterns = self.pattern_analyzer.analyze_time_series(history)
+        analyzer = self._get_pattern_analyzer()
+        patterns = analyzer.analyze_time_series(history) if analyzer else {}
         
         # Генерация кандидатов на основе статистических паттернов
         candidates = self._generate_statistical_candidates(history, patterns, top_k * 2)
@@ -163,10 +179,10 @@ class PatternBasedPredictor:
 class EnsemblePredictor:
     def __init__(self):
         self.predictors = {
-            'frequency': FrequencyBasedPredictor(),
-            'pattern': PatternBasedPredictor(), 
-            'statistical': StatisticalPredictor(),
-            'neural': None  # Будет установлен позже
+            'frequency': None,
+            'pattern': None, 
+            'statistical': None,
+            'neural': None
         }
         # Веса моделей (будут адаптироваться)
         self.weights = {
@@ -176,8 +192,47 @@ class EnsemblePredictor:
             'neural': 0.20
         }
         
-        self.number_selector = SmartNumberSelector()
+        self._number_selector = None
         self.dataset = []
+    
+    def _get_frequency_predictor(self):
+        """Ленивая загрузка частотного предсказателя"""
+        if self.predictors['frequency'] is None:
+            try:
+                from .advanced_features import FrequencyBasedPredictor
+                self.predictors['frequency'] = FrequencyBasedPredictor()
+            except ImportError as e:
+                print(f"⚠️  Не удалось загрузить частотный предсказатель: {e}")
+        return self.predictors['frequency']
+    
+    def _get_pattern_predictor(self):
+        """Ленивая загрузка паттернного предсказателя"""
+        if self.predictors['pattern'] is None:
+            try:
+                self.predictors['pattern'] = PatternBasedPredictor()
+            except Exception as e:
+                print(f"⚠️  Не удалось загрузить паттернный предсказатель: {e}")
+        return self.predictors['pattern']
+    
+    def _get_statistical_predictor(self):
+        """Ленивая загрузка статистического предсказателя"""
+        if self.predictors['statistical'] is None:
+            try:
+                self.predictors['statistical'] = StatisticalPredictor()
+            except Exception as e:
+                print(f"⚠️  Не удалось загрузить статистический предсказатель: {e}")
+        return self.predictors['statistical']
+    
+    def _get_number_selector(self):
+        """Ленивая загрузка селектора чисел"""
+        if self._number_selector is None:
+            try:
+                from .advanced_features import SmartNumberSelector
+                self._number_selector = SmartNumberSelector()
+            except ImportError as e:
+                print(f"⚠️  Не удалось загрузить селектор чисел: {e}")
+                self._number_selector = None
+        return self._number_selector
     
     def set_neural_predictor(self, neural_predictor):
         """Установка нейросетевого предсказателя"""
@@ -186,25 +241,45 @@ class EnsemblePredictor:
     def update_ensemble(self, dataset: List[str]):
         """Обновление ансамбля с новыми данными"""
         self.dataset = dataset
-        self.predictors['frequency'].update_frequencies(dataset)
+        
+        # Обновляем частотный предсказатель
+        freq_predictor = self._get_frequency_predictor()
+        if freq_predictor:
+            freq_predictor.update_frequencies(dataset)
     
     def predict_ensemble(self, history: List[int], top_k: int = 15) -> List[Tuple[Tuple[int, int, int, int], float]]:
         """Ансамблевое предсказание"""
         all_predictions = []
         
         # Анализ температуры чисел
-        temperature = self.number_selector.analyze_temperature(self.dataset)
+        temperature = {}
+        selector = self._get_number_selector()
+        if selector:
+            temperature = selector.analyze_temperature(self.dataset)
         
         # Получаем предсказания от всех моделей
-        for name, predictor in self.predictors.items():
+        for name in ['frequency', 'pattern', 'statistical', 'neural']:
+            predictor = None
+            
+            if name == 'frequency':
+                predictor = self._get_frequency_predictor()
+            elif name == 'pattern':
+                predictor = self._get_pattern_predictor()
+            elif name == 'statistical':
+                predictor = self._get_statistical_predictor()
+            elif name == 'neural':
+                predictor = self.predictors['neural']
+            
             if predictor is None:
                 continue
                 
             try:
-                if name == 'neural':
-                    predictions = predictor.predict_group(history, top_k * 2) if hasattr(predictor, 'predict_group') else []
-                else:
+                if hasattr(predictor, 'predict_group'):  # Нейросетевой предсказатель
+                    predictions = predictor.predict_group(history, top_k * 2)
+                elif hasattr(predictor, 'predict'):  # Другие предсказатели
                     predictions = predictor.predict(history, top_k * 2)
+                else:
+                    continue
                 
                 # Взвешиваем score
                 weight = self.weights[name]

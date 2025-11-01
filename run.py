@@ -1,4 +1,4 @@
-# [file name]: run.py
+# [file name]: run.py (УПРОЩЕННЫЙ)
 #!/usr/bin/env python3
 """
 Главный запускающий файл для УСИЛЕННОЙ нейросети с ансамблевыми методами
@@ -47,9 +47,10 @@ def main():
         os.makedirs(data_dir, exist_ok=True)
         logger.info(f"✅ Директории проверены: {data_dir}")
         
-        # Импортируем и запускаем систему
-        from model.simple_system import SimpleNeuralSystem
-        from model.cli import main_menu
+        # Импортируем систему напрямую (избегаем циклических импортов)
+        sys.path.insert(0, os.path.join(current_dir, 'model'))
+        from simple_system import SimpleNeuralSystem
+        from cli import main_menu
         
         # Инициализируем систему
         system = SimpleNeuralSystem()
