@@ -203,6 +203,29 @@ class WebInterface:
             except Exception as e:
                 st.error(f"Ошибка: {e}")
     
+        def show_advanced_controls(self):
+        """Показать расширенные контролы"""
+        st.sidebar.header("🔧 Расширенные настройки")
+        
+        if st.sidebar.button("🔄 Обновить ансамблевую систему"):
+            try:
+                self.system._update_full_ensemble()
+                st.sidebar.success("✅ Ансамблевая система обновлена!")
+            except Exception as e:
+                st.sidebar.error(f"❌ Ошибка: {e}")
+        
+        # Переключение ансамблевого режима
+        current_mode = getattr(self.system, 'ensemble_enabled', True)
+        new_mode = st.sidebar.checkbox("Использовать ансамблевый режим", value=current_mode)
+        if new_mode != current_mode:
+            self.system.toggle_ensemble(new_mode)
+            st.sidebar.success(f"🔧 Ансамблевый режим {'включен' if new_mode else 'выключен'}")
+        
+        # Информация о системе
+        if st.sidebar.button("📊 Детальный статус"):
+            status = self.system.get_status()
+            st.sidebar.json(status)
+
     def train_model(self):
         """Обучить модель"""
         st.header("🧠 Обучить модель AI")
@@ -303,6 +326,7 @@ def main():
     
     # Боковая панель с меню
     interface.show_status()
+    interface.show_advanced_controls()
     
     st.sidebar.header("Навигация")
     menu_option = st.sidebar.selectbox(

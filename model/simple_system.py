@@ -1,6 +1,6 @@
-# model/simple_system.py
+# [file name]: model/simple_system.py (ОБНОВЛЕННАЯ ВЕРСИЯ)
 """
-Главный интерфейс для УСИЛЕННОЙ нейросети
+Главный интерфейс для УСИЛЕННОЙ нейросети с ансамблевыми методами
 """
 
 import os
@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from model.simple_nn.trainer import EnhancedTrainer
 from model.simple_nn.predictor import EnhancedPredictor
 from model.data_loader import load_dataset
+from model.ensemble_predictor import EnsemblePredictor
 
 class SimpleNeuralSystem:
     def __init__(self):
@@ -22,6 +23,10 @@ class SimpleNeuralSystem:
         self.predictor = EnhancedPredictor(self.model_path)
         self.is_trained = False
         self.progress_callback = None
+        self.ensemble_enabled = True
+        
+        # НОВОЕ: Полная ансамблевая система
+        self.full_ensemble = EnsemblePredictor()
         self._auto_load_model()
     
     def _auto_load_model(self):
@@ -29,11 +34,25 @@ class SimpleNeuralSystem:
         if os.path.exists(self.model_path):
             if self.predictor.load_model():
                 self.is_trained = True
+                
+                # НОВОЕ: Инициализируем полный ансамбль
+                self.full_ensemble.set_neural_predictor(self.predictor)
+                self._update_full_ensemble()
+                
                 print("✅ УСИЛЕННАЯ модель автоматически загружена")
+                print("✅ Ансамблевая система инициализирована")
             else:
                 print("❌ Не удалось загрузить модель")
         else:
             print("📝 Модель еще не обучена")
+    
+    def _update_full_ensemble(self):
+        """Обновление данных для полного ансамбля"""
+        try:
+            dataset = load_dataset()
+            self.full_ensemble.update_ensemble(dataset)
+        except Exception as e:
+            print(f"⚠️  Ошибка обновления полного ансамбля: {e}")
     
     def set_progress_callback(self, callback):
         """Установка callback для прогресса"""
@@ -68,7 +87,12 @@ class SimpleNeuralSystem:
         
         # Перезагружаем модель после обучения
         self.predictor.load_model()
+        
+        # НОВОЕ: Обновляем ансамбль
+        self._update_full_ensemble()
+        
         self._report_progress("✅ Обучение завершено и модель загружена!")
+        self._report_progress("✅ Ансамблевая система обновлена!")
         
         # Делаем прогноз после обучения
         self._report_progress("🔮 Делаем прогноз после обучения...")
@@ -98,6 +122,9 @@ class SimpleNeuralSystem:
         
         predictions = []
         
+        # НОВОЕ: Всегда обновляем ансамбль
+        self._update_full_ensemble()
+        
         # Дообучаем модель если она уже была обучена и есть достаточно данных
         if self.is_trained and len(dataset) >= 50:
             self._report_progress("🔄 Дообучение УСИЛЕННОЙ модели на новых данных...")
@@ -107,7 +134,6 @@ class SimpleNeuralSystem:
                 self.trainer.set_progress_callback(self.progress_callback)
             
             self.trainer.train(dataset, epochs=retrain_epochs)
-            # self.trainer.train(dataset, epochs=5)
             self.predictor.load_model()
             self._report_progress("✅ Модель дообучена!")
             
@@ -118,6 +144,10 @@ class SimpleNeuralSystem:
         elif not self.is_trained and len(dataset) >= 50:
             self._report_progress("🎯 Достаточно данных для первого обучения УСИЛЕННОЙ модели!")
             predictions = self.train(epochs=20)
+        else:
+            # НОВОЕ: Даже если не переобучаем, делаем прогноз на основе ансамбля
+            self._report_progress("🔮 Делаем прогноз на основе обновленного ансамбля...")
+            predictions = self._make_ensemble_prediction()
         
         return predictions
     
@@ -127,7 +157,16 @@ class SimpleNeuralSystem:
         if not groups:
             return []
         
-        # Берем больше истории для лучшего предсказания
+        # НОВОЕ: Пробуем полный ансамбль сначала
+        if self.ensemble_enabled:
+            try:
+                ensemble_predictions = self._make_ensemble_prediction()
+                if ensemble_predictions:
+                    return ensemble_predictions
+            except Exception as e:
+                self._report_progress(f"⚠️  Ансамблевое предсказание не удалось: {e}")
+        
+        # Резервный вариант: оригинальная логика
         recent_numbers = []
         for group_str in groups[-25:]:
             try:
@@ -154,10 +193,44 @@ class SimpleNeuralSystem:
         
         return filtered_predictions[:4]
     
+    def _make_ensemble_prediction(self) -> List[Tuple[Tuple[int, int, int, int], float]]:
+        """Прогноз с использованием полного ансамбля"""
+        groups = load_dataset()
+        if not groups:
+            return []
+        
+        # Подготавливаем историю для ансамбля
+        recent_numbers = []
+        for group_str in groups[-30:]:  # Берем больше истории для ансамбля
+            try:
+                numbers = [int(x) for x in group_str.strip().split()]
+                if len(numbers) == 4:
+                    recent_numbers.extend(numbers)
+            except:
+                continue
+        
+        if len(recent_numbers) < 40:
+            self._report_progress("❌ Недостаточно данных для ансамблевого предсказания")
+            return []
+        
+        try:
+            predictions = self.full_ensemble.predict_ensemble(recent_numbers, 10)
+            if predictions:
+                self._report_progress(f"🎯 Полный ансамбль сгенерировал {len(predictions)} предсказаний")
+                return predictions[:8]  # Возвращаем топ-8
+        except Exception as e:
+            self._report_progress(f"❌ Ошибка полного ансамбля: {e}")
+        
+        return []
+    
     def load(self) -> bool:
         """Загрузка обученной модели"""
         success = self.predictor.load_model()
         self.is_trained = success
+        
+        if success:
+            self._update_full_ensemble()
+        
         return success
     
     def predict(self, top_k: int = 10) -> List[Tuple[Tuple[int, int, int, int], float]]:
@@ -172,11 +245,33 @@ class SimpleNeuralSystem:
     def get_status(self) -> dict:
         """Статус системы"""
         dataset = load_dataset()
+        
+        # НОВОЕ: Информация об ансамбле
+        ensemble_info = {
+            'ensemble_enabled': self.ensemble_enabled,
+            'ensemble_components': len([p for p in self.full_ensemble.predictors.values() if p is not None]),
+            'dataset_size_for_ensemble': len(dataset)
+        }
+        
         return {
             'is_trained': self.is_trained,
             'model_loaded': self.predictor.is_trained,
             'model_path': self.predictor.model_path,
             'dataset_size': len(dataset),
             'has_sufficient_data': len(dataset) >= 50,
-            'model_type': 'УСИЛЕННАЯ нейросеть'
+            'model_type': 'УСИЛЕННАЯ нейросеть с ансамблем',
+            'ensemble_info': ensemble_info
         }
+    
+    def toggle_ensemble(self, enable: bool = None):
+        """Включение/выключение ансамблевого режима"""
+        if enable is None:
+            enable = not self.ensemble_enabled
+        
+        self.ensemble_enabled = enable
+        self.predictor.enable_ensemble(enable)
+        
+        status = "включен" if enable else "выключен"
+        self._report_progress(f"🔧 Ансамблевый режим {status}")
+        
+        return enable

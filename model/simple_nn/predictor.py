@@ -1,22 +1,35 @@
-# model/simple_nn/predictor.py
+# [file name]: model/simple_nn/predictor.py (ОБНОВЛЕННАЯ ВЕРСИЯ)
 """
-УСИЛЕННОЕ предсказание групп чисел
+УСИЛЕННОЕ предсказание групп чисел с ансамблевыми методами
 """
 
 import torch
 import numpy as np
 from typing import List, Tuple
 import os
+import sys
+
+# Добавляем путь для импорта новых модулей
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 from .model import EnhancedNumberPredictor
 from .features import FeatureExtractor
+from ..ensemble_predictor import EnsemblePredictor, FrequencyBasedPredictor
+from ..advanced_features import AdvancedPatternAnalyzer, SmartNumberSelector
+from ..data_loader import load_dataset
 
 class EnhancedPredictor:
     def __init__(self, model_path: str = "data/simple_model.pth"):
         self.model_path = model_path
         self.device = torch.device('cpu')
         self.model = None
-        self.feature_extractor = FeatureExtractor(history_size=25)  # Увеличили историю
+        self.feature_extractor = FeatureExtractor(history_size=25)
         self.is_trained = False
+        
+        # НОВОЕ: Ансамблевая система
+        self.ensemble_predictor = EnsemblePredictor()
+        self.pattern_analyzer = AdvancedPatternAnalyzer()
+        self.use_ensemble = True  # Флаг для включения/выключения ансамбля
         
     def load_model(self) -> bool:
         """Загрузка обученной модели"""
@@ -36,6 +49,11 @@ class EnhancedPredictor:
             self.model.eval()
             
             self.is_trained = True
+            
+            # НОВОЕ: Обновляем ансамбль
+            self.ensemble_predictor.set_neural_predictor(self)
+            self._update_ensemble_data()
+            
             print(f"✅ УСИЛЕННАЯ нейросеть загружена: {self.model_path}")
             return True
             
@@ -43,13 +61,37 @@ class EnhancedPredictor:
             print(f"❌ Ошибка загрузки модели: {e}")
             return False
     
+    def _update_ensemble_data(self):
+        """Обновление данных для ансамбля"""
+        try:
+            dataset = load_dataset()
+            self.ensemble_predictor.update_ensemble(dataset)
+        except Exception as e:
+            print(f"⚠️  Ошибка обновления ансамбля: {e}")
+    
     def predict_group(self, number_history: List[int], top_k: int = 10) -> List[Tuple[Tuple[int, int, int, int], float]]:
-        """УСИЛЕННОЕ предсказание следующей группы чисел"""
+        """УСИЛЕННОЕ предсказание следующей группы чисел с ансамблевыми методами"""
+        
+        # НОВОЕ: Используем ансамбль если включен и есть достаточно данных
+        if self.use_ensemble and len(number_history) >= 30:
+            try:
+                ensemble_predictions = self.ensemble_predictor.predict_ensemble(number_history, top_k)
+                if ensemble_predictions:
+                    print(f"🎯 Ансамбль сгенерировал {len(ensemble_predictions)} предсказаний")
+                    return ensemble_predictions
+            except Exception as e:
+                print(f"⚠️  Ошибка ансамблевого предсказания, используем базовую модель: {e}")
+        
+        # Резервный вариант: оригинальная модель
+        return self._predict_original(number_history, top_k)
+    
+    def _predict_original(self, number_history: List[int], top_k: int = 10) -> List[Tuple[Tuple[int, int, int, int], float]]:
+        """Оригинальный метод предсказания (как запасной вариант)"""
         if not self.is_trained or self.model is None:
             if not self.load_model():
                 return []
         
-        if len(number_history) < 25:  # Увеличили минимальную историю
+        if len(number_history) < 25:
             print("❌ Недостаточно данных в истории")
             return []
         
@@ -60,15 +102,15 @@ class EnhancedPredictor:
             outputs = self.model(features_tensor)
             probabilities = torch.softmax(outputs, dim=-1)
             
-            # Усиленная генерация кандидатов
+            # Генерация кандидатов
             candidates = self._generate_enhanced_candidates(probabilities[0], top_k, number_history)
             return candidates
     
     def _generate_enhanced_candidates(self, probabilities: torch.Tensor, top_k: int, history: List[int]) -> List[Tuple[Tuple[int, int, int, int], float]]:
-        """УСИЛЕННАЯ генерация кандидатных групп"""
+        """УСИЛЕННАЯ генерация кандидатных групп с улучшенной логикой"""
         candidates = []
         
-        # Глубокий анализ истории
+        # НОВОЕ: Глубокий анализ истории
         pattern_analysis = self._deep_pattern_analysis(history)
         
         # Генерация на основе модели
@@ -78,6 +120,13 @@ class EnhancedPredictor:
         # Генерация на основе паттернов
         pattern_candidates = self._generate_intelligent_patterns(history, 15, pattern_analysis)
         candidates.extend(pattern_candidates)
+        
+        # НОВОЕ: Добавляем частотные кандидаты
+        try:
+            frequency_candidates = self._generate_frequency_based_candidates(history, 10)
+            candidates.extend(frequency_candidates)
+        except Exception as e:
+            print(f"⚠️  Ошибка генерации частотных кандидатов: {e}")
         
         # Сортировка и фильтрация
         candidates.sort(key=lambda x: x[1], reverse=True)
@@ -89,13 +138,49 @@ class EnhancedPredictor:
             if group not in seen:
                 seen.add(group)
                 unique_candidates.append((group, score))
-            if len(unique_candidates) >= top_k * 2:  # Берем в 2 раза больше для фильтрации
+            if len(unique_candidates) >= top_k * 2:
                 break
         
         # Фильтрация по качеству
         filtered_candidates = self._filter_candidates_by_quality(unique_candidates, pattern_analysis)
         
         return filtered_candidates[:top_k]
+    
+    def _generate_frequency_based_candidates(self, history: List[int], count: int) -> List[tuple]:
+        """Генерация кандидатов на основе частотного анализа"""
+        try:
+            dataset = load_dataset()
+            if not dataset:
+                return []
+                
+            freq_predictor = FrequencyBasedPredictor()
+            freq_predictor.update_frequencies(dataset)
+            
+            candidates = []
+            import random
+            
+            # Генерация групп с высокими вероятностными scores
+            for _ in range(count * 5):  # Генерируем больше для фильтрации
+                group = (
+                    random.randint(1, 26),
+                    random.randint(1, 26),
+                    random.randint(1, 26), 
+                    random.randint(1, 26)
+                )
+                
+                # Проверяем валидность
+                if group[0] != group[1] and group[2] != group[3]:
+                    score = freq_predictor.get_probability_scores(group)
+                    if score > 1e-8:  # Минимальный порог
+                        candidates.append((group, score))
+            
+            # Возвращаем лучшие
+            candidates.sort(key=lambda x: x[1], reverse=True)
+            return candidates[:count]
+            
+        except Exception as e:
+            print(f"❌ Ошибка в частотной генерации: {e}")
+            return []
     
     def _deep_pattern_analysis(self, history: List[int]) -> dict:
         """Глубокий анализ паттернов в истории"""
@@ -118,19 +203,26 @@ class EnhancedPredictor:
         sequences = []
         current_seq = [recent[0]]
         for i in range(1, len(recent)):
-            if recent[i] == recent[i-1] + 1 or recent[i] == recent[i-1] - 1:
+            if abs(recent[i] - recent[i-1]) <= 2:  # Более гибкое определение последовательности
                 current_seq.append(recent[i])
             else:
                 if len(current_seq) >= 3:
                     sequences.append(current_seq)
                 current_seq = [recent[i]]
         
+        if len(current_seq) >= 3:
+            sequences.append(current_seq)
+        
+        # НОВОЕ: Временной анализ
+        temporal_patterns = self.pattern_analyzer.analyze_time_series(history)
+        
         return {
             'hot_numbers': hot_numbers,
             'cold_numbers': cold_numbers,
             'sequences': sequences,
             'frequencies': freq,
-            'recent_numbers': recent
+            'recent_numbers': recent,
+            'temporal_patterns': temporal_patterns
         }
     
     def _generate_model_based_candidates(self, probabilities: torch.Tensor, count: int, pattern_analysis: dict) -> List[Tuple[Tuple[int, int, int, int], float]]:
@@ -150,6 +242,7 @@ class EnhancedPredictor:
         cold_bonus = 1.5
         hot_penalty = 0.8
         
+        generated = 0
         for i, (n1, p1) in enumerate(top_numbers[0]):
             for j, (n2, p2) in enumerate(top_numbers[1]):
                 if n1 == n2:
@@ -175,17 +268,19 @@ class EnhancedPredictor:
                             adjusted_score *= 2
                         
                         candidates.append((group, adjusted_score))
+                        generated += 1
                         
-                        if len(candidates) >= count * 10:  # Ограничиваем количество
+                        if generated >= count * 10:
                             return candidates
         
         return candidates
     
     def _calculate_enhanced_pattern_score(self, group: Tuple[int, int, int, int], pattern_analysis: dict) -> float:
-        """Расчет усиленного pattern score"""
+        """Расчет усиленного pattern score с новыми факторами"""
         score = 1.0
         hot_numbers = pattern_analysis.get('hot_numbers', [])
         cold_numbers = pattern_analysis.get('cold_numbers', [])
+        temporal_patterns = pattern_analysis.get('temporal_patterns', {})
         
         # Бонус за холодные числа
         cold_count = sum(1 for num in group if num in cold_numbers)
@@ -211,21 +306,32 @@ class EnhancedPredictor:
         if len(set(group)) == 4:
             score *= 1.2
         
+        # НОВОЕ: Учет временных паттернов
+        autocorr = temporal_patterns.get('autocorrelation', {})
+        if autocorr:
+            avg_autocorr = sum(autocorr.values()) / len(autocorr)
+            if avg_autocorr > 0.3:
+                # При высокой автокорреляции предпочитаем группы с числами из истории
+                history_overlap = sum(1 for num in group if num in pattern_analysis.get('recent_numbers', []))
+                score *= (1 + history_overlap * 0.2)
+        
         return score
     
     def _generate_intelligent_patterns(self, history: List[int], count: int, pattern_analysis: dict) -> List[Tuple[Tuple[int, int, int, int], float]]:
-        """Генерация интеллектуальных паттернов"""
+        """Генерация интеллектуальных паттернов с улучшениями"""
         candidates = []
         import random
         
         hot_numbers = pattern_analysis.get('hot_numbers', [])
         cold_numbers = pattern_analysis.get('cold_numbers', [])
+        sequences = pattern_analysis.get('sequences', [])
         
         strategies = [
             lambda: self._strategy_mixed_hot_cold(hot_numbers, cold_numbers),
             lambda: self._strategy_balanced_ranges(),
-            lambda: self._strategy_follow_sequences(pattern_analysis.get('sequences', [])),
+            lambda: self._strategy_follow_sequences(sequences),
             lambda: self._strategy_avoid_recent(pattern_analysis.get('recent_numbers', [])),
+            lambda: self._strategy_temporal_patterns(pattern_analysis.get('temporal_patterns', {})),
         ]
         
         for _ in range(count):
@@ -233,23 +339,54 @@ class EnhancedPredictor:
             group = strategy()
             
             if group and group not in [c[0] for c in candidates]:
-                # Высокий базовый score для паттернных кандидатов
-                candidates.append((group, 0.001))
+                # Более умный score для паттернных кандидатов
+                base_score = 0.001
+                
+                # Повышаем score для стратегий с временными паттернами
+                if strategy == strategies[-1]:  # temporal_patterns strategy
+                    base_score *= 1.5
+                
+                candidates.append((group, base_score))
         
         return candidates
+    
+    def _strategy_temporal_patterns(self, temporal_patterns: dict) -> Tuple[int, int, int, int]:
+        """Новая стратегия: учет временных паттернов"""
+        import random
+        
+        # Используем информацию о трендах и автокорреляции
+        trending = temporal_patterns.get('linear_trend', 0)
+        mean_reversion = temporal_patterns.get('mean_reversion', 0)
+        
+        if abs(trending) > 0.1:
+            # Стратегия следования тренду
+            base_num = random.randint(8, 18)  # Центральный диапазон
+            trend_adjusted = [max(1, min(26, int(base_num + trending * i))) for i in range(4)]
+            return self._create_valid_group(trend_adjusted)
+        elif mean_reversion > 1.0:
+            # Стратегия возвращения к среднему
+            mean_val = 13.5  # Теоретическое среднее
+            reversion_nums = [max(1, min(26, int(mean_val + random.uniform(-5, 5)))) for _ in range(4)]
+            return self._create_valid_group(reversion_nums)
+        else:
+            # Случайная сбалансированная стратегия
+            return self._strategy_balanced_ranges()
     
     def _strategy_mixed_hot_cold(self, hot_numbers: List[int], cold_numbers: List[int]) -> Tuple[int, int, int, int]:
         """Стратегия: смесь горячих и холодных чисел"""
         import random
         
         if not cold_numbers:
-            cold_numbers = list(range(1, 27))
+            cold_numbers = [n for n in range(1, 27) if n not in hot_numbers] if hot_numbers else list(range(1, 27))
         if not hot_numbers:
-            hot_numbers = list(range(1, 27))
+            hot_numbers = [n for n in range(1, 27) if n not in cold_numbers] if cold_numbers else list(range(1, 27))
         
-        # 2 холодных + 2 горячих
-        cold_choices = random.sample(cold_numbers, min(2, len(cold_numbers)))
-        hot_choices = random.sample(hot_numbers, min(2, len(hot_numbers)))
+        # 2 холодных + 2 горячих или 3 холодных + 1 горячий
+        cold_count = random.choice([2, 3])
+        hot_count = 4 - cold_count
+        
+        cold_choices = random.sample(cold_numbers, min(cold_count, len(cold_numbers)))
+        hot_choices = random.sample(hot_numbers, min(hot_count, len(hot_numbers)))
         
         return self._create_valid_group(cold_choices + hot_choices)
     
@@ -275,7 +412,7 @@ class EnhancedPredictor:
             if len(last_seq) >= 2:
                 # Продолжаем последовательность
                 base_num = last_seq[-1]
-                next_nums = [base_num + 1, base_num - 1]
+                next_nums = [base_num + 1, base_num - 1, base_num + 2, base_num - 2]
                 valid_nums = [n for n in next_nums if 1 <= n <= 26]
                 
                 if valid_nums:
@@ -355,4 +492,20 @@ class EnhancedPredictor:
         if low_count == 0 or low_count == 4:
             score *= 0.8
         
+        # НОВОЕ: Проверка на основе временных паттернов
+        temporal_patterns = pattern_analysis.get('temporal_patterns', {})
+        hurst = temporal_patterns.get('hurst_exponent', 0.5)
+        
+        if hurst > 0.7:  # Персистентный ряд - предпочитаем продолжение трендов
+            recent_avg = np.mean(pattern_analysis.get('recent_numbers', [13.5]))
+            group_avg = np.mean(group)
+            if abs(group_avg - recent_avg) < 3:  # Близко к текущему тренду
+                score *= 1.2
+        
         return score
+    
+    def enable_ensemble(self, enable: bool = True):
+        """Включение/выключение ансамблевого режима"""
+        self.use_ensemble = enable
+        if enable:
+            self._update_ensemble_data()
