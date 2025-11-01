@@ -1,11 +1,15 @@
-# [file name]: model/cli.py (ОСТАЛСЯ БЕЗ ИЗМЕНЕНИЙ)
+# [file name]: model/cli.py (ОБНОВЛЕННЫЙ ДЛЯ САМООБУЧЕНИЯ)
 """
-Главный CLI интерфейс для УСИЛЕННОЙ нейросети
+Главный CLI интерфейс для УСИЛЕННОЙ нейросети с самообучением
 """
 
 import os
 import sys
+import logging
 from typing import List, Tuple
+
+# Настройка логирования
+logger = logging.getLogger('SequencePredictor')
 
 # Добавляем родительскую директорию в путь для импортов
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -29,8 +33,7 @@ def show_last_group() -> str:
     dataset = load_dataset()
     if not dataset:
         print("📭 Датасет пуст")
-        return
-    
+        return ""
     return dataset[-1]
 
 def show_last_groups(n: int = 5) -> None:
@@ -75,10 +78,38 @@ def check_similarity(new_group_str: str) -> None:
     except Exception as e:
         print(f"❌ Ошибка при сравнении: {e}")
 
+def show_learning_insights() -> None:
+    """Показать аналитику самообучения"""
+    print("\n📈 Аналитика самообучения системы")
+    
+    system = get_system()
+    insights = system.get_learning_insights()
+    
+    if isinstance(insights, dict):
+        if 'message' in insights:
+            print(f"   {insights['message']}")
+        else:
+            print(f"   📊 Проанализировано предсказаний: {insights.get('total_predictions_analyzed', 0)}")
+            accuracy = insights.get('recent_accuracy_avg', 0)
+            print(f"   🎯 Средняя точность: {accuracy:.1%}")
+            print(f"   🏆 Лучшая точность: {insights.get('best_accuracy', 0):.1%}")
+            
+            recommendations = insights.get('recommendations', [])
+            if recommendations:
+                print("   💡 Рекомендации:")
+                for rec in recommendations:
+                    print(f"      • {rec}")
+    else:
+        print("   📊 Собираем данные для анализа...")
+
 def add_new_group() -> None:
     """Добавить новую группу с дообучением УСИЛЕННОЙ модели и прогнозом"""
     print("\n➕ Добавление новой группы")
-    group_input = input(f"(последняя: '{show_last_group()}'): ").strip()
+    last_group = show_last_group()
+    if last_group:
+        group_input = input(f"(последняя: '{last_group}'): ").strip()
+    else:
+        group_input = input("Введите 4 числа через пробел: ").strip()
     
     if not group_input:
         print("❌ Пустой ввод")
@@ -108,31 +139,8 @@ def add_new_group() -> None:
         save_predictions(predictions)
         print(f"💾 Новые предсказания сохранены")
         
-        # # Сравниваем новую группу с новыми прогнозами
-        # print(f"\n🔍 Сравнение новой группы с новыми прогнозами:")
-        # new_numbers = [int(x) for x in group_input.strip().split()]
-        # new_group = tuple(new_numbers)
-        
-        # best_match = None
-        # best_score = 0
-        # for pred_group, score in predictions[:3]:  # Проверяем топ-3 прогноза
-        #     comparison = compare_groups(pred_group, new_group)
-        #     if comparison['total_matches'] > best_score:
-        #         best_score = comparison['total_matches']
-        #         best_match = (pred_group, comparison)
-        
-        # if best_match and best_score > 0:
-        #     pred_group, comparison = best_match
-        #     print(f"✅ Лучшее совпадение: {pred_group[0]} {pred_group[1]} {pred_group[2]} {pred_group[3]}")
-        #     print(f"   Совпадения по парам: {comparison['total_matches']}/4")
-        #     print(f"   Точные совпадения: {comparison['exact_matches']}/4")
-            
-        #     if comparison['total_matches'] >= 2:
-        #         print("🎉 ОТЛИЧНОЕ СОВПАДЕНИЕ!")
-        #     elif comparison['total_matches'] == 1:
-        #         print("👍 ХОРОШЕЕ СОВПАДЕНИЕ!")
-        # else:
-        #     print("📝 Совпадений с новыми прогнозами нет")
+        # Показываем аналитику самообучения
+        show_learning_insights()
     else:
         print("❌ Не удалось получить прогнозы после добавления данных")
 
@@ -153,6 +161,9 @@ def train_simple_neural() -> None:
         # Сохраняем предсказания
         save_predictions(predictions)
         print(f"💾 Прогнозы сохранены для сравнения")
+        
+        # Показываем аналитику
+        show_learning_insights()
     else:
         print("❌ Не удалось получить прогнозы после обучения")
 
@@ -190,6 +201,11 @@ def show_system_status() -> None:
     print(f"🚀 Тип модели: {status.get('model_type', 'УСИЛЕННАЯ')}")
     print(f"📁 Путь к модели: {status['model_path']}")
     
+    # Информация об ансамбле
+    ensemble_info = status.get('ensemble_info', {})
+    print(f"🔧 Ансамблевый режим: {'✅ Включен' if ensemble_info.get('ensemble_enabled', False) else '❌ Выключен'}")
+    print(f"🎯 Компонентов ансамбля: {ensemble_info.get('ensemble_components', 0)}")
+    
     # Показываем последние предсказания
     predictions = load_predictions()
     if predictions:
@@ -200,6 +216,59 @@ def show_system_status() -> None:
             print(f"     {i}) {group[0]} {group[1]} {group[2]} {group[3]} (score: {score:.6f}) {confidence}")
     else:
         print("📈 Последние предсказания: нет")
+    
+    # Показываем аналитику самообучения
+    show_learning_insights()
+
+def advanced_controls() -> None:
+    """Расширенные настройки системы"""
+    print("\n🔧 Расширенные настройки")
+    
+    system = get_system()
+    
+    while True:
+        print("\n" + "-"*30)
+        print("1) 🔄 Обновить ансамблевую систему")
+        print("2) ⚙️  Переключить ансамблевый режим")
+        print("3) 🗑️  Сбросить данные самообучения")
+        print("4) 📊 Детальная статистика")
+        print("0) ↩️  Назад")
+        print("-"*30)
+        
+        choice = input("Выберите пункт: ").strip()
+        
+        if choice == "1":
+            try:
+                system._update_full_ensemble()
+                print("✅ Ансамблевая система обновлена!")
+            except Exception as e:
+                print(f"❌ Ошибка: {e}")
+                
+        elif choice == "2":
+            current_mode = system.ensemble_enabled
+            new_mode = not current_mode
+            system.toggle_ensemble(new_mode)
+            status = "включен" if new_mode else "выключен"
+            print(f"✅ Ансамблевый режим {status}")
+            
+        elif choice == "3":
+            confirm = input("⚠️  Вы уверены? Это удалит всю историю самообучения. (y/N): ").strip().lower()
+            if confirm == 'y':
+                system.reset_learning_data()
+                print("✅ Данные самообучения сброшены!")
+            else:
+                print("❌ Отменено")
+                
+        elif choice == "4":
+            status = system.get_status()
+            print("\n📊 Детальная статистика:")
+            import json
+            print(json.dumps(status, indent=2, ensure_ascii=False))
+            
+        elif choice == "0":
+            break
+        else:
+            print("❌ Неверный выбор")
 
 def main_menu() -> None:
     """Главное меню"""
@@ -208,13 +277,15 @@ def main_menu() -> None:
     
     while True:
         print("\n" + "="*50)
-        print("          🎯 УСИЛЕННАЯ НЕЙРОСЕТЬ v3.0")
+        print("          🎯 УСИЛЕННАЯ НЕЙРОСЕТЬ v4.0")
+        print("           с САМООБУЧЕНИЕМ и АНСАМБЛЕМ")
         print("="*50)
         print("1) 📋 Показать последние группы")
         print("2) ➕ Добавить новую группу (с дообучением и прогнозом)")
         print("3) 🧠 Обучить УСИЛЕННУЮ нейросеть (с прогнозом)")
         print("4) 🔮 Получить прогноз от УСИЛЕННОЙ модели")
-        print("5) 🔧 Статус системы") 
+        print("5) 🔧 Статус системы")
+        print("6) ⚙️  Расширенные настройки")
         print("0) 🚪 Выход")
         print("-"*50)
         
@@ -230,17 +301,18 @@ def main_menu() -> None:
             predict_with_simple_neural()
         elif choice == "5":
             show_system_status()
+        elif choice == "6":
+            advanced_controls()
         elif choice == "0":
             print("👋 До свидания!")
             break
         else:
             print("❌ Неверный выбор")
-        
 
 if __name__ == "__main__":
     # Создаем необходимые директории
     os.makedirs('data', exist_ok=True)
     
     print("🚀 Запуск УСИЛЕННОЙ нейросети для предсказания чисел...")
-    print("   Теперь с улучшенной архитектурой и интеллектуальными прогнозами! 🎯")
+    print("   Теперь с самообучением и улучшенной точностью! 🎯")
     main_menu()

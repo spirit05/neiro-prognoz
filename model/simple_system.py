@@ -1,6 +1,6 @@
-# [file name]: model/simple_system.py (ОБНОВЛЕННАЯ ВЕРСИЯ)
+# [file name]: model/simple_system.py (ПОЛНОСТЬЮ ОБНОВЛЕННЫЙ)
 """
-Главный интерфейс для УСИЛЕННОЙ нейросети с ансамблевыми методами
+Главный интерфейс для УСИЛЕННОЙ нейросети с ансамблевыми методами и самообучением
 """
 
 import os
@@ -15,6 +15,7 @@ from model.simple_nn.trainer import EnhancedTrainer
 from model.simple_nn.predictor import EnhancedPredictor
 from model.data_loader import load_dataset
 from model.ensemble_predictor import EnsemblePredictor
+from model.self_learning import SelfLearningSystem
 
 class SimpleNeuralSystem:
     def __init__(self):
@@ -27,6 +28,10 @@ class SimpleNeuralSystem:
         
         # НОВОЕ: Полная ансамблевая система
         self.full_ensemble = EnsemblePredictor()
+        
+        # НОВОЕ: Система самообучения
+        self.self_learning = SelfLearningSystem()
+        
         self._auto_load_model()
     
     def _auto_load_model(self):
@@ -41,6 +46,7 @@ class SimpleNeuralSystem:
                 
                 print("✅ УСИЛЕННАЯ модель автоматически загружена")
                 print("✅ Ансамблевая система инициализирована")
+                print("✅ Система самообучения активирована")
             else:
                 print("❌ Не удалось загрузить модель")
         else:
@@ -64,6 +70,8 @@ class SimpleNeuralSystem:
         """Отправка сообщения о прогрессе"""
         if self.progress_callback:
             self.progress_callback(message)
+        else:
+            print(f"📢 {message}")
     
     def train(self, epochs: int = 25) -> List[Tuple[Tuple[int, int, int, int], float]]:
         """Обучение УСИЛЕННОЙ системы с возвратом прогнозов"""
@@ -124,6 +132,22 @@ class SimpleNeuralSystem:
         
         # НОВОЕ: Всегда обновляем ансамбль
         self._update_full_ensemble()
+        
+        # НОВОЕ: Анализ точности предыдущих предсказаний
+        learning_result = self.self_learning.analyze_prediction_accuracy(new_group)
+        if learning_result:
+            accuracy = learning_result['accuracy_score']
+            matches = learning_result['matches_count']
+            self._report_progress(f"📊 Анализ точности: {matches}/4 совпадений (точность: {accuracy:.1%})")
+            
+            # Автоматическая корректировка весов ансамбля
+            if self.self_learning.adjust_ensemble_weights(self.full_ensemble):
+                self._report_progress("🔧 Веса ансамбля скорректированы на основе точности")
+            
+            # Показ рекомендаций
+            recommendations = self.self_learning.get_learning_recommendations()
+            for rec in recommendations:
+                self._report_progress(f"💡 {rec}")
         
         # Дообучаем модель если она уже была обучена и есть достаточно данных
         if self.is_trained and len(dataset) >= 50:
@@ -246,12 +270,15 @@ class SimpleNeuralSystem:
         """Статус системы"""
         dataset = load_dataset()
         
-        # НОВОЕ: Информация об ансамбле
+        # НОВОЕ: Информация об ансамбле и самообучении
         ensemble_info = {
             'ensemble_enabled': self.ensemble_enabled,
             'ensemble_components': len([p for p in self.full_ensemble.predictors.values() if p is not None]),
             'dataset_size_for_ensemble': len(dataset)
         }
+        
+        # НОВОЕ: Статистика самообучения
+        learning_stats = self.self_learning.get_performance_stats()
         
         return {
             'is_trained': self.is_trained,
@@ -259,8 +286,9 @@ class SimpleNeuralSystem:
             'model_path': self.predictor.model_path,
             'dataset_size': len(dataset),
             'has_sufficient_data': len(dataset) >= 50,
-            'model_type': 'УСИЛЕННАЯ нейросеть с ансамблем',
-            'ensemble_info': ensemble_info
+            'model_type': 'УСИЛЕННАЯ нейросеть с ансамблем и самообучением',
+            'ensemble_info': ensemble_info,
+            'learning_stats': learning_stats
         }
     
     def toggle_ensemble(self, enable: bool = None):
@@ -275,3 +303,18 @@ class SimpleNeuralSystem:
         self._report_progress(f"🔧 Ансамблевый режим {status}")
         
         return enable
+    
+    # НОВЫЕ МЕТОДЫ ДЛЯ САМООБУЧЕНИЯ
+    
+    def get_learning_insights(self) -> Dict:
+        """Получение аналитики по самообучению"""
+        return self.self_learning.get_performance_stats()
+    
+    def reset_learning_data(self):
+        """Сброс данных самообучения"""
+        self.self_learning.reset_learning_data()
+        self._report_progress("✅ Данные самообучения сброшены")
+    
+    def analyze_accuracy(self, actual_group: str) -> Dict:
+        """Ручной анализ точности для конкретной группы"""
+        return self.self_learning.analyze_prediction_accuracy(actual_group)

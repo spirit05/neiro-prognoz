@@ -1,3 +1,4 @@
+# [file name]: app.py (ПОЛНОСТЬЮ ОБНОВЛЕННЫЙ)
 import streamlit as st
 import sys
 import os
@@ -38,6 +39,12 @@ class WebInterface:
             st.sidebar.info(f"Модель обучена: {'Да' if status['is_trained'] else 'Нет'}")
             st.sidebar.info(f"Размер датасета: {status['dataset_size']}")
             
+            # Показываем статистику самообучения
+            learning_stats = status.get('learning_stats', {})
+            if isinstance(learning_stats, dict) and 'recent_accuracy_avg' in learning_stats:
+                accuracy = learning_stats['recent_accuracy_avg']
+                st.sidebar.info(f"📊 Средняя точность: {accuracy:.1%}")
+            
             # Показываем последнюю группу из датасета
             try:
                 from data_loader import load_dataset
@@ -61,9 +68,92 @@ class WebInterface:
         else:
             st.sidebar.error("❌ Система AI: Не инициализирована")
     
+    def show_advanced_controls(self):
+        """Показать расширенные контролы"""
+        st.sidebar.header("🔧 Расширенные настройки")
+        
+        if st.sidebar.button("🔄 Обновить ансамблевую систему"):
+            try:
+                self.system._update_full_ensemble()
+                st.sidebar.success("✅ Ансамблевая система обновлена!")
+            except Exception as e:
+                st.sidebar.error(f"❌ Ошибка: {e}")
+        
+        # Переключение ансамблевого режима
+        current_mode = getattr(self.system, 'ensemble_enabled', True)
+        new_mode = st.sidebar.checkbox("Использовать ансамблевый режим", value=current_mode)
+        if new_mode != current_mode:
+            self.system.toggle_ensemble(new_mode)
+            st.sidebar.success(f"🔧 Ансамблевый режим {'включен' if new_mode else 'выключен'}")
+        
+        # Кнопка сброса данных самообучения
+        if st.sidebar.button("🗑️ Сбросить данные самообучения"):
+            try:
+                self.system.reset_learning_data()
+                st.sidebar.success("✅ Данные самообучения сброшены!")
+            except Exception as e:
+                st.sidebar.error(f"❌ Ошибка: {e}")
+        
+        # Информация о системе
+        if st.sidebar.button("📊 Детальный статус"):
+            status = self.system.get_status()
+            st.sidebar.json(status)
+
+    def show_learning_analytics(self):
+        """Показать аналитику самообучения"""
+        st.header("📈 Аналитика самообучения")
+        
+        try:
+            insights = self.system.get_learning_insights()
+            
+            if isinstance(insights, dict):
+                if 'message' in insights:
+                    st.info(insights['message'])
+                else:
+                    # Показываем метрики
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.metric(
+                            "Проанализировано предсказаний",
+                            insights.get('total_predictions_analyzed', 0)
+                        )
+                    
+                    with col2:
+                        accuracy = insights.get('recent_accuracy_avg', 0)
+                        st.metric(
+                            "Средняя точность",
+                            f"{accuracy:.1%}"
+                        )
+                    
+                    with col3:
+                        best_acc = insights.get('best_accuracy', 0)
+                        st.metric(
+                            "Лучшая точность",
+                            f"{best_acc:.1%}"
+                        )
+                    
+                    # Рекомендации
+                    recommendations = insights.get('recommendations', [])
+                    if recommendations:
+                        st.subheader("💡 Рекомендации по улучшению")
+                        for rec in recommendations:
+                            st.write(f"• {rec}")
+                    else:
+                        st.info("📊 Собираем данные для анализа...")
+            else:
+                st.warning("Нет данных аналитики")
+                
+        except Exception as e:
+            st.error(f"Ошибка загрузки аналитики: {e}")
+
     def show_sequences(self):
         """Показать последние последовательности"""
         st.header("📊 Обзор данных")
+        
+        # Показываем аналитику самообучения
+        self.show_learning_analytics()
+        st.markdown("---")
         
         # Показываем последние прогнозы из кэша
         try:
@@ -96,7 +186,7 @@ class WebInterface:
                 # Показываем последние 5
                 st.subheader("Последние 5 последовательностей:")
                 for i, seq in enumerate(dataset[-5:], 1):
-                    st.text_area(f"Последовательность {len(dataset)-5+i}", seq, height=60)
+                    st.text_area(f"Последовательность {len(dataset)-5+i}", seq, height=60, key=f"seq_{i}")
             else:
                 st.warning("Нет данных в датасете")
                 
@@ -118,9 +208,9 @@ class WebInterface:
         
         st.info("Введите 4 числа от 1 до 26 через пробел (например: '1 9 22 19')")
         
-        sequence_input = st.text_input("Числовая последовательность:", placeholder="1 2 3 4")
+        sequence_input = st.text_input("Числовая последовательность:", placeholder="1 2 3 4", key="sequence_input")
         
-        if st.button("Добавить последовательность и дообучить", type="primary"):
+        if st.button("Добавить последовательность и дообучить", type="primary", key="add_sequence_btn"):
             if not sequence_input:
                 st.error("❌ Введите последовательность")
                 return
@@ -203,35 +293,12 @@ class WebInterface:
             except Exception as e:
                 st.error(f"Ошибка: {e}")
     
-        def show_advanced_controls(self):
-        """Показать расширенные контролы"""
-        st.sidebar.header("🔧 Расширенные настройки")
-        
-        if st.sidebar.button("🔄 Обновить ансамблевую систему"):
-            try:
-                self.system._update_full_ensemble()
-                st.sidebar.success("✅ Ансамблевая система обновлена!")
-            except Exception as e:
-                st.sidebar.error(f"❌ Ошибка: {e}")
-        
-        # Переключение ансамблевого режима
-        current_mode = getattr(self.system, 'ensemble_enabled', True)
-        new_mode = st.sidebar.checkbox("Использовать ансамблевый режим", value=current_mode)
-        if new_mode != current_mode:
-            self.system.toggle_ensemble(new_mode)
-            st.sidebar.success(f"🔧 Ансамблевый режим {'включен' if new_mode else 'выключен'}")
-        
-        # Информация о системе
-        if st.sidebar.button("📊 Детальный статус"):
-            status = self.system.get_status()
-            st.sidebar.json(status)
-
     def train_model(self):
         """Обучить модель"""
         st.header("🧠 Обучить модель AI")
         st.info("Полное обучение модели на всех данных")
         
-        if st.button("Начать обучение", type="primary"):
+        if st.button("Начать обучение", type="primary", key="train_model_btn"):
             try:
                 # Создаем контейнер для прогресса
                 progress_container = st.empty()
@@ -271,7 +338,7 @@ class WebInterface:
         st.header("🔮 Получить прогнозы")
         st.info("AI проанализирует паттерны и сгенерирует прогнозы")
         
-        if st.button("Сгенерировать прогнозы", type="primary"):
+        if st.button("Сгенерировать прогнозы", type="primary", key="predict_btn"):
             try:
                 # Создаем контейнер для прогресса
                 progress_container = st.empty()
@@ -319,7 +386,7 @@ class WebInterface:
 
 def main():
     st.title("🔢 AI Прогноз Числовых Последовательностей")
-    st.write("Продвинутая нейросеть для анализа и прогнозирования числовых последовательностей")
+    st.write("Продвинутая нейросеть для анализа и прогнозирования числовых последовательностей с системой самообучения")
     
     # Инициализация интерфейса
     interface = WebInterface()
