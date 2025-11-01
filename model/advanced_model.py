@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class AdvancedSequencePredictor(nn.Module):
-    def __init__(self, input_size: int = 150, hidden_size: int = 512):
+    def __init__(self, input_size: int = 150, hidden_size: int = 256):
         super().__init__()
         
         # Основные features (увеличенный input_size)
@@ -83,7 +83,7 @@ class AdvancedSequencePredictor(nn.Module):
 class CompatibleEnhancedPredictor(nn.Module):
     """Совместимая версия с улучшенной архитектурой"""
     
-    def __init__(self, input_size: int = 50, hidden_size: int = 512):
+    def __init__(self, input_size: int = 50, hidden_size: int = 256):
         super().__init__()
         
         # Используем улучшенную архитектуру но с совместимым интерфейсом

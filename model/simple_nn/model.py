@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 
 class EnhancedNumberPredictor(nn.Module):
-    def __init__(self, input_size: int = 50, hidden_size: int = 512):  # Увеличили hidden_size
+    def __init__(self, input_size: int = 50, hidden_size: int = 256):  # Увеличили hidden_size
         super(EnhancedNumberPredictor, self).__init__()
         
         # Усиленная архитектура с residual connections
