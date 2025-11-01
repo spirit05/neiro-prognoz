@@ -226,7 +226,7 @@ class WebInterface:
                 self.system.set_progress_callback(progress_callback)
                 
                 # Реальное обучение
-                predictions = self.system.train(epochs=15)
+                predictions = self.system.train(epochs=20)
                 
                 # Очищаем анимацию
                 dynamic_output.empty()

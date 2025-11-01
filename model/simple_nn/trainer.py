@@ -123,7 +123,7 @@ class EnhancedTrainer:
                     best_loss = avg_loss
                     self._save_model()
                     patience_counter = 0
-                    self._report_progress(f"💾 Сохранена лучшая модель (loss: {avg_loss:.4f})")
+                    self._report_progress(f"📈 Эпоха {epoch+1}, Сохранена лучшая модель (loss: {avg_loss:.4f})")
                 else:
                     patience_counter += 1
                     if patience_counter >= patience:
