@@ -27,13 +27,25 @@ class EnhancedTrainer:
         self.progress_callback = callback
     
     def _report_progress(self, message):
-        """Отправка сообщения о прогрессе"""
+        """Отправка сообщения о прогрессе с записью в файл"""
+        import datetime
+        timestamp = datetime.datetime.now().strftime('%H:%M:%S')
+        formatted_message = f"{timestamp} - {message}"
+        
+        # ⚡ ЗАПИСЫВАЕМ В ФАЙЛ
+        try:
+            with open("/opt/project/training_log.txt", "a", encoding="utf-8") as f:
+                f.write(formatted_message + "\n")
+        except Exception as e:
+            print(f"❌ Ошибка записи в лог: {e}")
+        
+        # Старая логика
         if self.progress_callback:
             self.progress_callback(message)
         else:
             print(f"📢 {message}")
     
-    def train(self, groups: List[str], epochs: int = 20, batch_size: int = 32) -> None:
+    def train(self, groups: List[str], epochs: int = 20, batch_size: int = 32) -> List[Tuple[Tuple[int, int, int, int], float]]:
         """Обучение модели с улучшенными параметрами и детальным логированием"""
         total_start_time = time.time()
         
@@ -51,11 +63,11 @@ class EnhancedTrainer:
         
         if len(features) == 0:
             self._report_progress("❌ Не удалось подготовить данные для обучения")
-            return
+            return []
         
         if len(features) < 100:
             self._report_progress(f"❌ Недостаточно данных: {len(features)} примеров (нужно минимум 100)")
-            return
+            return []
         
         self._report_progress(f"✅ Обработано {len(groups)} групп, {len(groups)*4} чисел")
         self._report_progress(f"✅ Создано {len(features)} обучающих примеров")
@@ -199,6 +211,31 @@ class EnhancedTrainer:
         
         total_time = time.time() - total_start_time
         self._report_progress(f"🎉 ВСЕ ЭТАПЫ ЗАВЕРШЕНЫ! Общее время: {total_time:.1f} сек")
+        
+        # ⚡ ДОБАВЛЕНО: Генерация прогнозов после обучения
+        self._report_progress("🔮 Генерация прогнозов после обучения...")
+        
+        # Создаем временный predictor для генерации прогнозов
+        from .predictor import EnhancedPredictor
+        predictor = EnhancedPredictor(self.model_path)
+        if predictor.load_model():
+            # Генерируем прогнозы на основе обучающих данных
+            recent_numbers = []
+            for group_str in groups[-25:]:
+                try:
+                    numbers = [int(x) for x in group_str.strip().split()]
+                    if len(numbers) == 4:
+                        recent_numbers.extend(numbers)
+                except:
+                    continue
+            
+            if len(recent_numbers) >= 50:
+                predictions = predictor.predict_group(recent_numbers, 10)
+                self._report_progress(f"✅ Сгенерировано {len(predictions)} прогнозов")
+                return predictions
+        
+        self._report_progress("⚠️ Не удалось сгенерировать прогнозы")
+        return []
     
     def _analyze_model_performance(self, features_tensor: torch.Tensor, targets_tensor: torch.Tensor):
         """Анализ производительности модели с логированием"""

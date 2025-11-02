@@ -27,8 +27,8 @@ except ImportError as e:
 
 # ⚡ ТЕПЕРЬ ИМПОРТИРУЕМ НАШИ МОДУЛИ
 try:
-    from model.simple_system import SimpleNeuralSystem
-    from model.data_loader import load_dataset, save_dataset, validate_group, compare_groups, save_predictions, load_predictions
+    from simple_system import SimpleNeuralSystem  # ⚡ ИСПРАВЛЕННЫЙ ИМПОРТ
+    from data_loader import load_dataset, save_dataset, validate_group, compare_groups, save_predictions, load_predictions
     print("✅ Все импорты успешны")
 except ImportError as e:
     print(f"❌ Ошибка импорта: {e}")
@@ -70,8 +70,8 @@ def init_system():
         
     try:
         logger.info("Инициализация AI системы...")
-        # ⚡ ИСПРАВЛЕННЫЙ ИМПОРТ - используем model.simple_system вместо simple_system
-        from model.simple_system import SimpleNeuralSystem
+        # ⚡ ИСПРАВЛЕННЫЙ ИМПОРТ
+        from simple_system import SimpleNeuralSystem
         st.session_state.system = SimpleNeuralSystem()
         st.session_state.system.set_progress_callback(progress_callback)
         st.session_state.system_initialized = True
@@ -92,6 +92,12 @@ def progress_callback(message):
 def run_operation(operation_type, **kwargs):
     """Запуск операции в отдельном потоке с фиксированным прогрессом"""
     try:
+        # ⚡ ДОБАВЛЯЕМ ОТЛАДОЧНЫЙ ЛОГ
+        debug_msg = f"🎯 DEBUG: Запуск операции {operation_type}"
+        print(debug_msg)
+        with open("/opt/project/debug_log.txt", "a", encoding="utf-8") as f:
+            f.write(f"{datetime.now()} - Запуск операции {operation_type}\n")
+        
         # ⚡ Сохраняем сообщения прогресса в глобальную переменную
         progress_messages = []
         
@@ -475,29 +481,28 @@ def main():
     if not st.session_state.system_initialized:
         with st.spinner("🔄 Инициализация AI системы..."):
             init_system()
-
     st.sidebar.header("🔧 Диагностика")
 
-if st.sidebar.button("Тест логирования"):
-    st.session_state.progress_messages = []
+    if st.sidebar.button("Тест логирования"):
+        st.session_state.progress_messages = []
     
-    # Тестовые сообщения
-    test_messages = [
-        "🚀 Тест запущен",
-        "📊 Этап 1: Подготовка данных...",
-        "✅ Этап 1 завершен: 5.2 сек", 
-        "🔧 Этап 2: Создание модели...",
-        "✅ Этап 2 завершен: 1.1 сек",
-        "🧠 Этап 3: Обучение...",
-        "📈 Эпоха 1/5, Loss: 2.1456",
-        "🎉 Тест завершен!"
-    ]
+        # Тестовые сообщения
+        test_messages = [
+            "🚀 Тест запущен",
+            "📊 Этап 1: Подготовка данных...",
+            "✅ Этап 1 завершен: 5.2 сек", 
+            "🔧 Этап 2: Создание модели...",
+            "✅ Этап 2 завершен: 1.1 сек",
+            "🧠 Этап 3: Обучение...",
+            "📈 Эпоха 1/5, Loss: 2.1456",
+            "🎉 Тест завершен!"
+        ]
     
-    for msg in test_messages:
-        st.session_state.progress_messages.append(f"{datetime.now().strftime('%H:%M:%S')} - {msg}")
+        for msg in test_messages:
+            st.session_state.progress_messages.append(f"{datetime.now().strftime('%H:%M:%S')} - {msg}")
     
-    st.success("✅ Тестовые логи добавлены!")
-    
+        st.success("✅ Тестовые логи добавлены!")
+
     # Боковая панель с меню
     show_status()
     show_advanced_controls()
