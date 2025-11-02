@@ -1,6 +1,7 @@
+# [file name]: model/simple_nn/__init__.py
 from .model import EnhancedNumberPredictor
 from .features import FeatureExtractor
 from .data_processor import DataProcessor
 
-# Для обратной совместимости #
+# Для обратной совместимости
 SimpleNumberPredictor = EnhancedNumberPredictor

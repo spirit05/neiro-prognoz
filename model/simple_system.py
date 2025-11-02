@@ -1,4 +1,4 @@
-# [file name]: model/simple_system.py (ИСПРАВЛЕННЫЕ ИМПОРТЫ)
+# [file name]: model/simple_system.py
 """
 Главный интерфейс для УСИЛЕННОЙ нейросети - ОПТИМИЗИРОВАН ДЛЯ WEB
 """
@@ -12,10 +12,16 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
-# ⚡ ИСПРАВЛЕНИЕ: Правильные импорты
-from model.simple_nn.trainer import EnhancedTrainer
-from model.simple_nn.predictor import EnhancedPredictor
-from model.data_loader import load_dataset
+# Импорты из той же директории model
+try:
+    from .simple_nn.trainer import EnhancedTrainer
+    from .simple_nn.predictor import EnhancedPredictor
+    from .data_loader import load_dataset
+except ImportError:
+    # Альтернативный вариант импорта
+    from simple_nn.trainer import EnhancedTrainer
+    from simple_nn.predictor import EnhancedPredictor
+    from data_loader import load_dataset
 
 class SimpleNeuralSystem:
     def __init__(self):
@@ -36,7 +42,7 @@ class SimpleNeuralSystem:
         """Ленивая загрузка ансамблевой системы"""
         if self._full_ensemble is None:
             try:
-                from model.ensemble_predictor import EnsemblePredictor
+                from .ensemble_predictor import EnsemblePredictor
                 self._full_ensemble = EnsemblePredictor()
                 if self.predictor.is_trained:
                     self._full_ensemble.set_neural_predictor(self.predictor)
@@ -50,7 +56,7 @@ class SimpleNeuralSystem:
         """Ленивая загрузка системы самообучения"""
         if self._self_learning is None:
             try:
-                from model.self_learning import SelfLearningSystem
+                from .self_learning import SelfLearningSystem
                 self._self_learning = SelfLearningSystem()
             except ImportError as e:
                 print(f"⚠️  Не удалось загрузить систему самообучения: {e}")
@@ -127,7 +133,7 @@ class SimpleNeuralSystem:
     
     def add_data_and_retrain(self, new_group: str, retrain_epochs: int = 5) -> List[Tuple[Tuple[int, int, int, int], float]]:
         """Добавление данных и дообучение УСИЛЕННОЙ модели с возвратом прогнозов"""
-        from model.data_loader import load_dataset, save_dataset, validate_group
+        from data_loader import load_dataset, save_dataset, validate_group
         
         if not validate_group(new_group):
             self._report_progress("❌ Неверный формат группы")
