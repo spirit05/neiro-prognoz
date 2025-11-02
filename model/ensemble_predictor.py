@@ -186,14 +186,12 @@ class EnsemblePredictor:
             'statistical': None,
             'neural': None
         }
-        # Веса моделей (будут адаптироваться)
-        # self.weights = {
-        #     'frequency': 0.35,
-        #     'pattern': 0.25,
-        #     'statistical': 0.20,
-        #     'neural': 0.20
-        # }
-        self.weights = {'neural': 1.0}  # ⚡ ТОЛЬКО НЕЙРОСЕТЬ
+       self.weights = {
+            'frequency': 0.5,
+            'neural': 0.5
+            # 'pattern': 0.0,    # ⚡ ОТКЛЮЧЕНО
+            # 'statistical': 0.0 # ⚡ ОТКЛЮЧЕНО
+        }
         
         self._number_selector = None
         self.dataset = []
@@ -206,6 +204,7 @@ class EnsemblePredictor:
                 self.predictors['frequency'] = FrequencyBasedPredictor()
             except ImportError as e:
                 print(f"⚠️  Не удалось загрузить частотный предсказатель: {e}")
+                self.predictors['frequency'] = None  # ⚡ ЯВНО УСТАНОВИ None
         return self.predictors['frequency']
     
     def _get_pattern_predictor(self):
@@ -251,25 +250,17 @@ class EnsemblePredictor:
             freq_predictor.update_frequencies(dataset)
     
     def predict_ensemble(self, history: List[int], top_k: int = 15) -> List[Tuple[Tuple[int, int, int, int], float]]:
-        """Ансамблевое предсказание"""
+        """Ансамблевое предсказание БЕЗ рекурсии"""
         all_predictions = []
         
-        # Анализ температуры чисел
-        temperature = {}
-        selector = self._get_number_selector()
-        if selector:
-            temperature = selector.analyze_temperature(self.dataset)
+        # ⚡ ВРЕМЕННО ОСТАВИМ ТОЛЬКО РАБОЧИЕ ПРЕДСКАЗАТЕЛИ
+        working_predictors = ['neural', 'frequency']  # Только те что работают
         
-        # Получаем предсказания от всех моделей
-        for name in ['frequency', 'pattern', 'statistical', 'neural']:
+        for name in working_predictors:
             predictor = None
             
             if name == 'frequency':
                 predictor = self._get_frequency_predictor()
-            elif name == 'pattern':
-                predictor = self._get_pattern_predictor()
-            elif name == 'statistical':
-                predictor = self._get_statistical_predictor()
             elif name == 'neural':
                 predictor = self.predictors['neural']
             
@@ -277,36 +268,29 @@ class EnsemblePredictor:
                 continue
                 
             try:
-                if hasattr(predictor, 'predict_group'):  # Нейросетевой предсказатель
+                if hasattr(predictor, 'predict_group'):  # Нейросетевой
                     predictions = predictor.predict_group(history, top_k * 2)
-                elif hasattr(predictor, 'predict'):  # Другие предсказатели
+                elif hasattr(predictor, 'predict'):  # Другие
                     predictions = predictor.predict(history, top_k * 2)
                 else:
                     continue
                 
-                # Взвешиваем score
-                weight = self.weights[name]
-                weighted_predictions = [(group, score * weight) for group, score in predictions]
-                all_predictions.extend(weighted_predictions)
-                
+                # ⚡ УБЕРИ СЛОЖНУЮ ЛОГИКУ С ТЕМПЕРАТУРОЙ - ОНА ВЫЗЫВАЕТ РЕКУРСИЮ
+                weight = self.weights.get(name, 0.5)
+                for group, score in predictions:
+                    all_predictions.append((group, score * weight))
+                    
             except Exception as e:
                 print(f"❌ Ошибка в предсказателе {name}: {e}")
                 continue
         
-        # Объединяем и агрегируем score
+        # ⚡ ПРОСТАЯ АГРЕГАЦИЯ БЕЗ СЛОЖНОЙ ЛОГИКИ
         combined = {}
         for group, score in all_predictions:
             combined[group] = combined.get(group, 0) + score
         
-        # Применяем температурные корректировки
-        final_predictions = []
-        for group, score in combined.items():
-            adjusted_score = self._apply_temperature_adjustment(group, score, temperature)
-            final_predictions.append((group, adjusted_score))
-        
-        # Сортируем по убыванию score
-        final_predictions.sort(key=lambda x: x[1], reverse=True)
-        
+        # ⚡ БЫСТРАЯ СОРТИРОВКА И ВОЗВРАТ
+        final_predictions = sorted(combined.items(), key=lambda x: x[1], reverse=True)
         return final_predictions[:top_k]
     
     def _apply_temperature_adjustment(self, group: tuple, score: float, temperature: Dict) -> float:
