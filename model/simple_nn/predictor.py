@@ -129,6 +129,7 @@ class EnhancedPredictor:
             return candidates
     
     def _generate_enhanced_candidates(self, probabilities: torch.Tensor, top_k: int, history: List[int]) -> List[Tuple[Tuple[int, int, int, int], float]]:
+        print(f"🔍 DEBUG: Начало генерации кандидатов, top_k={top_k}")
         """УСИЛЕННАЯ генерация кандидатных групп с улучшенной логикой"""
         candidates = []
         
@@ -137,6 +138,7 @@ class EnhancedPredictor:
         
         # Генерация на основе модели
         model_candidates = self._generate_model_based_candidates(probabilities, 20, pattern_analysis)
+        print(f"🔍 DEBUG: Модельные кандидаты: {len(model_candidates)}")
         candidates.extend(model_candidates)
         
         # Генерация на основе паттернов
@@ -146,6 +148,7 @@ class EnhancedPredictor:
         # НОВОЕ: Добавляем частотные кандидаты
         try:
             frequency_candidates = self._generate_frequency_based_candidates(history, 10)
+            print(f"🔍 DEBUG: Частотные кандидаты: {len(frequency_candidates)}")
             candidates.extend(frequency_candidates)
         except Exception as e:
             print(f"⚠️  Ошибка генерации частотных кандидатов: {e}")

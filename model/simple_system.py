@@ -14,7 +14,7 @@ if current_dir not in sys.path:
 
 # Правильные импорты
 from simple_nn.trainer import EnhancedTrainer
-from simple_nn.predictor import FastPredictor as EnhancedPredictor
+from simple_nn.predictor import EnhancedPredictor
 from data_loader import load_dataset
 from ensemble_predictor import EnsemblePredictor
 from self_learning import SelfLearningSystem

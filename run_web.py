@@ -1,8 +1,3 @@
-#!/usr/bin/env python3
-"""
-Обертка для запуска Streamlit с правильными путями
-"""
-
 import sys
 import os
 
