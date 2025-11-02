@@ -187,12 +187,13 @@ class EnsemblePredictor:
             'neural': None
         }
         # Веса моделей (будут адаптироваться)
-        self.weights = {
-            'frequency': 0.35,
-            'pattern': 0.25,
-            'statistical': 0.20,
-            'neural': 0.20
-        }
+        # self.weights = {
+        #     'frequency': 0.35,
+        #     'pattern': 0.25,
+        #     'statistical': 0.20,
+        #     'neural': 0.20
+        # }
+        self.weights = {'neural': 1.0}  # ⚡ ТОЛЬКО НЕЙРОСЕТЬ
         
         self._number_selector = None
         self.dataset = []

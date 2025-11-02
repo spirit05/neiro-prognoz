@@ -14,7 +14,7 @@ if current_dir not in sys.path:
 
 # Правильные импорты
 from simple_nn.trainer import EnhancedTrainer
-from simple_nn.predictor_fast import FastPredictor as EnhancedPredictor
+from simple_nn.predictor import FastPredictor as EnhancedPredictor
 from data_loader import load_dataset
 from ensemble_predictor import EnsemblePredictor
 from self_learning import SelfLearningSystem
@@ -27,7 +27,7 @@ class SimpleNeuralSystem:
         self.predictor = EnhancedPredictor(self.model_path)
         self.is_trained = False
         self.progress_callback = None
-        self.ensemble_enabled = False #временно отключаем ансамбль
+        self.ensemble_enabled = True
         
         # Ленивая загрузка ансамблевой системы и самообучения
         self._full_ensemble = None
@@ -68,13 +68,13 @@ class SimpleNeuralSystem:
                 print("✅ УСИЛЕННАЯ модель автоматически загружена")
                 
                 # Инициализируем системы если доступны
-                # self._get_full_ensemble()
-                # self._get_self_learning()
+                self._get_full_ensemble()
+                self._get_self_learning()
                 
-                # if self._full_ensemble:
-                #     print("✅ Ансамблевая система инициализирована")
-                # if self._self_learning:
-                #     print("✅ Система самообучения активирована")
+                if self._full_ensemble:
+                    print("✅ Ансамблевая система инициализирована")
+                if self._self_learning:
+                    print("✅ Система самообучения активирована")
             else:
                 print("❌ Не удалось загрузить модель")
         else:
@@ -235,37 +235,37 @@ class SimpleNeuralSystem:
         predictions = self.predictor.predict_group(recent_numbers, 4)
         return predictions[:4]  # ТОЧНО 4 прогноза
         
-        def _make_ensemble_prediction(self) -> List[Tuple[Tuple[int, int, int, int], float]]:
-            """Прогноз с использованием полного ансамбля"""
-            groups = load_dataset()
-            if not groups:
-                return []
-            
-            # Подготавливаем историю для ансамбля
-            recent_numbers = []
-            for group_str in groups[-30:]:  # Берем больше истории для ансамбля
-                try:
-                    numbers = [int(x) for x in group_str.strip().split()]
-                    if len(numbers) == 4:
-                        recent_numbers.extend(numbers)
-                except:
-                    continue
-            
-            if len(recent_numbers) < 40:
-                self._report_progress("❌ Недостаточно данных для ансамблевого предсказания")
-                return []
-            
-            try:
-                ensemble = self._get_full_ensemble()
-                if ensemble:
-                    predictions = ensemble.predict_ensemble(recent_numbers, 10)
-                    if predictions:
-                        self._report_progress(f"🎯 Полный ансамбль сгенерировал {len(predictions)} предсказаний")
-                        return predictions[:4]  # Возвращаем топ-8
-            except Exception as e:
-                self._report_progress(f"❌ Ошибка полного ансамбля: {e}")
-            
+    def _make_ensemble_prediction(self) -> List[Tuple[Tuple[int, int, int, int], float]]:
+        """Прогноз с использованием полного ансамбля с ЛИМИТАМИ"""
+        groups = load_dataset()
+        if not groups:
             return []
+        
+        # Подготавливаем историю для ансамбля
+        recent_numbers = []
+        for group_str in groups[-20:]:  # ⚡ 20 вместо 30
+            try:
+                numbers = [int(x) for x in group_str.strip().split()]
+                if len(numbers) == 4:
+                    recent_numbers.extend(numbers)
+            except:
+                continue
+        
+        if len(recent_numbers) < 40:
+            self._report_progress("❌ Недостаточно данных для ансамблевого предсказания")
+            return []
+        
+        try:
+            ensemble = self._get_full_ensemble()
+            if ensemble:
+                predictions = ensemble.predict_ensemble(recent_numbers, 5)  # ⚡ 5 вместо 10
+                if predictions:
+                    self._report_progress(f"🎯 Полный ансамбль сгенерировал {len(predictions)} предсказаний")
+                    return predictions[:4]  # ⚡ 4 вместо 8
+        except Exception as e:
+            self._report_progress(f"❌ Ошибка полного ансамбля: {e}")
+        
+        return []
     
     def load(self) -> bool:
         """Загрузка обученной модели"""

@@ -257,48 +257,36 @@ class EnhancedPredictor:
         }
     
     def _generate_model_based_candidates(self, probabilities: torch.Tensor, count: int, pattern_analysis: dict) -> List[Tuple[Tuple[int, int, int, int], float]]:
-        """Генерация кандидатов на основе модели с учетом паттернов"""
+        """Генерация кандидатов на основе модели с ЛИМИТОМ"""
         candidates = []
         
-        # Берем топ-7 чисел для каждой позиции
+        # ⚡ ОГРАНИЧИМ до топ-3 чисел для каждой позиции (было 7)
         top_numbers = []
         for pos in range(4):
             probs = probabilities[pos]
-            top_probs, top_indices = torch.topk(probs, 7)
+            top_probs, top_indices = torch.topk(probs, 3)  # ⚡ 3 вместо 7
             top_numbers.append([
                 (idx.item() + 1, prob.item()) for idx, prob in zip(top_indices, top_probs)
             ])
         
-        # Генерируем комбинации с приоритетом для "холодных" чисел
         generated = 0
+        max_combinations = 50  # ⚡ ЖЕСТКИЙ ЛИМИТ
+        
         for i, (n1, p1) in enumerate(top_numbers[0]):
             for j, (n2, p2) in enumerate(top_numbers[1]):
-                if n1 == n2:
-                    continue
+                if n1 == n2: continue
                 for k, (n3, p3) in enumerate(top_numbers[2]):
-                    if n3 in [n1, n2]:
-                        continue
+                    if n3 in [n1, n2]: continue
                     for l, (n4, p4) in enumerate(top_numbers[3]):
-                        if n4 in [n1, n2, n3]:
-                            continue
+                        if n4 in [n1, n2, n3]: continue
                         
                         group = (n1, n2, n3, n4)
-                        
-                        # Корректируем score на основе паттернов
                         base_score = p1 * p2 * p3 * p4
                         
-                        # Бонусы/штрафы
-                        pattern_score = self._calculate_enhanced_pattern_score(group, pattern_analysis)
-                        adjusted_score = base_score * pattern_score
-                        
-                        # Усиливаем хорошие предсказания
-                        if adjusted_score > 0.0001:
-                            adjusted_score *= 2
-                        
-                        candidates.append((group, adjusted_score))
+                        candidates.append((group, base_score))
                         generated += 1
                         
-                        if generated >= count * 10:
+                        if generated >= max_combinations:  # ⚡ ВЫХОД ПО ЛИМИТУ
                             return candidates
         
         return candidates
