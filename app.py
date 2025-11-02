@@ -13,22 +13,10 @@ VENV_PYTHON_PATH = '/opt/project/env/lib/python3.12/site-packages'
 if os.path.exists(VENV_PYTHON_PATH) and VENV_PYTHON_PATH not in sys.path:
     sys.path.insert(0, VENV_PYTHON_PATH)
 
-# ⚡ ПРОВЕРЯЕМ TORCH ДО ВСЕХ ИМПОРТОВ
-try:
-    import torch
-    print(f"✅ PyTorch загружен: {torch.__version__}")
-except ImportError as e:
-    print(f"❌ PyTorch ошибка: {e}")
-    # Пробуем найти site-packages вручную
-    for path in sys.path:
-        if 'site-packages' in path and 'env' in path:
-            print(f"🔍 Найден venv путь: {path}")
-            break
-
 # ⚡ ТЕПЕРЬ ИМПОРТИРУЕМ НАШИ МОДУЛИ
 try:
-    from simple_system import SimpleNeuralSystem  # ⚡ ИСПРАВЛЕННЫЙ ИМПОРТ
-    from data_loader import load_dataset, save_dataset, validate_group, compare_groups, save_predictions, load_predictions
+    from model.simple_system import SimpleNeuralSystem
+    from model.data_loader import load_dataset, save_dataset, validate_group, compare_groups, save_predictions, load_predictions
     print("✅ Все импорты успешны")
 except ImportError as e:
     print(f"❌ Ошибка импорта: {e}")
@@ -36,7 +24,6 @@ except ImportError as e:
 
 # Остальные импорты
 import streamlit as st
-import threading
 import time
 import uuid
 from datetime import datetime
@@ -70,8 +57,7 @@ def init_system():
         
     try:
         logger.info("Инициализация AI системы...")
-        # ⚡ ИСПРАВЛЕННЫЙ ИМПОРТ
-        from simple_system import SimpleNeuralSystem
+        from model.simple_system import SimpleNeuralSystem
         st.session_state.system = SimpleNeuralSystem()
         st.session_state.system.set_progress_callback(progress_callback)
         st.session_state.system_initialized = True
@@ -89,8 +75,8 @@ def progress_callback(message):
     st.session_state.progress_messages.append(formatted_message)
     logger.info(f"📢 {message}")
 
-def run_operation(operation_type, **kwargs):
-    """Запуск операции в отдельном потоке с фиксированным прогрессом"""
+def run_operation_sync(operation_type, **kwargs):
+    """СИНХРОННЫЙ запуск операции (без потоков)"""
     try:
         # ⚡ ДОБАВЛЯЕМ ОТЛАДОЧНЫЙ ЛОГ
         debug_msg = f"🎯 DEBUG: Запуск операции {operation_type}"
@@ -98,18 +84,8 @@ def run_operation(operation_type, **kwargs):
         with open("/opt/project/debug_log.txt", "a", encoding="utf-8") as f:
             f.write(f"{datetime.now()} - Запуск операции {operation_type}\n")
         
-        # ⚡ Сохраняем сообщения прогресса в глобальную переменную
-        progress_messages = []
-        
-        def local_progress_callback(message):
-            """Локальный callback который сохраняет сообщения"""
-            timestamp = datetime.now().strftime('%H:%M:%S')
-            formatted_message = f"{timestamp} - {message}"
-            progress_messages.append(formatted_message)
-            logger.info(f"📢 {message}")
-        
-        # Устанавливаем callback в систему
-        st.session_state.system.set_progress_callback(local_progress_callback)
+        # Очищаем предыдущие сообщения
+        st.session_state.progress_messages = []
         
         if operation_type == "training":
             logger.info("🎯 Запуск обучения")
@@ -118,7 +94,7 @@ def run_operation(operation_type, **kwargs):
             
         elif operation_type == "prediction":
             logger.info("🎯 Запуск прогнозирования")
-            result = st.session_state.system.predict(top_k=8)
+            result = st.session_state.system.predict(top_k=4)
             logger.info(f"✅ Прогнозирование завершено, получено {len(result) if result else 0} прогнозов")
             
         elif operation_type == "add_data":
@@ -130,78 +106,32 @@ def run_operation(operation_type, **kwargs):
         else:
             raise ValueError(f"Неизвестный тип операции: {operation_type}")
         
-        # ⚡ Сохраняем все сообщения прогресса в session_state
-        st.session_state.progress_messages = progress_messages
         st.session_state.operation_result = result
         st.session_state.operation_error = None
+        return result
         
     except Exception as e:
         logger.error(f"❌ Ошибка в операции {operation_type}: {e}")
         st.session_state.operation_result = None
         st.session_state.operation_error = str(e)
-    
-    finally:
-        st.session_state.operation_running = False
+        return None
 
-def show_progress_ui(operation_name, timeout_seconds=1200):
-    """Показ UI прогресса с авто-обновлением"""
-    progress_placeholder = st.empty()
-    messages_placeholder = st.empty()
+def show_progress_ui(operation_name):
+    """Показ UI прогресса"""
+    st.info(f"🔄 Выполняется операция: {operation_name}")
     
-    start_time = time.time()
+    # Показываем сообщения прогресса
+    if st.session_state.progress_messages:
+        recent_messages = st.session_state.progress_messages[-10:]
+        st.text_area(
+            "📝 Ход выполнения:", 
+            "\n".join(recent_messages), 
+            height=200
+        )
     
-    # ⚡ Очищаем предыдущие сообщения
-    st.session_state.progress_messages = []
-    
-    with progress_placeholder.container():
-        st.info(f"🔄 Запущена операция: {operation_name}")
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        time_text = st.empty()
-        
-        # Обновляем UI пока операция выполняется
-        while st.session_state.operation_running:
-            elapsed = time.time() - start_time
-            if elapsed > timeout_seconds:
-                status_text.error("⏰ Таймаут операции!")
-                st.session_state.operation_error = f"Таймаут операции ({timeout_seconds} сек.)"
-                st.session_state.operation_running = False
-                break
-            
-            # Обновляем прогресс
-            progress_percent = min(95, int((elapsed / timeout_seconds) * 100))
-            progress_bar.progress(progress_percent)
-            
-            # ⚡ ПОКАЗЫВАЕМ сообщения прогресса (даже если операция еще выполняется)
-            if st.session_state.progress_messages:
-                recent_messages = st.session_state.progress_messages[-10:]  # Показываем больше сообщений
-                messages_placeholder.text_area(
-                    "📝 Ход выполнения:", 
-                    "\n".join(recent_messages), 
-                    height=200  # Увеличиваем высоту
-                )
-            
-            # Динамический статус
-            if elapsed < 30:
-                status_text.info("⏳ Инициализация процесса...")
-            elif elapsed < 120:
-                status_text.info("🔍 Анализ данных...")
-            elif elapsed < 300:
-                status_text.info("🧠 Обучение модели...")
-            else:
-                status_text.info("🎯 Финальная стадия...")
-            
-            time_text.text(f"⏱️ Прошло: {int(elapsed)} сек.")
-            time.sleep(2)  # ⚡ Увеличиваем интервал обновления
-        
-        # Завершаем прогресс-бар
-        if not st.session_state.operation_running:
-            progress_bar.progress(100)
-            if st.session_state.operation_error:
-                status_text.error(f"❌ {st.session_state.operation_error}")
-            else:
-                status_text.success("✅ Операция завершена!")
-                time_text.text(f"⏱️ Общее время: {int(time.time() - start_time)} сек.")
+    # Обновляем страницу для показа новых сообщений
+    time.sleep(2)
+    st.rerun()
 
 def show_status():
     """Показать статус системы"""
@@ -237,21 +167,6 @@ def show_status():
     else:
         st.sidebar.error("❌ Система не инициализирована")
 
-def show_advanced_controls():
-    """Показать расширенные контролы"""
-    st.sidebar.header("🔧 Управление")
-    
-    if st.sidebar.button("🔄 Обновить статус"):
-        st.rerun()
-    
-    if st.sidebar.button("📊 Подробный статус"):
-        try:
-            if st.session_state.system:
-                status = st.session_state.system.get_status()
-                st.sidebar.json(status, expanded=False)
-        except Exception as e:
-            st.sidebar.error(f"Ошибка: {e}")
-
 def train_model():
     """Обучить модель"""
     st.header("🧠 Обучение модели AI")
@@ -279,14 +194,9 @@ def train_model():
             st.error("❌ Система не инициализирована")
             return
             
-        # Запускаем операцию в отдельном потоке
-        st.session_state.operation_running = True
-        thread = threading.Thread(target=run_operation, args=("training",))
-        thread.daemon = True
-        thread.start()
-        
-        # Показываем прогресс
-        show_progress_ui("обучение", timeout_seconds=1200)
+        # Запускаем операцию СИНХРОННО
+        with st.spinner("🔄 Запуск обучения..."):
+            result = run_operation_sync("training")
         
         # Показываем результат
         if st.session_state.operation_error:
@@ -296,7 +206,7 @@ def train_model():
             st.success("🎉 Обучение успешно завершено!")
             
             st.subheader("🎯 Первые прогнозы после обучения")
-            for i, (group, score) in enumerate(st.session_state.operation_result[:6], 1):
+            for i, (group, score) in enumerate(st.session_state.operation_result[:4], 1):
                 confidence = "🟢 ВЫСОКАЯ" if score > 0.01 else "🟡 СРЕДНЯЯ" if score > 0.001 else "🔴 НИЗКАЯ"
                 st.write(f"**{i}.** `{group[0]} {group[1]} {group[2]} {group[3]}`")
                 st.write(f"   Уверенность: `{score:.6f}` {confidence}")
@@ -334,14 +244,9 @@ def make_prediction():
             st.error("❌ Модель не обучена! Сначала выполните обучение.")
             return
         
-        # Запускаем операцию в отдельном потоке
-        st.session_state.operation_running = True
-        thread = threading.Thread(target=run_operation, args=("prediction",))
-        thread.daemon = True
-        thread.start()
-        
-        # Показываем прогресс
-        show_progress_ui("прогнозирование", timeout_seconds=300)
+        # Запускаем операцию СИНХРОННО
+        with st.spinner("🔄 Генерация прогнозов..."):
+            result = run_operation_sync("prediction")
         
         # Показываем результат
         if st.session_state.operation_error:
@@ -438,14 +343,9 @@ def add_sequence():
             
             st.markdown("---")
             
-            # Запускаем операцию в отдельном потоке
-            st.session_state.operation_running = True
-            thread = threading.Thread(target=run_operation, args=("add_data",), kwargs={'sequence_input': sequence_input})
-            thread.daemon = True
-            thread.start()
-            
-            # Показываем прогресс
-            show_progress_ui("добавление данных", timeout_seconds=420)
+            # Запускаем операцию СИНХРОННО
+            with st.spinner("🔄 Обработка данных..."):
+                result = run_operation_sync("add_data", sequence_input=sequence_input)
             
             # Показываем результат
             if st.session_state.operation_error:
@@ -473,6 +373,86 @@ def add_sequence():
         except Exception as e:
             st.error(f"❌ Ошибка: {e}")
 
+def show_data_overview():
+    """Показать обзор данных и аналитику"""
+    st.header("📊 Обзор данных и аналитика")
+    
+    if not st.session_state.system_initialized:
+        st.error("❌ Система не инициализирована")
+        return
+    
+    try:
+        # Статус системы
+        status = st.session_state.system.get_status()
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("🧠 Статус модели")
+            if status['is_trained']:
+                st.success("✅ Модель обучена")
+            else:
+                st.warning("⚠️ Модель не обучена")
+            
+            st.info(f"📁 Групп в датасете: {status['dataset_size']}")
+            
+            if status['has_sufficient_data']:
+                st.success("✅ Данных достаточно")
+            else:
+                st.warning(f"⚠️ Нужно больше данных (минимум 50)")
+        
+        with col2:
+            st.subheader("🔧 Система")
+            st.info(f"🎯 Тип модели: {status.get('model_type', 'УСИЛЕННАЯ')}")
+            
+            ensemble_info = status.get('ensemble_info', {})
+            if ensemble_info.get('ensemble_enabled', False):
+                st.success("✅ Ансамблевый режим включен")
+            else:
+                st.info("🔧 Ансамблевый режим выключен")
+        
+        # Последние прогнозы
+        st.subheader("🎯 Последние прогнозы")
+        predictions = load_predictions()
+        if predictions:
+            for i, (group, score) in enumerate(predictions[:4], 1):
+                confidence = "🟢 ВЫСОКАЯ" if score > 0.01 else "🟡 СРЕДНЯЯ" if score > 0.001 else "🔴 НИЗКАЯ"
+                st.write(f"**{i}.** `{group[0]} {group[1]} {group[2]} {group[3]}` - уверенность: `{score:.6f}` {confidence}")
+        else:
+            st.info("📝 Прогнозы еще не сгенерированы")
+        
+        # Аналитика самообучения
+        st.subheader("📈 Аналитика самообучения")
+        learning_stats = st.session_state.system.get_learning_insights()
+        
+        if 'message' in learning_stats:
+            st.info(learning_stats['message'])
+        else:
+            col1, col2 = st.columns(2)
+            with col1:
+                if 'recent_accuracy_avg' in learning_stats:
+                    accuracy = learning_stats['recent_accuracy_avg']
+                    st.metric("🎯 Средняя точность", f"{accuracy:.1%}")
+                if 'total_predictions_analyzed' in learning_stats:
+                    st.metric("📊 Проанализировано прогнозов", learning_stats['total_predictions_analyzed'])
+            
+            with col2:
+                if 'best_accuracy' in learning_stats:
+                    best = learning_stats['best_accuracy']
+                    st.metric("🏆 Лучшая точность", f"{best:.1%}")
+                if 'worst_accuracy' in learning_stats:
+                    worst = learning_stats['worst_accuracy']
+                    st.metric("📉 Худшая точность", f"{worst:.1%}")
+            
+            # Рекомендации
+            if 'recommendations' in learning_stats and learning_stats['recommendations']:
+                st.subheader("💡 Рекомендации")
+                for rec in learning_stats['recommendations']:
+                    st.write(f"• {rec}")
+        
+    except Exception as e:
+        st.error(f"❌ Ошибка загрузки данных: {e}")
+
 def main():
     st.title("🔢 AI Прогноз Числовых Последовательностей")
     st.markdown("Продвинутая нейросеть для анализа и прогнозирования числовых последовательностей с **системой самообучения**")
@@ -481,31 +461,9 @@ def main():
     if not st.session_state.system_initialized:
         with st.spinner("🔄 Инициализация AI системы..."):
             init_system()
-    st.sidebar.header("🔧 Диагностика")
-
-    if st.sidebar.button("Тест логирования"):
-        st.session_state.progress_messages = []
-    
-        # Тестовые сообщения
-        test_messages = [
-            "🚀 Тест запущен",
-            "📊 Этап 1: Подготовка данных...",
-            "✅ Этап 1 завершен: 5.2 сек", 
-            "🔧 Этап 2: Создание модели...",
-            "✅ Этап 2 завершен: 1.1 сек",
-            "🧠 Этап 3: Обучение...",
-            "📈 Эпоха 1/5, Loss: 2.1456",
-            "🎉 Тест завершен!"
-        ]
-    
-        for msg in test_messages:
-            st.session_state.progress_messages.append(f"{datetime.now().strftime('%H:%M:%S')} - {msg}")
-    
-        st.success("✅ Тестовые логи добавлены!")
 
     # Боковая панель с меню
     show_status()
-    show_advanced_controls()
     
     st.sidebar.markdown("---")
     st.sidebar.header("🧭 Навигация")
@@ -517,9 +475,8 @@ def main():
     
     # Основной контент
     if menu_option == "Обзор данных":
-        st.header("📊 Обзор данных и аналитика")
-        st.info("📈 Раздел в разработке... Сначала обучите модель и получите прогнозы")
-        
+        #st.info("📈 Раздел в разработке... Сначала обучите модель и получите прогнозы")
+        show_data_overview() 
     elif menu_option == "Обучить модель":
         train_model()
     elif menu_option == "Получить прогнозы":

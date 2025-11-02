@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from typing import List
+from typing import List, Tuple
 import os
 import time
 import gc

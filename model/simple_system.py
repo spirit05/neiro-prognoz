@@ -13,9 +13,12 @@ if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
 # Правильные импорты
-from .simple_nn.trainer import EnhancedTrainer  # ⚡ ИСПРАВЛЕННЫЙ ИМПОРТ
-from .simple_nn.predictor import EnhancedPredictor
-from .data_loader import load_dataset
+from simple_nn.trainer import EnhancedTrainer
+from simple_nn.predictor import EnhancedPredictor
+from data_loader import load_dataset
+from ensemble_predictor import EnsemblePredictor
+from self_learning import SelfLearningSystem
+
 
 class SimpleNeuralSystem:
     def __init__(self):
@@ -24,7 +27,7 @@ class SimpleNeuralSystem:
         self.predictor = EnhancedPredictor(self.model_path)
         self.is_trained = False
         self.progress_callback = None
-        self.ensemble_enabled = True
+        self.ensemble_enabled = False #временно отключаем ансамбль
         
         # Ленивая загрузка ансамблевой системы и самообучения
         self._full_ensemble = None
@@ -36,7 +39,7 @@ class SimpleNeuralSystem:
         """Ленивая загрузка ансамблевой системы"""
         if self._full_ensemble is None:
             try:
-                from .ensemble_predictor import EnsemblePredictor
+                from ensemble_predictor import EnsemblePredictor
                 self._full_ensemble = EnsemblePredictor()
                 if self.predictor.is_trained:
                     self._full_ensemble.set_neural_predictor(self.predictor)
@@ -50,7 +53,7 @@ class SimpleNeuralSystem:
         """Ленивая загрузка системы самообучения"""
         if self._self_learning is None:
             try:
-                from .self_learning import SelfLearningSystem
+                from self_learning import SelfLearningSystem
                 self._self_learning = SelfLearningSystem()
             except ImportError as e:
                 print(f"⚠️  Не удалось загрузить систему самообучения: {e}")
@@ -139,7 +142,7 @@ class SimpleNeuralSystem:
     
     def add_data_and_retrain(self, new_group: str, retrain_epochs: int = 5) -> List[Tuple[Tuple[int, int, int, int], float]]:
         """Добавление данных и дообучение УСИЛЕННОЙ модели с возвратом прогнозов"""
-        from .data_loader import load_dataset, save_dataset, validate_group
+        from data_loader import load_dataset, save_dataset, validate_group
         
         if not validate_group(new_group):
             self._report_progress("❌ Неверный формат группы")
@@ -276,7 +279,7 @@ class SimpleNeuralSystem:
                 predictions = ensemble.predict_ensemble(recent_numbers, 10)
                 if predictions:
                     self._report_progress(f"🎯 Полный ансамбль сгенерировал {len(predictions)} предсказаний")
-                    return predictions[:8]  # Возвращаем топ-8
+                    return predictions[:4]  # Возвращаем топ-8
         except Exception as e:
             self._report_progress(f"❌ Ошибка полного ансамбля: {e}")
         

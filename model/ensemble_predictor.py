@@ -23,7 +23,7 @@ class StatisticalPredictor:
         """Ленивая загрузка анализатора паттернов"""
         if self._pattern_analyzer is None:
             try:
-                from .advanced_features import AdvancedPatternAnalyzer
+                from model.advanced_features import AdvancedPatternAnalyzer
                 self._pattern_analyzer = AdvancedPatternAnalyzer()
             except ImportError as e:
                 print(f"⚠️  Не удалось загрузить анализатор паттернов: {e}")
@@ -96,6 +96,8 @@ class StatisticalPredictor:
             second_pair[1] = random.choice([n for n in range(1, 27) if n != second_pair[0]])
         
         return (first_pair[0], first_pair[1], second_pair[0], second_pair[1])
+
+# ... остальной код ensemble_predictor.py без изменений ...
 
 class PatternBasedPredictor:
     """Предсказатель на основе паттернов последовательностей"""
@@ -199,7 +201,7 @@ class EnsemblePredictor:
         """Ленивая загрузка частотного предсказателя"""
         if self.predictors['frequency'] is None:
             try:
-                from .advanced_features import FrequencyBasedPredictor
+                from model.advanced_features import FrequencyBasedPredictor
                 self.predictors['frequency'] = FrequencyBasedPredictor()
             except ImportError as e:
                 print(f"⚠️  Не удалось загрузить частотный предсказатель: {e}")
@@ -227,7 +229,7 @@ class EnsemblePredictor:
         """Ленивая загрузка селектора чисел"""
         if self._number_selector is None:
             try:
-                from .advanced_features import SmartNumberSelector
+                from model.advanced_features import SmartNumberSelector
                 self._number_selector = SmartNumberSelector()
             except ImportError as e:
                 print(f"⚠️  Не удалось загрузить селектор чисел: {e}")

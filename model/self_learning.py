@@ -7,7 +7,7 @@ import json
 import os
 from typing import List, Tuple, Dict
 from datetime import datetime
-from .data_loader import load_dataset, load_predictions, compare_groups
+from data_loader import load_dataset, load_predictions, compare_groups  # ⚡ ИСПРАВЛЕННЫЙ ИМПОРТ
 
 class SelfLearningSystem:
     def __init__(self, results_file: str = "data/learning_results.json"):

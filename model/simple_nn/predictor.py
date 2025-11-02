@@ -34,7 +34,7 @@ class EnhancedPredictor:
         """Ленивая загрузка ансамблевого предсказателя"""
         if self._ensemble_predictor is None:
             try:
-                from ..ensemble_predictor import EnsemblePredictor
+                from model.ensemble_predictor import EnsemblePredictor
                 self._ensemble_predictor = EnsemblePredictor()
             except ImportError as e:
                 print(f"⚠️  Не удалось загрузить ансамблевый предсказатель: {e}")
@@ -45,7 +45,7 @@ class EnhancedPredictor:
         """Ленивая загрузка анализатора паттернов"""
         if self._pattern_analyzer is None:
             try:
-                from ..advanced_features import AdvancedPatternAnalyzer
+                from model.advanced_features import AdvancedPatternAnalyzer
                 self._pattern_analyzer = AdvancedPatternAnalyzer()
             except ImportError as e:
                 print(f"⚠️  Не удалось загрузить анализатор паттернов: {e}")
@@ -76,7 +76,7 @@ class EnhancedPredictor:
             if ensemble:
                 ensemble.set_neural_predictor(self)
                 try:
-                    from ..data_loader import load_dataset
+                    from data_loader import load_dataset
                     dataset = load_dataset()
                     ensemble.update_ensemble(dataset)
                 except Exception as e:
@@ -171,8 +171,8 @@ class EnhancedPredictor:
     def _generate_frequency_based_candidates(self, history: List[int], count: int) -> List[tuple]:
         """Генерация кандидатов на основе частотного анализа"""
         try:
-            from ..data_loader import load_dataset
-            from ..advanced_features import FrequencyBasedPredictor
+            from data_loader import load_dataset
+            from model.advanced_features import FrequencyBasedPredictor
             
             dataset = load_dataset()
             if not dataset:
