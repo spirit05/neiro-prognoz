@@ -1,6 +1,6 @@
-# model/simple_nn/trainer.py
+# [file name]: model/simple_nn/trainer.py (ИСПРАВЛЕННЫЙ)
 """
-Обучение УСИЛЕННОЙ нейросети
+Обучение УСИЛЕННОЙ нейросети - ИСПРАВЛЕННЫЙ
 """
 
 import torch
@@ -32,7 +32,7 @@ class EnhancedTrainer:
         timestamp = datetime.datetime.now().strftime('%H:%M:%S')
         formatted_message = f"{timestamp} - {message}"
         
-        # ⚡ ЗАПИСЫВАЕМ В ФАЙЛ
+        # Записываем в файл
         try:
             with open("/opt/project/training_log.txt", "a", encoding="utf-8") as f:
                 f.write(formatted_message + "\n")
@@ -51,7 +51,7 @@ class EnhancedTrainer:
         
         self._report_progress(f"🚀 СТАРТ обучения: {len(groups)} групп, {epochs} эпох, batch_size={batch_size}")
         
-        # ⚡ Этап 1: Подготовка данных
+        # Этап 1: Подготовка данных
         stage1_start = time.time()
         self._report_progress("📊 Этап 1: Подготовка данных...")
         
@@ -71,10 +71,8 @@ class EnhancedTrainer:
         
         self._report_progress(f"✅ Обработано {len(groups)} групп, {len(groups)*4} чисел")
         self._report_progress(f"✅ Создано {len(features)} обучающих примеров")
-        self._report_progress(f"📊 Размер features: {features.shape}")
-        self._report_progress(f"📊 Размер targets: {targets.shape}")
         
-        # ⚡ Этап 2: Создание модели
+        # Этап 2: Создание модели
         stage2_start = time.time()
         self._report_progress("🔧 Этап 2: Создание модели...")
         
@@ -88,9 +86,8 @@ class EnhancedTrainer:
         
         stage2_time = time.time() - stage2_start
         self._report_progress(f"✅ Этап 2 завершен: {stage2_time:.1f} сек")
-        self._report_progress(f"🆕 Создана новая модель с input_size: {features.shape[1]}")
         
-        # ⚡ Этап 3: Настройка оптимизатора
+        # Этап 3: Настройка оптимизатора
         stage3_start = time.time()
         self._report_progress("⚙️ Этап 3: Настройка оптимизатора...")
         
@@ -105,14 +102,9 @@ class EnhancedTrainer:
         features_tensor = torch.tensor(features, dtype=torch.float32)
         targets_tensor = torch.tensor(targets, dtype=torch.long) - 1
         
-        # ⚡ Этап 4: Обучение модели
+        # Этап 4: Обучение модели
         stage4_start = time.time()
         self._report_progress("🧠 Этап 4: Обучение модели...")
-        self._report_progress(f"   • Эпохи: {epochs}")
-        self._report_progress(f"   • Batch size: {batch_size}")
-        self._report_progress(f"   • Примеров для обучения: {len(features)}")
-        self._report_progress(f"   • Learning rate: 0.001")
-        self._report_progress(f"   • Устройство: {self.device}")
         
         self.model.train()
         best_loss = float('inf')
@@ -187,7 +179,7 @@ class EnhancedTrainer:
         self._report_progress(f"✅ Этап 4 завершен: {stage4_time:.1f} сек")
         self._report_progress(f"✅ Обучение завершено! Лучший loss: {best_loss:.4f}")
         
-        # ⚡ Этап 5: Анализ производительности
+        # Этап 5: Анализ производительности
         stage5_start = time.time()
         self._report_progress("📊 Этап 5: Анализ производительности...")
         
@@ -196,7 +188,7 @@ class EnhancedTrainer:
         stage5_time = time.time() - stage5_start
         self._report_progress(f"✅ Этап 5 завершен: {stage5_time:.1f} сек")
         
-        # ⚡ Этап 6: Очистка памяти
+        # Этап 6: Очистка памяти
         stage6_start = time.time()
         self._report_progress("🧹 Этап 6: Очистка памяти...")
         
@@ -212,7 +204,7 @@ class EnhancedTrainer:
         total_time = time.time() - total_start_time
         self._report_progress(f"🎉 ВСЕ ЭТАПЫ ЗАВЕРШЕНЫ! Общее время: {total_time:.1f} сек")
         
-        # ⚡ ДОБАВЛЕНО: Генерация прогнозов после обучения
+        # Генерация прогнозов после обучения
         self._report_progress("🔮 Генерация прогнозов после обучения...")
         
         # Создаем временный predictor для генерации прогнозов
@@ -259,16 +251,6 @@ class EnhancedTrainer:
             
             unique_predictions = len(torch.unique(predictions))
             self._report_progress(f"📊 Уникальных предсказанных чисел: {unique_predictions}/26")
-            
-            # Анализ по позициям
-            pos_accuracy = []
-            for pos in range(4):
-                pos_correct = (predictions[:, pos] == test_targets[:, pos]).float().mean().item()
-                pos_accuracy.append(pos_correct)
-                self._report_progress(f"📊 Точность позиции {pos+1}: {pos_correct:.4f}")
-            
-            avg_pos_accuracy = sum(pos_accuracy) / len(pos_accuracy)
-            self._report_progress(f"📊 Средняя точность по позициям: {avg_pos_accuracy:.4f}")
     
     def _save_model(self):
         """Сохранение модели с логированием"""

@@ -1,9 +1,0 @@
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/opt/project
-ExecStart=/opt/project/env/bin/python3 /opt/project/run.py  # ⚡ ИСПРАВИТЬ
-Environment=PATH=/opt/project/env/bin:/usr/local/bin:/usr/bin:/bin
-Environment=PYTHONPATH=/opt/project
-Restart=always
-RestartSec=5

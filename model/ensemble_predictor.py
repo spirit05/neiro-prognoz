@@ -1,6 +1,6 @@
 # [file name]: model/ensemble_predictor.py (ИСПРАВЛЕННЫЙ)
 """
-Ансамблевые предсказания с комбинированием моделей
+Ансамблевые предсказания с комбинированием моделей - ИСПРАВЛЕННЫЙ
 """
 
 import numpy as np
@@ -97,8 +97,6 @@ class StatisticalPredictor:
         
         return (first_pair[0], first_pair[1], second_pair[0], second_pair[1])
 
-# ... остальной код ensemble_predictor.py без изменений ...
-
 class PatternBasedPredictor:
     """Предсказатель на основе паттернов последовательностей"""
     
@@ -186,11 +184,11 @@ class EnsemblePredictor:
             'statistical': None,
             'neural': None
         }
-       self.weights = {
-            'frequency': 0.5,
-            'neural': 0.5
-            # 'pattern': 0.0,    # ⚡ ОТКЛЮЧЕНО
-            # 'statistical': 0.0 # ⚡ ОТКЛЮЧЕНО
+        self.weights = {
+            'frequency': 0.35,
+            'pattern': 0.25,
+            'statistical': 0.20,
+            'neural': 0.20
         }
         
         self._number_selector = None
@@ -204,7 +202,7 @@ class EnsemblePredictor:
                 self.predictors['frequency'] = FrequencyBasedPredictor()
             except ImportError as e:
                 print(f"⚠️  Не удалось загрузить частотный предсказатель: {e}")
-                self.predictors['frequency'] = None  # ⚡ ЯВНО УСТАНОВИ None
+                self.predictors['frequency'] = None
         return self.predictors['frequency']
     
     def _get_pattern_predictor(self):
@@ -214,6 +212,7 @@ class EnsemblePredictor:
                 self.predictors['pattern'] = PatternBasedPredictor()
             except Exception as e:
                 print(f"⚠️  Не удалось загрузить паттернный предсказатель: {e}")
+                self.predictors['pattern'] = None
         return self.predictors['pattern']
     
     def _get_statistical_predictor(self):
@@ -223,6 +222,7 @@ class EnsemblePredictor:
                 self.predictors['statistical'] = StatisticalPredictor()
             except Exception as e:
                 print(f"⚠️  Не удалось загрузить статистический предсказатель: {e}")
+                self.predictors['statistical'] = None
         return self.predictors['statistical']
     
     def _get_number_selector(self):
@@ -250,47 +250,69 @@ class EnsemblePredictor:
             freq_predictor.update_frequencies(dataset)
     
     def predict_ensemble(self, history: List[int], top_k: int = 15) -> List[Tuple[Tuple[int, int, int, int], float]]:
-        """Ансамблевое предсказание БЕЗ рекурсии"""
+        """Ансамблевое предсказание с обработкой ошибок"""
         all_predictions = []
         
-        # ⚡ ВРЕМЕННО ОСТАВИМ ТОЛЬКО РАБОЧИЕ ПРЕДСКАЗАТЕЛИ
-        working_predictors = ['neural', 'frequency']  # Только те что работают
-        
-        for name in working_predictors:
+        # Получаем предсказания от всех моделей с обработкой ошибок
+        for name in ['frequency', 'pattern', 'statistical', 'neural']:
             predictor = None
             
             if name == 'frequency':
                 predictor = self._get_frequency_predictor()
+            elif name == 'pattern':
+                predictor = self._get_pattern_predictor()
+            elif name == 'statistical':
+                predictor = self._get_statistical_predictor()
             elif name == 'neural':
                 predictor = self.predictors['neural']
             
+            # Пропускаем None предсказатели
             if predictor is None:
                 continue
                 
             try:
-                if hasattr(predictor, 'predict_group'):  # Нейросетевой
+                if hasattr(predictor, 'predict_group'):  # Нейросетевой предсказатель
                     predictions = predictor.predict_group(history, top_k * 2)
-                elif hasattr(predictor, 'predict'):  # Другие
+                elif hasattr(predictor, 'predict'):  # Другие предсказатели
                     predictions = predictor.predict(history, top_k * 2)
                 else:
                     continue
                 
-                # ⚡ УБЕРИ СЛОЖНУЮ ЛОГИКУ С ТЕМПЕРАТУРОЙ - ОНА ВЫЗЫВАЕТ РЕКУРСИЮ
-                weight = self.weights.get(name, 0.5)
-                for group, score in predictions:
-                    all_predictions.append((group, score * weight))
-                    
+                # Взвешиваем score
+                weight = self.weights[name]
+                weighted_predictions = [(group, score * weight) for group, score in predictions]
+                all_predictions.extend(weighted_predictions)
+                
             except Exception as e:
                 print(f"❌ Ошибка в предсказателе {name}: {e}")
                 continue
         
-        # ⚡ ПРОСТАЯ АГРЕГАЦИЯ БЕЗ СЛОЖНОЙ ЛОГИКИ
+        # Объединяем и агрегируем score
         combined = {}
         for group, score in all_predictions:
             combined[group] = combined.get(group, 0) + score
         
-        # ⚡ БЫСТРАЯ СОРТИРОВКА И ВОЗВРАТ
-        final_predictions = sorted(combined.items(), key=lambda x: x[1], reverse=True)
+        # Безопасная температурная корректировка
+        final_predictions = []
+        temperature = {}
+        selector = self._get_number_selector()
+        if selector:
+            try:
+                temperature = selector.analyze_temperature(self.dataset)
+            except Exception as e:
+                print(f"⚠️  Ошибка анализа температуры: {e}")
+        
+        for group, score in combined.items():
+            try:
+                adjusted_score = self._apply_temperature_adjustment(group, score, temperature)
+                final_predictions.append((group, adjusted_score))
+            except Exception as e:
+                # Если корректировка не удалась, используем исходный score
+                final_predictions.append((group, score))
+        
+        # Сортируем по убыванию score
+        final_predictions.sort(key=lambda x: x[1], reverse=True)
+        
         return final_predictions[:top_k]
     
     def _apply_temperature_adjustment(self, group: tuple, score: float, temperature: Dict) -> float:
@@ -316,9 +338,3 @@ class EnsemblePredictor:
             adjusted_score *= 1.3
         
         return adjusted_score
-    
-    def adjust_weights_based_performance(self, actual_groups: List[tuple]):
-        """Адаптация весов на основе производительности"""
-        # Простая стратегия: увеличиваем вес моделей, которые лучше предсказывали
-        # В реальной системе здесь была бы более сложная логика
-        pass

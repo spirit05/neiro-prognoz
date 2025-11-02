@@ -1,13 +1,19 @@
-# [file name]: model/self_learning.py
+# [file name]: model/self_learning.py (ИСПРАВЛЕННЫЙ)
 """
-Система самообучения на ошибках
+Система самообучения на ошибках - ИСПРАВЛЕННЫЙ
 """
 
 import json
 import os
 from typing import List, Tuple, Dict
 from datetime import datetime
-from data_loader import load_dataset, load_predictions, compare_groups  # ⚡ ИСПРАВЛЕННЫЙ ИМПОРТ
+
+# Правильный импорт
+try:
+    from data_loader import load_dataset, load_predictions, compare_groups
+except ImportError:
+    # Резервный вариант для обратной совместимости
+    from .data_loader import load_dataset, load_predictions, compare_groups
 
 class SelfLearningSystem:
     def __init__(self, results_file: str = "data/learning_results.json"):

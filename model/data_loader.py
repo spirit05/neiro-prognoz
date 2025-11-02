@@ -1,4 +1,4 @@
-# [file name]: model/data_loader.py (ДОБАВЛЯЕМ ОБРАБОТКУ ОШИБОК)
+# [file name]: model/data_loader.py
 """
 Загрузка и работа с данными
 """

@@ -1,24 +1,20 @@
-# [file name]: model/simple_system.py (ИСПРАВЛЕННЫЙ)
+# [file name]: model/simple_system.py (WEB ONLY)
 """
-Главный интерфейс для УСИЛЕННОЙ нейросети с ансамблевыми методами и самообучением
+Главный интерфейс для УСИЛЕННОЙ нейросети - ОПТИМИЗИРОВАН ДЛЯ WEB
 """
 
 import os
 import sys
 from typing import List, Tuple
 
-# Добавляем родительскую директорию в путь для импортов
+# Правильные абсолютные пути для импортов
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
-# Правильные импорты
 from simple_nn.trainer import EnhancedTrainer
 from simple_nn.predictor import EnhancedPredictor
 from data_loader import load_dataset
-from ensemble_predictor import EnsemblePredictor
-from self_learning import SelfLearningSystem
-
 
 class SimpleNeuralSystem:
     def __init__(self):
@@ -70,11 +66,6 @@ class SimpleNeuralSystem:
                 # Инициализируем системы если доступны
                 self._get_full_ensemble()
                 self._get_self_learning()
-                
-                if self._full_ensemble:
-                    print("✅ Ансамблевая система инициализирована")
-                if self._self_learning:
-                    print("✅ Система самообучения активирована")
             else:
                 print("❌ Не удалось загрузить модель")
         else:
@@ -120,25 +111,18 @@ class SimpleNeuralSystem:
         if hasattr(self.trainer, 'set_progress_callback'):
             self.trainer.set_progress_callback(self.progress_callback)
         
-        # ⚡ ИСПРАВЛЕНИЕ: вызываем trainer.train() и получаем результат
-        self.trainer.train(groups, epochs=epochs)
+        # Запускаем обучение и получаем прогнозы
+        result = self.trainer.train(groups, epochs=epochs)
         self.is_trained = True
         
         # Перезагружаем модель после обучения
         self.predictor.load_model()
         
-        # НОВОЕ: Обновляем ансамбль
+        # Обновляем ансамбль
         self._update_full_ensemble()
         
         self._report_progress("✅ Обучение завершено и модель загружена!")
-        
-        if self._get_full_ensemble():
-            self._report_progress("✅ Ансамблевая система обновлена!")
-        
-        # Делаем прогноз после обучения
-        self._report_progress("🔮 Делаем прогноз после обучения...")
-        predictions = self._make_prediction()
-        return predictions
+        return result
     
     def add_data_and_retrain(self, new_group: str, retrain_epochs: int = 5) -> List[Tuple[Tuple[int, int, int, int], float]]:
         """Добавление данных и дообучение УСИЛЕННОЙ модели с возвратом прогнозов"""
@@ -159,14 +143,13 @@ class SimpleNeuralSystem:
         
         new_count = len(dataset)
         self._report_progress(f"✅ Данные сохранены в dataset.json ({new_count} групп)")
-        self._report_progress(f"✅ Группа добавлена. Всего групп: {new_count}")
         
         predictions = []
         
-        # НОВОЕ: Всегда обновляем ансамбль
+        # Всегда обновляем ансамбль
         self._update_full_ensemble()
         
-        # НОВОЕ: Анализ точности предыдущих предсказаний
+        # Анализ точности предыдущих предсказаний
         learning_system = self._get_self_learning()
         if learning_system:
             learning_result = learning_system.analyze_prediction_accuracy(new_group)
@@ -174,16 +157,6 @@ class SimpleNeuralSystem:
                 accuracy = learning_result['accuracy_score']
                 matches = learning_result['matches_count']
                 self._report_progress(f"📊 Анализ точности: {matches}/4 совпадений (точность: {accuracy:.1%})")
-                
-                # Автоматическая корректировка весов ансамбля
-                ensemble = self._get_full_ensemble()
-                if ensemble and learning_system.adjust_ensemble_weights(ensemble):
-                    self._report_progress("🔧 Веса ансамбля скорректированы на основе точности")
-                
-                # Показ рекомендаций
-                recommendations = learning_system.get_learning_recommendations()
-                for rec in recommendations:
-                    self._report_progress(f"💡 {rec}")
         
         # Дообучаем модель если она уже была обучена и есть достаточно данных
         if self.is_trained and len(dataset) >= 50:
@@ -205,21 +178,30 @@ class SimpleNeuralSystem:
             self._report_progress("🎯 Достаточно данных для первого обучения УСИЛЕННОЙ модели!")
             predictions = self.train(epochs=20)
         else:
-            # НОВОЕ: Даже если не переобучаем, делаем прогноз на основе ансамбля
+            # Даже если не переобучаем, делаем прогноз на основе ансамбля
             self._report_progress("🔮 Делаем прогноз на основе обновленного ансамбля...")
             predictions = self._make_ensemble_prediction()
         
         return predictions
     
     def _make_prediction(self) -> List[Tuple[Tuple[int, int, int, int], float]]:
-        """УПРОЩЕННЫЙ прогноз"""
+        """Внутренний метод для создания прогноза УСИЛЕННОЙ моделью"""
         groups = load_dataset()
         if not groups:
             return []
         
-        # ТОЛЬКО простой predictor - никакого ансамбля
+        # Пробуем полный ансамбль сначала
+        if self.ensemble_enabled:
+            try:
+                ensemble_predictions = self._make_ensemble_prediction()
+                if ensemble_predictions:
+                    return ensemble_predictions
+            except Exception as e:
+                self._report_progress(f"⚠️  Ансамблевое предсказание не удалось: {e}")
+        
+        # Резервный вариант: оригинальная логика
         recent_numbers = []
-        for group_str in groups[-10:]:  # Меньше истории
+        for group_str in groups[-25:]:
             try:
                 numbers = [int(x) for x in group_str.strip().split()]
                 if len(numbers) == 4:
@@ -227,23 +209,31 @@ class SimpleNeuralSystem:
             except:
                 continue
         
-        if len(recent_numbers) < 40:
+        if len(recent_numbers) < 50:
             self._report_progress("❌ Недостаточно данных для предсказания")
             return []
         
-        # ПРОСТОЙ вызов predictor
-        predictions = self.predictor.predict_group(recent_numbers, 4)
-        return predictions[:4]  # ТОЧНО 4 прогноза
+        predictions = self.predictor.predict_group(recent_numbers, 15)
         
+        # Фильтруем слишком слабые предсказания
+        filtered_predictions = [(group, score) for group, score in predictions if score > 0.0005]
+        
+        if not filtered_predictions:
+            self._report_progress("⚠️  Все предсказания имеют низкую уверенность")
+            best_predictions = sorted(predictions, key=lambda x: x[1], reverse=True)[:4]
+            return best_predictions
+        
+        return filtered_predictions[:4]
+    
     def _make_ensemble_prediction(self) -> List[Tuple[Tuple[int, int, int, int], float]]:
-        """Прогноз с использованием полного ансамбля с ЛИМИТАМИ"""
+        """Прогноз с использованием полного ансамбля"""
         groups = load_dataset()
         if not groups:
             return []
         
         # Подготавливаем историю для ансамбля
         recent_numbers = []
-        for group_str in groups[-20:]:  # ⚡ 20 вместо 30
+        for group_str in groups[-30:]:
             try:
                 numbers = [int(x) for x in group_str.strip().split()]
                 if len(numbers) == 4:
@@ -258,10 +248,10 @@ class SimpleNeuralSystem:
         try:
             ensemble = self._get_full_ensemble()
             if ensemble:
-                predictions = ensemble.predict_ensemble(recent_numbers, 5)  # ⚡ 5 вместо 10
+                predictions = ensemble.predict_ensemble(recent_numbers, 10)
                 if predictions:
                     self._report_progress(f"🎯 Полный ансамбль сгенерировал {len(predictions)} предсказаний")
-                    return predictions[:4]  # ⚡ 4 вместо 8
+                    return predictions[:8]
         except Exception as e:
             self._report_progress(f"❌ Ошибка полного ансамбля: {e}")
         
@@ -290,14 +280,14 @@ class SimpleNeuralSystem:
         """Статус системы"""
         dataset = load_dataset()
         
-        # НОВОЕ: Информация об ансамбле и самообучении
+        # Информация об ансамбле и самообучении
         ensemble_info = {
             'ensemble_enabled': self.ensemble_enabled,
             'ensemble_available': self._get_full_ensemble() is not None,
             'dataset_size_for_ensemble': len(dataset)
         }
         
-        # НОВОЕ: Статистика самообучения
+        # Статистика самообучения
         learning_stats = {}
         learning_system = self._get_self_learning()
         if learning_system:
@@ -314,21 +304,6 @@ class SimpleNeuralSystem:
             'learning_stats': learning_stats
         }
     
-    def toggle_ensemble(self, enable: bool = None):
-        """Включение/выключение ансамблевого режима"""
-        if enable is None:
-            enable = not self.ensemble_enabled
-        
-        self.ensemble_enabled = enable
-        self.predictor.enable_ensemble(enable)
-        
-        status = "включен" if enable else "выключен"
-        self._report_progress(f"🔧 Ансамблевый режим {status}")
-        
-        return enable
-    
-    # НОВЫЕ МЕТОДЫ ДЛЯ САМООБУЧЕНИЯ
-    
     def get_learning_insights(self) -> dict:
         """Получение аналитики по самообучению"""
         learning_system = self._get_self_learning()
@@ -344,10 +319,3 @@ class SimpleNeuralSystem:
             self._report_progress("✅ Данные самообучения сброшены")
         else:
             self._report_progress("❌ Система самообучения не доступна")
-    
-    def analyze_accuracy(self, actual_group: str) -> dict:
-        """Ручной анализ точности для конкретной группы"""
-        learning_system = self._get_self_learning()
-        if learning_system:
-            return learning_system.analyze_prediction_accuracy(actual_group)
-        return {'error': 'Система самообучения не доступaна'}

@@ -1,4 +1,4 @@
-# model/simple_nn/features.py
+# [file name]: model/simple_nn/features.py
 """
 Извлечение features из истории чисел
 """

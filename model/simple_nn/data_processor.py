@@ -1,4 +1,4 @@
-# model/simple_nn/data_processor.py
+# [file name]: model/simple_nn/data_processor.py
 """
 Обработка данных для обучения
 """
