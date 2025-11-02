@@ -90,8 +90,21 @@ def progress_callback(message):
     logger.info(f"📢 {message}")
 
 def run_operation(operation_type, **kwargs):
-    """Запуск операции в отдельном потоке"""
+    """Запуск операции в отдельном потоке с фиксированным прогрессом"""
     try:
+        # ⚡ Сохраняем сообщения прогресса в глобальную переменную
+        progress_messages = []
+        
+        def local_progress_callback(message):
+            """Локальный callback который сохраняет сообщения"""
+            timestamp = datetime.now().strftime('%H:%M:%S')
+            formatted_message = f"{timestamp} - {message}"
+            progress_messages.append(formatted_message)
+            logger.info(f"📢 {message}")
+        
+        # Устанавливаем callback в систему
+        st.session_state.system.set_progress_callback(local_progress_callback)
+        
         if operation_type == "training":
             logger.info("🎯 Запуск обучения")
             result = st.session_state.system.train(epochs=15)
@@ -111,6 +124,8 @@ def run_operation(operation_type, **kwargs):
         else:
             raise ValueError(f"Неизвестный тип операции: {operation_type}")
         
+        # ⚡ Сохраняем все сообщения прогресса в session_state
+        st.session_state.progress_messages = progress_messages
         st.session_state.operation_result = result
         st.session_state.operation_error = None
         
@@ -123,15 +138,14 @@ def run_operation(operation_type, **kwargs):
         st.session_state.operation_running = False
 
 def show_progress_ui(operation_name, timeout_seconds=1200):
-    """Показ UI прогресса"""
+    """Показ UI прогресса с авто-обновлением"""
     progress_placeholder = st.empty()
     messages_placeholder = st.empty()
     
     start_time = time.time()
-    operation_id = f"{operation_name}_{int(time.time())}"
     
-    # Очищаем предыдущие сообщения
-    st.session_state.progress_messages.clear()
+    # ⚡ Очищаем предыдущие сообщения
+    st.session_state.progress_messages = []
     
     with progress_placeholder.container():
         st.info(f"🔄 Запущена операция: {operation_name}")
@@ -152,19 +166,19 @@ def show_progress_ui(operation_name, timeout_seconds=1200):
             progress_percent = min(95, int((elapsed / timeout_seconds) * 100))
             progress_bar.progress(progress_percent)
             
-            # Показываем сообщения
+            # ⚡ ПОКАЗЫВАЕМ сообщения прогресса (даже если операция еще выполняется)
             if st.session_state.progress_messages:
-                recent_messages = st.session_state.progress_messages[-5:]
+                recent_messages = st.session_state.progress_messages[-10:]  # Показываем больше сообщений
                 messages_placeholder.text_area(
                     "📝 Ход выполнения:", 
                     "\n".join(recent_messages), 
-                    height=150
+                    height=200  # Увеличиваем высоту
                 )
             
             # Динамический статус
-            if elapsed < 60:
+            if elapsed < 30:
                 status_text.info("⏳ Инициализация процесса...")
-            elif elapsed < 180:
+            elif elapsed < 120:
                 status_text.info("🔍 Анализ данных...")
             elif elapsed < 300:
                 status_text.info("🧠 Обучение модели...")
@@ -172,7 +186,7 @@ def show_progress_ui(operation_name, timeout_seconds=1200):
                 status_text.info("🎯 Финальная стадия...")
             
             time_text.text(f"⏱️ Прошло: {int(elapsed)} сек.")
-            time.sleep(1)
+            time.sleep(2)  # ⚡ Увеличиваем интервал обновления
         
         # Завершаем прогресс-бар
         if not st.session_state.operation_running:
@@ -461,6 +475,28 @@ def main():
     if not st.session_state.system_initialized:
         with st.spinner("🔄 Инициализация AI системы..."):
             init_system()
+
+    st.sidebar.header("🔧 Диагностика")
+
+if st.sidebar.button("Тест логирования"):
+    st.session_state.progress_messages = []
+    
+    # Тестовые сообщения
+    test_messages = [
+        "🚀 Тест запущен",
+        "📊 Этап 1: Подготовка данных...",
+        "✅ Этап 1 завершен: 5.2 сек", 
+        "🔧 Этап 2: Создание модели...",
+        "✅ Этап 2 завершен: 1.1 сек",
+        "🧠 Этап 3: Обучение...",
+        "📈 Эпоха 1/5, Loss: 2.1456",
+        "🎉 Тест завершен!"
+    ]
+    
+    for msg in test_messages:
+        st.session_state.progress_messages.append(f"{datetime.now().strftime('%H:%M:%S')} - {msg}")
+    
+    st.success("✅ Тестовые логи добавлены!")
     
     # Боковая панель с меню
     show_status()
