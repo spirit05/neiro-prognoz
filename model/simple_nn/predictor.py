@@ -1,4 +1,4 @@
-# [file name]: model/simple_nn/predictor.py (ИСПРАВЛЕННЫЙ)
+# [file name]: model/simple_nn/predictor.py (ИСПРАВЛЕННЫЕ ИМПОРТЫ)
 """
 УСИЛЕННОЕ предсказание групп чисел с ансамблевыми методами - ИСПРАВЛЕННЫЙ
 """
@@ -76,7 +76,7 @@ class EnhancedPredictor:
             if ensemble:
                 ensemble.set_neural_predictor(self)
                 try:
-                    from data_loader import load_dataset
+                    from model.data_loader import load_dataset
                     dataset = load_dataset()
                     ensemble.update_ensemble(dataset)
                 except Exception as e:
@@ -171,7 +171,7 @@ class EnhancedPredictor:
     def _generate_frequency_based_candidates(self, history: List[int], count: int) -> List[tuple]:
         """Генерация кандидатов на основе частотного анализа"""
         try:
-            from data_loader import load_dataset
+            from model.data_loader import load_dataset
             from model.advanced_features import FrequencyBasedPredictor
             
             dataset = load_dataset()
