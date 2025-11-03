@@ -18,6 +18,7 @@ class StatisticalPredictor:
     
     def __init__(self):
         self._pattern_analyzer = None
+        self._max_history_length = 100  # ⚡ ОГРАНИЧИВАЕМ историю
     
     def _get_pattern_analyzer(self):
         """Ленивая загрузка анализатора паттернов"""
@@ -35,13 +36,16 @@ class StatisticalPredictor:
         if len(history) < 20:
             return []
         
+        # ⚡ ОГРАНИЧИВАЕМ размер истории для предотвращения утечек
+        limited_history = history[-self._max_history_length:]
+
         analyzer = self._get_pattern_analyzer()
         patterns = analyzer.analyze_time_series(history) if analyzer else {}
         
         # Генерация кандидатов на основе статистических паттернов
-        candidates = self._generate_statistical_candidates(history, patterns, top_k * 2)
+        candidates = self._generate_statistical_candidates(history, patterns, top_k)
         return candidates[:top_k]
-    
+        
     def _generate_statistical_candidates(self, history: List[int], patterns: Dict, count: int) -> List[tuple]:
         """Генерация кандидатов на основе статистических паттернов"""
         import random
@@ -176,6 +180,7 @@ class PatternBasedPredictor:
         
         return (first_pair[0], first_pair[1], second_pair[0], second_pair[1])
 
+# [file name]: model/ensemble_predictor.py
 class EnsemblePredictor:
     def __init__(self):
         self.predictors = {
@@ -186,14 +191,99 @@ class EnsemblePredictor:
         }
         self.weights = {
             'frequency': 0.35,
-            'pattern': 0.25,
+            'pattern': 0.25, 
             'statistical': 0.20,
             'neural': 0.20
         }
         
+        # ⚡ ДОБАВЛЯЕМ ЗАЩИТУ ОТ РЕКУРСИИ
+        self._in_prediction = False
         self._number_selector = None
         self.dataset = []
+
+    def predict_ensemble(self, history: List[int], top_k: int = 15):
+        """Ансамблевое предсказание с защитой от рекурсии"""
+        # ⚡ ЗАЩИТА ОТ РЕКУРСИИ
+        if self._in_prediction:
+            print("⚠️  Обнаружена рекурсия, возвращаем пустой список")
+            return []
+        
+        self._in_prediction = True
+        all_predictions = []
+        
+        try:
+            for name in ['frequency', 'pattern', 'statistical', 'neural']:
+                predictor = self._get_predictor(name)
+                if predictor is None:
+                    continue
+                
+                # ⚡ ОГРАНИЧИВАЕМ top_k для проблемных предсказателей
+                predictor_top_k = top_k
+                if name in ['pattern', 'statistical']:
+                    predictor_top_k = min(top_k, 5)  # Лимит для проблемных
+                
+                try:
+                    predictions = self._safe_predict(predictor, history, predictor_top_k)
+                    if predictions:
+                        weight = self.weights[name]
+                        weighted = [(group, score * weight) for group, score in predictions]
+                        all_predictions.extend(weighted)
+                        
+                except Exception as e:
+                    print(f"❌ Ошибка в {name}: {e}")
+                    continue
+        
+        finally:
+            self._in_prediction = False  # ⚡ ВСЕГДА сбрасываем флаг
+        
+        # Агрегация результатов
+        combined = self._aggregate_predictions(all_predictions)
+        return combined[:top_k]
     
+    def _aggregate_predictions(self, all_predictions: List[Tuple[Tuple[int, int, int, int], float]]) -> List[Tuple[Tuple[int, int, int, int], float]]:
+        """Агрегирует предсказания от всех моделей"""
+        if not all_predictions:
+            return []
+        
+        # Объединяем score для одинаковых групп
+        combined_scores = {}
+        for group, score in all_predictions:
+            if group in combined_scores:
+                combined_scores[group] += score
+            else:
+                combined_scores[group] = score
+        
+        # Преобразуем обратно в список и сортируем
+        aggregated = [(group, score) for group, score in combined_scores.items()]
+        aggregated.sort(key=lambda x: x[1], reverse=True)
+        
+        return aggregated
+    
+    def _get_predictor(self, name):
+        """Безопасное получение предсказателя"""
+        if name == 'frequency':
+            return self._get_frequency_predictor()
+        elif name == 'pattern':
+            return self._get_pattern_predictor() 
+        elif name == 'statistical':
+            return self._get_statistical_predictor()
+        elif name == 'neural':
+            return self.predictors['neural']
+        return None
+    
+    def _safe_predict(self, predictor, history, top_k):
+        """Безопасный вызов predict с ограничениями"""
+        try:
+            if hasattr(predictor, 'predict_group'):
+                return predictor.predict_group(history, top_k)
+            elif hasattr(predictor, 'predict'):
+                return predictor.predict(history, top_k)
+            return []
+        except Exception as e:
+            print(f"❌ Ошибка в предсказателе {type(predictor).__name__}: {e}")
+            return []
+
+    # Остальные методы остаются без изменений
     def _get_frequency_predictor(self):
         """Ленивая загрузка частотного предсказателя"""
         if self.predictors['frequency'] is None:
@@ -248,72 +338,6 @@ class EnsemblePredictor:
         freq_predictor = self._get_frequency_predictor()
         if freq_predictor:
             freq_predictor.update_frequencies(dataset)
-    
-    def predict_ensemble(self, history: List[int], top_k: int = 15) -> List[Tuple[Tuple[int, int, int, int], float]]:
-        """Ансамблевое предсказание с обработкой ошибок"""
-        all_predictions = []
-        
-        # Получаем предсказания от всех моделей с обработкой ошибок
-        for name in ['frequency', 'pattern', 'statistical', 'neural']:
-            predictor = None
-            
-            if name == 'frequency':
-                predictor = self._get_frequency_predictor()
-            elif name == 'pattern':
-                predictor = self._get_pattern_predictor()
-            elif name == 'statistical':
-                predictor = self._get_statistical_predictor()
-            elif name == 'neural':
-                predictor = self.predictors['neural']
-            
-            # Пропускаем None предсказатели
-            if predictor is None:
-                continue
-                
-            try:
-                if hasattr(predictor, 'predict_group'):  # Нейросетевой предсказатель
-                    predictions = predictor.predict_group(history, top_k * 2)
-                elif hasattr(predictor, 'predict'):  # Другие предсказатели
-                    predictions = predictor.predict(history, top_k * 2)
-                else:
-                    continue
-                
-                # Взвешиваем score
-                weight = self.weights[name]
-                weighted_predictions = [(group, score * weight) for group, score in predictions]
-                all_predictions.extend(weighted_predictions)
-                
-            except Exception as e:
-                print(f"❌ Ошибка в предсказателе {name}: {e}")
-                continue
-        
-        # Объединяем и агрегируем score
-        combined = {}
-        for group, score in all_predictions:
-            combined[group] = combined.get(group, 0) + score
-        
-        # Безопасная температурная корректировка
-        final_predictions = []
-        temperature = {}
-        selector = self._get_number_selector()
-        if selector:
-            try:
-                temperature = selector.analyze_temperature(self.dataset)
-            except Exception as e:
-                print(f"⚠️  Ошибка анализа температуры: {e}")
-        
-        for group, score in combined.items():
-            try:
-                adjusted_score = self._apply_temperature_adjustment(group, score, temperature)
-                final_predictions.append((group, adjusted_score))
-            except Exception as e:
-                # Если корректировка не удалась, используем исходный score
-                final_predictions.append((group, score))
-        
-        # Сортируем по убыванию score
-        final_predictions.sort(key=lambda x: x[1], reverse=True)
-        
-        return final_predictions[:top_k]
     
     def _apply_temperature_adjustment(self, group: tuple, score: float, temperature: Dict) -> float:
         """Корректировка score на основе температуры чисел"""

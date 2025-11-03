@@ -90,7 +90,7 @@ def run_operation_sync(operation_type, **kwargs):
         
         if operation_type == "training":
             logger.info("🎯 Запуск обучения")
-            result = st.session_state.system.train(epochs=15)
+            result = st.session_state.system.train(epochs=20)
             logger.info("✅ Обучение успешно завершено")
             
         elif operation_type == "prediction":
@@ -364,7 +364,7 @@ def add_sequence():
                 
                 # Показываем новые прогнозы
                 st.subheader("🎯 Обновленные прогнозы")
-                for i, (group, score) in enumerate(st.session_state.operation_result[:8], 1):
+                for i, (group, score) in enumerate(st.session_state.operation_result[:4], 1):
                     confidence = "🟢 ВЫСОКАЯ" if score > 0.01 else "🟡 СРЕДНЯЯ" if score > 0.001 else "🔴 НИЗКАЯ"
                     st.write(f"**{i}.** `{group[0]} {group[1]} {group[2]} {group[3]}`")
                     st.write(f"   Уверенность: `{score:.6f}` {confidence}")

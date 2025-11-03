@@ -44,6 +44,7 @@ class SimpleNeuralSystem:
             try:
                 from .ensemble_predictor import EnsemblePredictor
                 self._full_ensemble = EnsemblePredictor()
+                print(f"🔍 DEBUG: m/ss загруузка анс системы")
                 if self.predictor.is_trained:
                     self._full_ensemble.set_neural_predictor(self.predictor)
                     self._update_full_ensemble()
@@ -200,7 +201,9 @@ class SimpleNeuralSystem:
         # Пробуем полный ансамбль сначала
         if self.ensemble_enabled:
             try:
+                print("🔍 DEBUG: m/ss  Полный ансамбль начало")
                 ensemble_predictions = self._make_ensemble_prediction()
+                print(f"🔍 DEBUG: m/ss  Полный ансамбль закончен идем дальше")
                 if ensemble_predictions:
                     return ensemble_predictions
             except Exception as e:
@@ -224,7 +227,6 @@ class SimpleNeuralSystem:
         
         # Фильтруем слишком слабые предсказания
         filtered_predictions = [(group, score) for group, score in predictions if score > 0.0005]
-        
         if not filtered_predictions:
             self._report_progress("⚠️  Все предсказания имеют низкую уверенность")
             best_predictions = sorted(predictions, key=lambda x: x[1], reverse=True)[:4]
@@ -247,6 +249,8 @@ class SimpleNeuralSystem:
                     recent_numbers.extend(numbers)
             except:
                 continue
+
+        print(f"🔍 DEBUG: m/ss история ансамбля {len(recent_numbers)}")
         
         if len(recent_numbers) < 40:
             self._report_progress("❌ Недостаточно данных для ансамблевого предсказания")
@@ -255,10 +259,12 @@ class SimpleNeuralSystem:
         try:
             ensemble = self._get_full_ensemble()
             if ensemble:
+                print(f"🔍 DEBUG:m/ss  генерация предсказаний начало")
                 predictions = ensemble.predict_ensemble(recent_numbers, 10)
+                print(f"🔍 DEBUG: m/ss генерация предсказаний конец - кол-во {len(predictions)}")
                 if predictions:
                     self._report_progress(f"🎯 Полный ансамбль сгенерировал {len(predictions)} предсказаний")
-                    return predictions[:8]
+                    return predictions[:4]
         except Exception as e:
             self._report_progress(f"❌ Ошибка полного ансамбля: {e}")
         

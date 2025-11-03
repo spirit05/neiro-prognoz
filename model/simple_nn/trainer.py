@@ -45,7 +45,7 @@ class EnhancedTrainer:
         else:
             print(f"📢 {message}")
     
-    def train(self, groups: List[str], epochs: int = 20, batch_size: int = 32) -> List[Tuple[Tuple[int, int, int, int], float]]:
+    def train(self, groups: List[str], epochs: int = 20, batch_size: int = 64) -> List[Tuple[Tuple[int, int, int, int], float]]:
         """Обучение модели с улучшенными параметрами и детальным логированием"""
         total_start_time = time.time()
         
