@@ -1,7 +1,7 @@
 {
-  "enabled": true,
-  "bot_token": "7157803065:AAHK-i_evJjnriPqMB9KhuEN7r-6pWvgMdg",
-  "chat_id": "5232136435",
+  "enabled": false,
+  "bot_token": "TEST_BOT_TOKEN",
+  "chat_id": "TEST_CHAT_ID",
   "notifications": {
     "critical_errors": true,
     "all_errors": true,
