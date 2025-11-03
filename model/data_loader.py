@@ -124,3 +124,16 @@ def load_predictions() -> List[tuple]:
         return predictions
     except:
         return []
+
+# Добавляем импорты для совместимости с автосервисом
+try:
+    from ..api_data.auto_learning_service import FileLock
+except ImportError:
+    # Fallback для случаев когда автосервис не доступен
+    class FileLock:
+        def __init__(self, filename):
+            self.filename = filename
+        def __enter__(self):
+            return self
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            pass
