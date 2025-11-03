@@ -1,18 +1,43 @@
-#[file name]: tests/run_tests.py
-#!/usr/bin/env python3
+# [file name]: tests/run_tests.py (ОБНОВЛЕННЫЙ)
+#!/usr/bin/env pyt////hon3
 """
-ЗАПУСК ВСЕХ ТЕСТОВ в изолированной среде
+ЗАПУСК ВСЕХ ТЕСТОВ с автоматической активацией окружения
 """
 
 import os
 import sys
 import subprocess
-import pytest
+
+def activate_virtual_environment():
+    """Автоматическая активация виртуального окружения"""
+    venv_path = '/opt/project/env'
+    
+    if not os.path.exists(venv_path):
+        print(f"❌ Виртуальное окружение не найдено: {venv_path}")
+        print("💡 Проверьте путь или установите зависимости вручную")
+        return False
+    
+    # Активируем venv
+    activate_script = os.path.join(venv_path, 'bin', 'activate_this.py')
+    
+    try:
+        with open(activate_script) as f:
+            exec(f.read(), {'__file__': activate_script})
+        print(f"✅ Виртуальное окружение активировано: {venv_path}")
+        return True
+    except Exception as e:
+        print(f"⚠️ Не удалось активировать окружение: {e}")
+        print("💡 Пытаемся продолжить без активации...")
+        return True
 
 def run_tests():
     """Запуск всех тестов"""
     print("🎯 ЗАПУСК ТЕСТОВ В ИЗОЛИРОВАННОЙ СРЕДЕ")
     print("=" * 50)
+    
+    # Активируем окружение
+    if not activate_virtual_environment():
+        return False
     
     # Добавляем пути
     PROJECT_PATH = '/opt/project'
