@@ -1,7 +1,7 @@
-# [file name]: tests/run_tests.py (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+# [file name]: tests/run_tests.py (ИСПРАВЛЕННЫЕ ПУТИ)
 #!/usr/bin/env python3
 """
-ЗАПУСК ВСЕХ ТЕСТОВ с автоматической настройкой среды
+ЗАПУСК ВСЕХ ТЕСТОВ с исправленными путями
 """
 
 import os
@@ -76,37 +76,39 @@ def run_tests():
     print(f"✅ Используем: {venv_python}")
     print("✅ Тестовая среда готова")
     
-    # Запускаем тесты
+    # Запускаем тесты - используем правильные пути
     test_files = [
-        'tests/test_safe_operations.py',
-        'tests/test_auto_learning_service.py'
+        'test_safe_operations.py',
+        'test_auto_learning_service.py'
     ]
     
     all_passed = True
     
     for test_file in test_files:
+        test_file_path = os.path.join('/opt/project/tests', test_file)
         print(f"\n🧪 ЗАПУСК {test_file}...")
+        
         result = subprocess.run([
             venv_python, '-m', 'pytest', 
-            test_file, 
+            test_file_path, 
             '-v', 
             '--tb=short'
-        ], cwd='/opt/project', capture_output=True, text=True)
+        ], capture_output=True, text=True)
         
         if result.returncode == 0:
             print(f"✅ {test_file} - ТЕСТЫ ПРОЙДЕНЫ")
-            # Показываем только если есть вывод
-            if result.stdout and "PASSED" in result.stdout:
-                for line in result.stdout.split('\n'):
-                    if 'PASSED' in line or 'FAILED' in line:
-                        print(f"   {line.strip()}")
+            # Показываем успешные тесты
+            for line in result.stdout.split('\n'):
+                if 'PASSED' in line and 'test_' in line:
+                    print(f"   {line.strip()}")
         else:
             print(f"❌ {test_file} - ТЕСТЫ ПРОВАЛЕНЫ")
-            # Показываем только ошибки
+            print("\n" + "="*40)
+            print("ДЕТАЛИ ОШИБКИ:")
+            print(result.stdout)
             if result.stderr:
-                for line in result.stderr.split('\n'):
-                    if 'ERROR' in line or 'FAILED' in line:
-                        print(f"   {line.strip()}")
+                print("STDERR:", result.stderr)
+            print("="*40 + "\n")
             all_passed = False
     
     print("\n" + "=" * 50)
