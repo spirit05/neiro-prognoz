@@ -1,0 +1,58 @@
+[
+  {
+    "timestamp": "2025-11-03T16:40:31.305647",
+    "draw": "308827",
+    "combination": "20 4 9 6",
+    "comparison": {
+      "matches_found": 1,
+      "matches_details": [
+        {
+          "predicted_group": [
+            21,
+            22,
+            9,
+            11
+          ],
+          "score": 0.0005,
+          "matches": {
+            "total_matches": 1,
+            "pair1_matches": 0,
+            "pair2_matches": 1,
+            "exact_matches": 1
+          }
+        }
+      ]
+    },
+    "learning_success": true,
+    "new_predictions_count": 10,
+    "service_type": "auto_learning"
+  },
+  {
+    "timestamp": "2025-11-03T17:48:29.179106",
+    "draw": "308828",
+    "combination": "12 19 4 19",
+    "comparison": {
+      "matches_found": 1,
+      "matches_details": [
+        {
+          "predicted_group": [
+            10,
+            11,
+            16,
+            4
+          ],
+          "score": 0.0005,
+          "matches": {
+            "total_matches": 1,
+            "pair1_matches": 0,
+            "pair2_matches": 1,
+            "exact_matches": 0
+          }
+        }
+      ]
+    },
+    "learning_success": true,
+    "new_predictions_count": 4,
+    "service_type": "auto_learning"
+  }
+]

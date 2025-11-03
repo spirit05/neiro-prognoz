@@ -1,0 +1,43 @@
+{
+  "predictions_accuracy": [
+    {
+      "timestamp": "2025-11-03T16:22:24.763943",
+      "actual_group": "20 4 9 6",
+      "best_prediction": [
+        21,
+        22,
+        9,
+        11
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 0,
+        "pair2_matches": 1,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-03T17:45:53.265159",
+      "actual_group": "12 19 4 19",
+      "best_prediction": [
+        10,
+        11,
+        16,
+        4
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 0,
+        "pair2_matches": 1,
+        "exact_matches": 0
+      },
+      "accuracy_score": 0.25
+    }
+  ],
+  "model_performance": {},
+  "learning_patterns": {},
+  "last_analysis": "2025-11-03T17:45:53.265220"
+}

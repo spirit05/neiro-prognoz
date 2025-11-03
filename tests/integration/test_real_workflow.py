@@ -32,7 +32,7 @@ def test_complete_workflow():
         mock_subprocess.run.return_value.returncode = 0
         
         # Импортируем и тестируем
-        from api_data.auto_learning_service import AutoLearningService
+        from auto_learning_service import AutoLearningService
         
         service = AutoLearningService()
         service.system = mock_system_instance

@@ -1,8 +1,8 @@
-# api_data/auto_learning_service.py
+# [file name]: api_data/auto_learning_service.py (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 #!/usr/bin/env python3
 """
 Автономный сервис для автоматического получения данных и дообучения
-С УМНЫМ РАСПИСАНИЕМ И TELEGRAM УВЕДОМЛЕНИЯМИ
+С УМНЫМ РАСПИСАНИЕМ И TELEGRAM УВЕДОМЛЕНИЯМИ - ИСПРАВЛЕННАЯ ВЕРСИЯ
 """
 
 import os
@@ -15,6 +15,7 @@ import subprocess
 import requests
 from datetime import datetime, timedelta
 import schedule
+LEARNING_RESULTS_FILE = "/opt/project/data/learning_results.json"
 
 # Добавляем пути для импорта
 PROJECT_PATH = '/opt/project'
@@ -159,7 +160,7 @@ class TelegramNotifier:
         message += f"📦 После тиража: {draw}\n"
         message += f"🕐 Время: {datetime.now().strftime('%H:%M:%S')}\n\n"
         
-        for i, (group, score) in enumerate(predictions[:4], 1):
+        for i, (group, score) in enumerate(predictions[:4], 1):  # ✅ ТОЛЬКО 4 ПРОГНОЗА
             confidence = "🟢" if score > 0.02 else "🟡" if score > 0.01 else "🔴"
             message += f"{i}. {group[0]} {group[1]} {group[2]} {group[3]} ({score:.4f}) {confidence}\n"
         
@@ -231,7 +232,7 @@ class TelegramNotifier:
         predictions = status_data.get('last_predictions', [])
         if predictions:
             message += "🎯 <b>ПОСЛЕДНИЕ ПРОГНОЗЫ:</b>\n"
-            for i, (group, score) in enumerate(predictions[:4], 1):
+            for i, (group, score) in enumerate(predictions[:4], 1):  # ✅ ТОЛЬКО 4 ПРОГНОЗА
                 confidence = "🟢" if score > 0.02 else "🟡" if score > 0.01 else "🔴"
                 message += f"{i}. {group[0]} {group[1]} {group[2]} {group[3]} ({score:.4f}) {confidence}\n"
             message += "\n"
@@ -516,8 +517,35 @@ class AutoLearningService:
         
         return None
     
+    def add_data_and_retrain(self, new_combination: str, retrain_epochs: int = 3):
+        """🔧 ИСПРАВЛЕННЫЙ МЕТОД: Добавление данных и дообучение модели"""
+        try:
+            logger.info("🧠 Добавление данных и дообучение модели...")
+            
+            # 🔧 ПЕРЕЗАГРУЗКА МОДЕЛИ ПЕРЕД КАЖДОЙ ОБРАБОТКОЙ
+            if not self.system.load():
+                logger.error("❌ Не удалось загрузить модель для дообучения")
+                return []
+            
+            # 🔧 ВСЕГДА ТОЛЬКО ДООБУЧЕНИЕ (3 эпохи)
+            predictions = self.system.add_data_and_retrain(new_combination, retrain_epochs)
+            
+            # 🔧 СОХРАНЯЕМ ПРОГНОЗЫ В ОБЩИЙ ФАЙЛ ДЛЯ ВЕБ-ВЕРСИИ
+            if predictions:
+                from model.data_loader import save_predictions
+                # ✅ СОХРАНЯЕМ ТОЛЬКО TOP-4 ПРОГНОЗА
+                save_predictions(predictions[:4])
+                logger.info(f"💾 Сохранено {len(predictions[:4])} прогнозов в predictions_state.json")
+            
+            # ✅ ВОЗВРАЩАЕМ ТОЛЬКО TOP-4 ПРОГНОЗА
+            return predictions[:4] if predictions else []
+                
+        except Exception as e:
+            logger.error(f"❌ Ошибка дообучения: {e}")
+            return []
+    
     def process_new_group(self):
-        """Основной метод обработки новой группы"""
+        """🔧 ИСПРАВЛЕННЫЙ МЕТОД: Основной метод обработки новой группы"""
         if not self.service_active:
             logger.info("⏸️ Сервис остановлен из-за ошибок API. Требуется ручной перезапуск.")
             return False
@@ -574,8 +602,8 @@ class AutoLearningService:
             # Шаг 4: Сравниваем с предыдущими прогнозами
             comparison_result = self.compare_with_predictions(new_combination)
             
-            # Шаг 5: Добавляем данные и дообучаем модель
-            learning_result = self.add_data_and_retrain(new_combination)
+            # 🔧 Шаг 5: ВСЕГДА ТОЛЬКО ДООБУЧЕНИЕ (никогда полное обучение)
+            learning_result = self.add_data_and_retrain(new_combination, 3)
             
             # Шаг 6: Помечаем как обработанную
             self.mark_entry_processed(processing_draw)
@@ -599,7 +627,7 @@ class AutoLearningService:
             if learning_result:
                 self.telegram.send_predictions(learning_result, processing_draw)
             
-            logger.info(f"✅ Обработка завершена! Новых прогнозов: {len(learning_result) if learning_result else 0}")
+            logger.info(f"✅ Обработка завершена! Новых прогнозов: {len(learning_result)}")
             
             return True
             
@@ -659,47 +687,8 @@ class AutoLearningService:
             logger.error(f"❌ Ошибка сравнения с прогнозами: {e}")
             return {'matches_found': 0, 'error': str(e)}
     
-    def add_data_and_retrain(self, new_combination: str):
-        """Добавление данных и дообучение модели"""
-        try:
-            logger.info("🧠 Добавление данных и дообучение модели...")
-            
-            predictions = self.system.add_data_and_retrain(new_combination, retrain_epochs=3)
-            
-            if predictions:
-                logger.info(f"✅ Дообучение завершено. Сгенерировано {len(predictions)} прогнозов")
-                return predictions
-            else:
-                logger.warning("⚠️ Дообучение завершено, но прогнозы не сгенерированы")
-                return []
-                
-        except Exception as e:
-            logger.error(f"❌ Ошибка дообучения: {e}")
-            return []
-    
-    def save_learning_result(self, result_data):
-        """Сохранение результата обучения"""
-        def save_operation(filename, data):
-            if os.path.exists(filename):
-                with open(filename, 'r', encoding='utf-8') as f:
-                    all_results = json.load(f)
-            else:
-                all_results = []
-            
-            all_results.append(data)
-            
-            if len(all_results) > 100:
-                all_results = all_results[-100:]
-            
-            with open(filename, 'w', encoding='utf-8') as f:
-                json.dump(all_results, f, ensure_ascii=False, indent=2)
-        
-        result_path = os.path.join(os.path.dirname(__file__), 'learning_results.json')
-        self.safe_file_operation(save_operation, result_path, result_data)
-        logger.info("💾 Результат обучения сохранен")
-    
     def get_service_status(self):
-        """Получение статуса сервиса"""
+        """Получение статуса сервиса для Telegram и проверки"""
         from model.data_loader import load_predictions
         
         status = {
@@ -708,7 +697,6 @@ class AutoLearningService:
             'system_initialized': self.system is not None,
             'last_processed_draw': self.last_processed_draw,
             'model_trained': self.system.is_trained if self.system else False,
-            'web_running': self.is_web_running(),
             'consecutive_api_errors': self.consecutive_api_errors,
             'max_consecutive_errors': self.max_consecutive_errors,
             'next_scheduled_run': self.next_scheduled_run.isoformat() if self.next_scheduled_run else None,
@@ -732,8 +720,93 @@ class AutoLearningService:
             except Exception as e:
                 status['system_status_error'] = str(e)
         
+        # Проверяем веб-версию
+        try:
+            result = subprocess.run(['pgrep', '-f', 'streamlit'], capture_output=True, text=True)
+            status['web_running'] = result.returncode == 0
+        except:
+            status['web_running'] = False
+        
         return status
     
+
+    def save_learning_result(self, result_data):
+        """🔧 ПРАВИЛЬНЫЙ МЕТОД: Дополнение аналитики самообучения"""
+        def save_operation(filename, data):
+            # Загружаем существующую аналитику самообучения
+            if os.path.exists(filename):
+                try:
+                    with open(filename, 'r', encoding='utf-8') as f:
+                        existing_data = json.load(f)
+                except Exception as e:
+                    logger.error(f"❌ Ошибка загрузки аналитики: {e}")
+                    existing_data = self._create_learning_results_structure()
+            else:
+                existing_data = self._create_learning_results_structure()
+            
+            # 🔧 ДОБАВЛЯЕМ данные автосервиса в predictions_accuracy
+            accuracy_entry = {
+                'timestamp': data.get('timestamp'),
+                'actual_group': data.get('combination'),
+                'accuracy_score': data.get('comparison', {}).get('matches_found', 0) / 4.0,
+                'matches_count': data.get('comparison', {}).get('matches_found', 0),
+                'learning_success': data.get('learning_success', False),
+                'service_type': 'auto_learning',
+                'draw': data.get('draw'),
+                'new_predictions_count': data.get('new_predictions_count', 0)
+            }
+            
+            # Добавляем запись
+            existing_data['predictions_accuracy'].append(accuracy_entry)
+            
+            # 🔧 ОБНОВЛЯЕМ error_patterns если точность низкая
+            if accuracy_entry['accuracy_score'] < 0.5:
+                error_pattern = {
+                    'timestamp': data.get('timestamp'),
+                    'missed_numbers': self._analyze_missed_numbers(data),
+                    'false_numbers': self._analyze_false_numbers(data),
+                    'accuracy': accuracy_entry['accuracy_score']
+                }
+                existing_data['error_patterns'].append(error_pattern)
+            
+            # Ограничиваем размер истории
+            if len(existing_data['predictions_accuracy']) > 200:
+                existing_data['predictions_accuracy'] = existing_data['predictions_accuracy'][-200:]
+            if len(existing_data['error_patterns']) > 100:
+                existing_data['error_patterns'] = existing_data['error_patterns'][-100:]
+            
+            existing_data['last_analysis'] = datetime.now().isoformat()
+            
+            # Сохраняем обновленную аналитику
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(existing_data, f, ensure_ascii=False, indent=2)
+            
+            return existing_data
+        
+        result_path = '/opt/project/data/learning_results.json'  # 🔧 ОБЩИЙ ФАЙЛ
+        updated_data = self.safe_file_operation(save_operation, result_path, result_data)
+        logger.info(f"💾 Аналитика самообучения обновлена: {len(updated_data['predictions_accuracy'])} записей")
+
+    def _create_learning_results_structure(self):
+        """Создает правильную структуру для аналитики самообучения"""
+        return {
+            "predictions_accuracy": [],
+            "model_performance": {},
+            "learning_patterns": {},
+            "last_analysis": None,
+            "error_patterns": []
+        }
+
+    def _analyze_missed_numbers(self, data):
+        """Анализ пропущенных чисел для error_patterns"""
+        # TODO: Реализовать анализ какие числа были в реальной группе, но не в прогнозах
+        return []
+
+    def _analyze_false_numbers(self, data):
+        """Анализ лишних чисел для error_patterns"""
+        # TODO: Реализовать анализ какие числа были в прогнозах, но не в реальной группе
+        return []
+     
     def manual_restart(self):
         """Ручной перезапуск сервиса после остановки"""
         if not self.service_active:

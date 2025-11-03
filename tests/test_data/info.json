@@ -7,14 +7,8 @@
       "combination": "17 10 11 18",
       "timestamp": "2024-01-15T12:14:00",
       "processed": true,
-      "service_type": "auto_learning"
-    },
-    {
-      "draw": "308825",
-      "combination": "5 12 19 23",
-      "timestamp": "2024-01-15T11:59:00",
-      "processed": true,
-      "service_type": "web"
+      "service_type": "auto_learning",
+      "processing_time": "2024-01-15T12:15:23"
     }
   ]
 }

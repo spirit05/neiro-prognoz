@@ -10,7 +10,7 @@ def test_telegram_status_command():
     print("🧪 Тест Telegram команды /status...")
     
     with patch('api_data.auto_learning_service.requests') as mock_requests:
-        from api_data.auto_learning_service import TelegramNotifier
+        from auto_learning_service import TelegramNotifier
         
         # Настраиваем моки
         mock_response = MagicMock()

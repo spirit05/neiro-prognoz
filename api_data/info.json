@@ -1,0 +1,30 @@
+{
+  "current_draw": "308828",
+  "service_status": "active",
+  "history": [
+    {
+      "draw": "308826",
+      "combination": "17 10 11 18",
+      "timestamp": "2024-01-15T12:14:00",
+      "processed": true,
+      "service_type": "auto_learning",
+      "processing_time": "2024-01-15T12:15:23"
+    },
+    {
+      "draw": "308827",
+      "combination": "20 4 9 6",
+      "timestamp": "2025-11-03T16:22:23.655341",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-03T16:40:31.305149"
+    },
+    {
+      "draw": "308828",
+      "combination": "12 19 4 19",
+      "timestamp": "2025-11-03T17:45:53.025961",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-03T17:48:29.178576"
+    }
+  ]
+}

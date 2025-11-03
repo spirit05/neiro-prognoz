@@ -18,7 +18,7 @@ def test_api_failure_recovery():
             MagicMock(returncode=0, stdout='{"combination": {"structured": [1,2,3,4]}}')  # Успех
         ]
         
-        from api_data.auto_learning_service import AutoLearningService
+        from auto_learning_service import AutoLearningService
         
         service = AutoLearningService()
         service.consecutive_api_errors = 0
