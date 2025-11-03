@@ -1,63 +1,79 @@
-# [file name]: tests/run_tests.py (ОБНОВЛЕННЫЙ)
-#!/usr/bin/env pyt////hon3
+# [file name]: tests/run_tests.py (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+#!/usr/bin/env python3
 """
-ЗАПУСК ВСЕХ ТЕСТОВ с автоматической активацией окружения
+ЗАПУСК ВСЕХ ТЕСТОВ с автоматической настройкой среды
 """
 
 import os
 import sys
 import subprocess
 
-def activate_virtual_environment():
-    """Автоматическая активация виртуального окружения"""
-    venv_path = '/opt/project/env'
+def setup_test_environment_if_needed():
+    """Автоматическая настройка тестовой среды если нужно"""
+    test_dirs = [
+        '/opt/project/tests/test_data', 
+        '/opt/project/tests/test_config',
+        '/opt/project/tests/test_logs'
+    ]
     
-    if not os.path.exists(venv_path):
-        print(f"❌ Виртуальное окружение не найдено: {venv_path}")
-        print("💡 Проверьте путь или установите зависимости вручную")
-        return False
+    # Проверяем нужные файлы
+    required_files = [
+        '/opt/project/tests/test_data/dataset.json',
+        '/opt/project/tests/test_data/info.json',
+        '/opt/project/tests/test_data/predictions_state.json'
+    ]
     
-    # Активируем venv
-    activate_script = os.path.join(venv_path, 'bin', 'activate_this.py')
+    environment_ready = all(os.path.exists(dir_path) for dir_path in test_dirs) and \
+                       all(os.path.exists(file_path) for file_path in required_files)
     
-    try:
-        with open(activate_script) as f:
-            exec(f.read(), {'__file__': activate_script})
-        print(f"✅ Виртуальное окружение активировано: {venv_path}")
-        return True
-    except Exception as e:
-        print(f"⚠️ Не удалось активировать окружение: {e}")
-        print("💡 Пытаемся продолжить без активации...")
-        return True
+    if not environment_ready:
+        print("🔧 Тестовая среда не готова, запускаю настройку...")
+        setup_result = subprocess.run([
+            'python3', 'setup_test_environment.py'
+        ], cwd='/opt/project/tests', capture_output=True, text=True)
+        
+        if setup_result.returncode == 0:
+            print("✅ Тестовая среда настроена автоматически")
+            return True
+        else:
+            print(f"❌ Ошибка настройки тестовой среды: {setup_result.stderr}")
+            return False
+    
+    return True
 
 def run_tests():
     """Запуск всех тестов"""
     print("🎯 ЗАПУСК ТЕСТОВ В ИЗОЛИРОВАННОЙ СРЕДЕ")
     print("=" * 50)
     
-    # Активируем окружение
-    if not activate_virtual_environment():
+    # Автоматически настраиваем среду если нужно
+    if not setup_test_environment_if_needed():
         return False
     
-    # Добавляем пути
-    PROJECT_PATH = '/opt/project'
-    sys.path.insert(0, PROJECT_PATH)
-    sys.path.insert(0, os.path.join(PROJECT_PATH, 'tests'))
+    # Используем Python из виртуального окружения
+    venv_python = '/opt/project/env/bin/python3'
     
-    # Проверяем существование тестовой среды
-    test_dirs = [
-        '/opt/project/tests',
-        '/opt/project/tests/test_data', 
-        '/opt/project/tests/test_config',
-        '/opt/project/tests/test_logs'
-    ]
+    if not os.path.exists(venv_python):
+        print(f"❌ Python из venv не найден: {venv_python}")
+        print("💡 Используем системный Python (может не работать)")
+        venv_python = 'python3'
     
-    for dir_path in test_dirs:
-        if not os.path.exists(dir_path):
-            print(f"❌ Тестовая директория {dir_path} не найдена")
-            print("💡 Сначала запустите: python3 tests/setup_test_environment.py")
+    # Проверяем pytest в выбранном Python
+    check_result = subprocess.run([venv_python, '-c', 'import pytest'], capture_output=True)
+    if check_result.returncode != 0:
+        print(f"❌ pytest не установлен в {venv_python}")
+        print("💡 Устанавливаю pytest автоматически...")
+        install_result = subprocess.run([
+            '/opt/project/env/bin/pip', 'install', 'pytest'
+        ], capture_output=True, text=True)
+        
+        if install_result.returncode != 0:
+            print(f"❌ Ошибка установки pytest: {install_result.stderr}")
             return False
+        else:
+            print("✅ pytest установлен автоматически")
     
+    print(f"✅ Используем: {venv_python}")
     print("✅ Тестовая среда готова")
     
     # Запускаем тесты
@@ -71,18 +87,26 @@ def run_tests():
     for test_file in test_files:
         print(f"\n🧪 ЗАПУСК {test_file}...")
         result = subprocess.run([
-            'python3', '-m', 'pytest', 
+            venv_python, '-m', 'pytest', 
             test_file, 
             '-v', 
             '--tb=short'
-        ], cwd=PROJECT_PATH, capture_output=True, text=True)
+        ], cwd='/opt/project', capture_output=True, text=True)
         
         if result.returncode == 0:
             print(f"✅ {test_file} - ТЕСТЫ ПРОЙДЕНЫ")
+            # Показываем только если есть вывод
+            if result.stdout and "PASSED" in result.stdout:
+                for line in result.stdout.split('\n'):
+                    if 'PASSED' in line or 'FAILED' in line:
+                        print(f"   {line.strip()}")
         else:
             print(f"❌ {test_file} - ТЕСТЫ ПРОВАЛЕНЫ")
-            print(result.stdout)
-            print(result.stderr)
+            # Показываем только ошибки
+            if result.stderr:
+                for line in result.stderr.split('\n'):
+                    if 'ERROR' in line or 'FAILED' in line:
+                        print(f"   {line.strip()}")
             all_passed = False
     
     print("\n" + "=" * 50)
