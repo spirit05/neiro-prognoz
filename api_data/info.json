@@ -319,6 +319,31 @@
       "processed": true,
       "service_type": "api_request",
       "processing_time": "2025-11-04T16:36:49.521203"
-    }
+    },
+,
+{
+  "draw": "308960",
+  "combination": "23 3 6 17",
+  "timestamp": "2025-11-04T15:00:51.310365",
+  "processed": true,
+  "service_type": "api_request",
+  "processing_time": "2025-11-04T15:03:35.427250"
+},
+{
+  "draw": "308961",
+  "combination": "4 16 10 23",
+  "timestamp": "2025-11-04T15:00:51.310365",
+  "processed": true,
+  "service_type": "api_request",
+  "processing_time": "2025-11-04T15:03:35.427250"
+},
+{
+  "draw": "308962",
+  "combination": "1 9 22 10",
+  "timestamp": "2025-11-04T15:00:51.310365",
+  "processed": true,
+  "service_type": "api_request",
+  "processing_time": "2025-11-04T15:03:35.427250"
+}
   ]
 }
