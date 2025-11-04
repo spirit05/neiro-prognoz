@@ -39,6 +39,9 @@ API_RETRY_DELAY = 30
 SERVICE_STATE_FILE = os.path.join(os.path.dirname(__file__), 'service_state.json')
 TELEGRAM_CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'telegram_config.json')
 
+# ФИКСИРОВАННОЕ РАСПИСАНИЕ - запросы в :14, :29, :44, :59 каждого часа
+SCHEDULE_MINUTES = [14, 29, 44, 59]
+
 class FileLock:
     """Класс для блокировки файлов"""
     def __init__(self, filename):
@@ -352,37 +355,78 @@ class AutoLearningService:
             logger.error(f"❌ Ошибка сохранения состояния сервиса: {e}")
     
     def calculate_next_run_time(self):
-        """УЛУЧШЕННЫЙ РАСЧЕТ: время следующего запуска с буфером безопасности"""
+        """🎯 УЛУЧШЕННЫЙ РАСЧЕТ: следующее время запуска с учетом буфера и критических интервалов"""
         now = datetime.now()
         current_minute = now.minute
         
-        # Временные слоты API (14, 29, 44, 59)
-        api_slots = [14, 29, 44, 59]
-        
-        # Находим следующий слот
-        next_slot = None
-        for slot in api_slots:
-            if current_minute < slot:
-                next_slot = slot
+        # Находим следующий временной слот
+        next_minute = None
+        for minute in SCHEDULE_MINUTES:
+            if current_minute < minute:
+                next_minute = minute
                 break
         
         # Если все слоты прошли в этом часе, берем первый слот следующего часа
-        if next_slot is None:
-            next_time = now.replace(hour=now.hour+1, minute=api_slots[0], second=0, microsecond=0)
+        if next_minute is None:
+            next_time = now.replace(hour=now.hour+1, minute=SCHEDULE_MINUTES[0], second=0, microsecond=0)
+            time_until_next = (next_time - now).total_seconds() / 60
         else:
-            next_time = now.replace(minute=next_slot, second=0, microsecond=0)
+            next_time = now.replace(minute=next_minute, second=0, microsecond=0)
+            time_until_next = (next_time - now).total_seconds() / 60
         
-        # Расчет интервала до следующего слота (в минутах)
-        time_until_next = (next_time - now).total_seconds() / 60
+        # 🔧 ПРИМЕНЯЕМ ЛОГИКУ БУФЕРА И КРИТИЧЕСКИХ ИНТЕРВАЛОВ
+        if time_until_next <= 2:
+            # КРИТИЧЕСКАЯ ОШИБКА - слишком близко к временному слоту
+            logger.error(f"🚨 Критический интервал: {time_until_next:.1f} минут до слота {next_minute}")
+            logger.error("🛑 Останавливаем сервис - требуется ручная корректировка времени запуска")
+            self.service_active = False
+            self.save_service_state()
+            
+            # Отправляем уведомление в Telegram
+            self.telegram.send_critical_error(
+                self.last_processed_draw or 'unknown',
+                f"Критический интервал: {time_until_next:.1f} минут. Не попали во временной слот."
+            )
+            return 0
+            
+        elif time_until_next <= 7:
+            # Используем буфер 7 минут
+            buffer_time = 7
+            next_time = now + timedelta(minutes=buffer_time)
+            logger.info(f"⏰ Ближайший слот через {time_until_next:.1f} мин - используем буфер {buffer_time} мин")
+            self.next_scheduled_run = next_time
+            return buffer_time
+            
+        else:
+            # Нормальный интервал - используем расчетное время
+            logger.info(f"⏰ Следующий запрос в {next_time.strftime('%H:%M')} (через {time_until_next:.1f} минут)")
+            self.next_scheduled_run = next_time
+            return time_until_next
+
+    def setup_fixed_schedule(self):
+        """🎯 НАСТРОЙКА АДАПТИВНОГО РАСПИСАНИЯ С БУФЕРОМ"""
+        # Очищаем существующее расписание
+        schedule.clear()
         
-        # 🔧 КОРРЕКТИРОВКА КОРОТКИХ ИНТЕРВАЛОВ
-        if time_until_next < 4:  # СЛИШКОМ МАЛО - добавляем буфер
-            time_until_next += 5  # +5 минут буфера безопасности
-            logger.info(f"⏰ Короткий интервал {time_until_next:.1f} мин → добавляем буфер +5 мин")
+        # 🔧 ПЕРВЫЙ ЗАПУСК - НЕМЕДЛЕННО
+        logger.info("🚀 Немедленный запуск первого запроса...")
+        self.safe_scheduled_task()
         
-        self.next_scheduled_run = now + timedelta(minutes=time_until_next)
-        logger.info(f"⏰ Следующий запрос через {time_until_next:.1f} минут (в {self.next_scheduled_run.strftime('%H:%M')})")
-        return time_until_next
+        # 🔧 РАСЧЕТ СЛЕДУЮЩЕГО ЗАПУСКА С УЧЕТОМ БУФЕРА
+        next_interval = self.calculate_next_run_time()
+        
+        if next_interval > 0 and self.service_active:
+            # Планируем следующий запуск через расчетный интервал
+            schedule.every(next_interval).minutes.do(self.safe_scheduled_task)
+            logger.info(f"⏰ Следующий запрос через {next_interval:.1f} минут")
+            
+            # После корректировки переходим на стандартное расписание
+            for minute in SCHEDULE_MINUTES:
+                schedule.every().hour.at(f":{minute:02d}").do(self.safe_scheduled_task)
+            
+            logger.info(f"✅ Адаптивное расписание настроено. Слоты: {SCHEDULE_MINUTES}")
+        else:
+            logger.error("❌ Не удалось настроить расписание - сервис остановлен")
     
     def safe_file_operation(self, operation, filename, *args, **kwargs):
         """Безопасная операция с файлом с блокировкой"""
