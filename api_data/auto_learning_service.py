@@ -15,7 +15,6 @@ import subprocess
 import requests
 from datetime import datetime, timedelta
 import schedule
-LEARNING_RESULTS_FILE = "/opt/project/data/learning_results.json"
 
 # Добавляем пути для импорта
 PROJECT_PATH = '/opt/project'
@@ -122,35 +121,7 @@ class TelegramNotifier:
         except Exception as e:
             logger.error(f"❌ Критическая ошибка Telegram: {e}")
             return False
-    
-    def send_critical_error(self, draw, error_message, stacktrace=None):
-        """Отправка критической ошибки"""
-        if not self.config.get('notifications', {}).get('critical_errors', False):
-            return
-        
-        message = f"🔴 <b>КРИТИЧЕСКАЯ ОШИБКА</b>\n"
-        message += f"📦 Тираж: {draw}\n"
-        message += f"🕐 Время: {datetime.now().strftime('%H:%M:%S')}\n"
-        message += f"❌ Ошибка: {error_message}\n"
-        
-        if stacktrace:
-            message += f"\n<code>{stacktrace[:1000]}</code>"
-        
-        self.telegram.send_message(message, retry_critical=True)
-    
-    def send_service_stop(self, draw, reason):
-        """Отправка уведомления об остановке сервиса"""
-        if not self.config.get('notifications', {}).get('service_stop', False):
-            return
-        
-        message = f"🛑 <b>ОСТАНОВКА СЕРВИСА</b>\n"
-        message += f"📦 Тираж: {draw}\n"
-        message += f"🕐 Время: {datetime.now().strftime('%H:%M:%S')}\n"
-        message += f"📝 Причина: {reason}\n"
-        message += f"🔧 Требуется ручной перезапуск"
-        
-        self.telegram.send_message(message, retry_critical=True)
-    
+
     def send_predictions(self, predictions, draw, actual_group=None, comparison_result=None):
         """Отправка улучшенных прогнозов в Telegram как в веб-версии"""
         if not self.config.get('notifications', {}).get('predictions', False):
@@ -159,7 +130,8 @@ class TelegramNotifier:
         try:
             message = f"🔮 <b>НОВЫЕ ПРОГНОЗЫ</b>\n\n"
             message += f"📦 Тираж: {draw}\n"
-            message += f"📥 Добавлена группа: {actual_group}\n"
+            if actual_group:
+                message += f"📥 Добавлена группа: {actual_group}\n"
             message += f"🕐 Время: {datetime.now().strftime('%H:%M:%S')}\n\n"
             
             # Детальная информация о совпадениях как в веб-версии
@@ -169,7 +141,7 @@ class TelegramNotifier:
                 
                 message += f"🔍 <b>Найдено совпадений с {matches_count} предсказаниями:</b>\n\n"
                 
-                for i, match in enumerate(matches_details[:3], 1):  # Показываем до 3 лучших совпадений
+                for i, match in enumerate(matches_details[:3], 1):
                     pred_group = match['predicted_group']
                     matches_info = match['matches']
                     total_matches = matches_info['total_matches']
@@ -191,12 +163,40 @@ class TelegramNotifier:
                 message += f"<b>{i}.</b> {group[0]} {group[1]} {group[2]} {group[3]}\n"
                 message += f"   Уверенность: <code>{score:.4f}</code> {confidence}\n\n"
             
-            self.telegram.send_message(message)
+            self.send_message(message)
             logger.info(f"📤 Детальные прогнозы отправлены в Telegram")
             
         except Exception as e:
             logger.error(f"❌ Ошибка отправки детальных прогнозов: {e}")
-     
+    
+    def send_critical_error(self, draw, error_message, stacktrace=None):
+        """Отправка критической ошибки"""
+        if not self.config.get('notifications', {}).get('critical_errors', False):
+            return
+        
+        message = f"🔴 <b>КРИТИЧЕСКАЯ ОШИБКА</b>\n"
+        message += f"📦 Тираж: {draw}\n"
+        message += f"🕐 Время: {datetime.now().strftime('%H:%M:%S')}\n"
+        message += f"❌ Ошибка: {error_message}\n"
+        
+        if stacktrace:
+            message += f"\n<code>{stacktrace[:1000]}</code>"
+        
+        self.send_message(message, retry_critical=True)
+    
+    def send_service_stop(self, draw, reason):
+        """Отправка уведомления об остановке сервиса"""
+        if not self.config.get('notifications', {}).get('service_stop', False):
+            return
+        
+        message = f"🛑 <b>ОСТАНОВКА СЕРВИСА</b>\n"
+        message += f"📦 Тираж: {draw}\n"
+        message += f"🕐 Время: {datetime.now().strftime('%H:%M:%S')}\n"
+        message += f"📝 Причина: {reason}\n"
+        message += f"🔧 Требуется ручной перезапуск"
+        
+        self.send_message(message, retry_critical=True)
+    
     def process_status_command(self, status_data):
         """Обработка команды /status"""
         if not self.config.get('notifications', {}).get('status_command', False):
@@ -221,7 +221,7 @@ class TelegramNotifier:
                         if message.get('text') == '/status':
                             # Отправляем статус
                             status_message = self.format_status_message(status_data)
-                            self.telegram.send_message(status_message)
+                            self.send_message(status_message)
                             # Помечаем как обработанное
                             self.acknowledge_update(update['update_id'])
         except Exception as e:
@@ -263,7 +263,7 @@ class TelegramNotifier:
         predictions = status_data.get('last_predictions', [])
         if predictions:
             message += "🎯 <b>ПОСЛЕДНИЕ ПРОГНОЗЫ:</b>\n"
-            for i, (group, score) in enumerate(predictions[:4], 1):  # ✅ ТОЛЬКО 4 ПРОГНОЗА
+            for i, (group, score) in enumerate(predictions[:4], 1):
                 confidence = "🟢" if score > 0.02 else "🟡" if score > 0.01 else "🔴"
                 message += f"{i}. {group[0]} {group[1]} {group[2]} {group[3]} ({score:.4f}) {confidence}\n"
             message += "\n"
@@ -352,11 +352,11 @@ class AutoLearningService:
             logger.error(f"❌ Ошибка сохранения состояния сервиса: {e}")
     
     def calculate_next_run_time(self):
-        """Расчет времени следующего запуска с учетом временных слотов"""
+        """УЛУЧШЕННЫЙ РАСЧЕТ: время следующего запуска с буфером безопасности"""
         now = datetime.now()
         current_minute = now.minute
         
-        # Временные слоты API
+        # Временные слоты API (14, 29, 44, 59)
         api_slots = [14, 29, 44, 59]
         
         # Находим следующий слот
@@ -372,14 +372,16 @@ class AutoLearningService:
         else:
             next_time = now.replace(minute=next_slot, second=0, microsecond=0)
         
-        # Расчет интервала до следующего слота
-        time_until_next = (next_time - now).total_seconds() / 60  # в минутах
+        # Расчет интервала до следующего слота (в минутах)
+        time_until_next = (next_time - now).total_seconds() / 60
         
-        # Корректировка коротких интервалов
-        if time_until_next < 4:
-            time_until_next += 5  # добавляем 5 минут буфера
+        # 🔧 КОРРЕКТИРОВКА КОРОТКИХ ИНТЕРВАЛОВ
+        if time_until_next < 4:  # СЛИШКОМ МАЛО - добавляем буфер
+            time_until_next += 5  # +5 минут буфера безопасности
+            logger.info(f"⏰ Короткий интервал {time_until_next:.1f} мин → добавляем буфер +5 мин")
         
         self.next_scheduled_run = now + timedelta(minutes=time_until_next)
+        logger.info(f"⏰ Следующий запрос через {time_until_next:.1f} минут (в {self.next_scheduled_run.strftime('%H:%M')})")
         return time_until_next
     
     def safe_file_operation(self, operation, filename, *args, **kwargs):
@@ -565,7 +567,7 @@ class AutoLearningService:
                 logger.error("❌ Не удалось загрузить модель для дообучения")
                 return []
             
-            # 🔧 ВСЕГДА ТОЛЬКО ДООБУЧЕНИЕ (3 эпохи)
+            # 🔧 ВСЕГДА ТОЛЬКО ДООБУЧЕНИЕ (5 эпох для лучшей точности)
             predictions = self.system.add_data_and_retrain(new_combination, retrain_epochs)
             
             # 🔧 СОХРАНЯЕМ ПРОГНОЗЫ В ОБЩИЙ ФАЙЛ ДЛЯ ВЕБ-ВЕРСИИ
@@ -641,7 +643,7 @@ class AutoLearningService:
             comparison_result = self.compare_with_predictions(new_combination)
             
             # 🔧 Шаг 5: ВСЕГДА ТОЛЬКО ДООБУЧЕНИЕ (никогда полное обучение)
-            learning_result = self.add_data_and_retrain(new_combination, 5)
+            learning_result = self.add_data_and_retrain(new_combination, 5)  # 5 эпох для лучшей точности
             
             # Шаг 6: Помечаем как обработанную
             self.mark_entry_processed(processing_draw)
@@ -664,12 +666,12 @@ class AutoLearningService:
             # Шаг 8: Отправляем прогнозы если включено
             if learning_result:
                 # Проверяем настройку авто-прогнозов
-                if self.config.get('notifications', {}).get('predictions', False):
+                if self.telegram.config.get('notifications', {}).get('predictions', False):
                     self.telegram.send_predictions(
                         learning_result, 
                         processing_draw,
-                        actual_group=new_combination,  # ← Добавляем группу
-                        comparison_result=comparison_result  # ← Добавляем совпадения
+                        actual_group=new_combination,
+                        comparison_result=comparison_result
                     )
                     logger.info(f"📤 Улучшенные авто-прогнозы отправлены в Telegram")
                 else:

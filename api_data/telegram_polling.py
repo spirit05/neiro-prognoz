@@ -1,3 +1,4 @@
+# [file name]: api_data/telegram_polling.py
 #!/usr/bin/env python3
 """
 Telegram бот через Long Polling (без вебхука)
@@ -9,6 +10,7 @@ import time
 import json
 import logging
 import requests
+import subprocess  # ← ДОБАВЛЕН ИМПОРТ
 from datetime import datetime
 
 # Настройка путей
@@ -179,7 +181,7 @@ class TelegramPollingBot:
             # 🔄 АКТУАЛЬНЫЕ ДАННЫЕ
             web_running = self.is_web_running()
             current_draw = self.get_current_draw()
-            auto_service_running = self.is_auto_service_running()  # ← НОВАЯ ПРОВЕРКА
+            auto_service_running = self.is_auto_service_running()
             
             if self.auto_service:
                 status_data = self.auto_service.get_service_status()
@@ -197,7 +199,7 @@ class TelegramPollingBot:
                 message += f"✅ Модель: {'Обучена' if status_data.get('model_trained') else 'Не обучена'}\n"
                 message += f"📊 Групп в датасете: {status_data.get('dataset_size', 0)}\n"
                 message += f"🌐 Веб-версия: {'Запущена' if web_running else 'Не запущена'}\n"
-                message += f"🔧 Автосервис: {'Активен' if auto_service_running else 'Остановлен'}\n"  # ← ИСПРАВЛЕНО
+                message += f"🔧 Автосервис: {'Активен' if auto_service_running else 'Остановлен'}\n"
                 message += f"🕐 Последний тираж: {current_draw}\n"
                 
                 # ✅ АНАЛИТИКА САМООБУЧЕНИЯ
@@ -220,7 +222,7 @@ class TelegramPollingBot:
             else:
                 self.send_message(chat_id, "❌ Сервис временно недоступен")
                     
-        except Exception as e:  # ← ДОБАВИТЬ ЭТУ СТРОКУ
+        except Exception as e:
             logger.error(f"❌ Ошибка отправки статуса: {e}")
             self.send_message(chat_id, f"❌ Ошибка получения статуса: {e}")
 
