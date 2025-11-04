@@ -35,9 +35,1159 @@
         "exact_matches": 0
       },
       "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-03T21:20:49.369433",
+      "actual_group": "10 24 14 10",
+      "best_prediction": [
+        10,
+        11,
+        22,
+        21
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-03T21:27:54.711708",
+      "actual_group": "6 16 6 20",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-03T21:43:38.465283",
+      "actual_group": "18 15 4 20",
+      "best_prediction": [
+        10,
+        11,
+        20,
+        15
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 0,
+        "pair2_matches": 1,
+        "exact_matches": 0
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-03T22:01:19.309652",
+      "actual_group": "13 7 8 6",
+      "best_prediction": [
+        10,
+        11,
+        13,
+        8
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 0,
+        "pair2_matches": 1,
+        "exact_matches": 0
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-03T22:19:07.517131",
+      "actual_group": "26 12 26 3",
+      "best_prediction": [
+        6,
+        7,
+        3,
+        23
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 0,
+        "pair2_matches": 1,
+        "exact_matches": 0
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-03T22:36:48.126827",
+      "actual_group": "19 6 23 2",
+      "best_prediction": [
+        10,
+        11,
+        23,
+        6
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 0,
+        "pair2_matches": 1,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-03T22:54:27.141335",
+      "actual_group": "26 17 14 24",
+      "best_prediction": [
+        10,
+        11,
+        14,
+        8
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 0,
+        "pair2_matches": 1,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-03T23:12:05.798578",
+      "actual_group": "5 26 16 23",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-03T23:29:43.055959",
+      "actual_group": "12 2 6 19",
+      "best_prediction": [
+        1,
+        2,
+        5,
+        14
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-03T23:47:19.355878",
+      "actual_group": "12 18 26 22",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T00:04:53.349083",
+      "actual_group": "23 19 3 21",
+      "best_prediction": [
+        5,
+        7,
+        3,
+        14
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 0,
+        "pair2_matches": 1,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T00:22:27.886130",
+      "actual_group": "4 22 4 8",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T00:40:00.408517",
+      "actual_group": "7 14 5 7",
+      "best_prediction": [
+        1,
+        2,
+        5,
+        23
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 0,
+        "pair2_matches": 1,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T00:57:33.925593",
+      "actual_group": "10 21 6 1",
+      "best_prediction": [
+        10,
+        11,
+        23,
+        24
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T01:15:09.232591",
+      "actual_group": "4 2 23 5",
+      "best_prediction": [
+        1,
+        2,
+        3,
+        6
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T01:32:38.658684",
+      "actual_group": "20 3 23 25",
+      "best_prediction": [
+        3,
+        14,
+        21,
+        19
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 0
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T01:50:10.057427",
+      "actual_group": "6 5 26 25",
+      "best_prediction": [
+        6,
+        7,
+        18,
+        12
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T02:07:41.689683",
+      "actual_group": "18 17 8 4",
+      "best_prediction": [
+        18,
+        2,
+        3,
+        24
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T02:25:09.534140",
+      "actual_group": "11 5 13 17",
+      "best_prediction": [
+        10,
+        11,
+        8,
+        5
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 0
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T02:42:38.666365",
+      "actual_group": "24 25 13 19",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T03:00:06.398790",
+      "actual_group": "12 11 14 9",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T03:17:36.134980",
+      "actual_group": "6 5 12 25",
+      "best_prediction": [
+        6,
+        7,
+        3,
+        8
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T03:35:00.390037",
+      "actual_group": "8 9 1 17",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T03:52:26.651111",
+      "actual_group": "4 13 2 13",
+      "best_prediction": [
+        18,
+        1,
+        2,
+        1
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 0,
+        "pair2_matches": 1,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T04:09:58.082370",
+      "actual_group": "7 24 4 1",
+      "best_prediction": [
+        6,
+        7,
+        16,
+        25
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 0
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T04:27:26.626012",
+      "actual_group": "3 15 18 8",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T04:44:55.055301",
+      "actual_group": "8 17 22 1",
+      "best_prediction": [
+        14,
+        17,
+        1,
+        18
+      ],
+      "matches_count": 2,
+      "comparison_details": {
+        "total_matches": 2,
+        "pair1_matches": 1,
+        "pair2_matches": 1,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.5
+    },
+    {
+      "timestamp": "2025-11-04T04:58:29.774743",
+      "actual_group": "13 3 21 15",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T07:04:04.655906",
+      "actual_group": "25 7 5 13",
+      "best_prediction": [
+        19,
+        20,
+        14,
+        13
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 0,
+        "pair2_matches": 1,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T07:16:00.128036",
+      "actual_group": "20 13 10 1",
+      "best_prediction": [
+        13,
+        14,
+        1,
+        21
+      ],
+      "matches_count": 2,
+      "comparison_details": {
+        "total_matches": 2,
+        "pair1_matches": 1,
+        "pair2_matches": 1,
+        "exact_matches": 0
+      },
+      "accuracy_score": 0.5
+    },
+    {
+      "timestamp": "2025-11-04T07:31:30.533183",
+      "actual_group": "14 7 15 21",
+      "best_prediction": [
+        13,
+        14,
+        25,
+        6
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 0
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T07:48:57.422842",
+      "actual_group": "10 25 9 11",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T08:06:30.088641",
+      "actual_group": "10 19 7 12",
+      "best_prediction": [
+        19,
+        20,
+        5,
+        2
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 0
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T08:24:08.361261",
+      "actual_group": "10 11 21 26",
+      "best_prediction": [
+        10,
+        11,
+        8,
+        5
+      ],
+      "matches_count": 2,
+      "comparison_details": {
+        "total_matches": 2,
+        "pair1_matches": 2,
+        "pair2_matches": 0,
+        "exact_matches": 2
+      },
+      "accuracy_score": 0.5
+    },
+    {
+      "timestamp": "2025-11-04T08:41:41.636371",
+      "actual_group": "25 14 7 1",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T08:59:15.154528",
+      "actual_group": "5 17 22 1",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T09:16:53.616265",
+      "actual_group": "18 15 13 6",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T09:34:35.167861",
+      "actual_group": "8 10 9 25",
+      "best_prediction": [
+        10,
+        11,
+        24,
+        25
+      ],
+      "matches_count": 2,
+      "comparison_details": {
+        "total_matches": 2,
+        "pair1_matches": 1,
+        "pair2_matches": 1,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.5
+    },
+    {
+      "timestamp": "2025-11-04T09:52:08.987109",
+      "actual_group": "19 1 4 18",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T10:09:45.275233",
+      "actual_group": "8 21 1 4",
+      "best_prediction": [
+        9,
+        10,
+        1,
+        3
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 0,
+        "pair2_matches": 1,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T10:27:25.047940",
+      "actual_group": "26 20 3 19",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T10:45:02.542948",
+      "actual_group": "6 5 5 18",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T11:02:41.893446",
+      "actual_group": "21 12 23 2",
+      "best_prediction": [
+        11,
+        12,
+        9,
+        16
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T11:20:24.730580",
+      "actual_group": "16 26 22 10",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T11:38:11.285211",
+      "actual_group": "24 7 7 4",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T11:55:55.441842",
+      "actual_group": "21 11 22 11",
+      "best_prediction": [
+        11,
+        12,
+        15,
+        25
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 0
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T12:13:38.426336",
+      "actual_group": "15 21 2 25",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T12:31:32.185621",
+      "actual_group": "4 13 15 21",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T12:49:29.967155",
+      "actual_group": "2 25 23 18",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T13:07:26.529900",
+      "actual_group": "17 13 13 1",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T13:25:21.375453",
+      "actual_group": "19 2 1 23",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T13:43:16.447354",
+      "actual_group": "7 12 19 22",
+      "best_prediction": [
+        11,
+        12,
+        21,
+        25
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T14:01:10.137788",
+      "actual_group": "12 20 15 20",
+      "best_prediction": [
+        11,
+        12,
+        25,
+        5
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 0
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T14:19:01.161456",
+      "actual_group": "13 15 14 19",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T14:36:51.536138",
+      "actual_group": "21 9 22 15",
+      "best_prediction": [
+        9,
+        10,
+        7,
+        19
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 0
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T15:47:01.246412",
+      "actual_group": "26 1 3 18",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T16:00:00.216638",
+      "actual_group": "5 4 8 1",
+      "best_prediction": [
+        5,
+        6,
+        18,
+        22
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T16:16:25.998834",
+      "actual_group": "4 26 2 6",
+      "best_prediction": [
+        4,
+        7,
+        1,
+        18
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T16:31:45.268128",
+      "actual_group": "1 8 13 22",
+      "best_prediction": [
+        5,
+        6,
+        7,
+        22
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 0,
+        "pair2_matches": 1,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
     }
   ],
   "model_performance": {},
   "learning_patterns": {},
-  "last_analysis": "2025-11-03T17:45:53.265220"
+  "last_analysis": "2025-11-04T16:31:45.268194",
+  "error_patterns": [
+    {
+      "timestamp": "2025-11-03T21:43:38.465283",
+      "missed_numbers": [
+        18,
+        4
+      ],
+      "false_numbers": [
+        10,
+        11
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-03T22:01:19.309652",
+      "missed_numbers": [
+        6,
+        7
+      ],
+      "false_numbers": [
+        10,
+        11
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-03T22:19:07.517131",
+      "missed_numbers": [
+        26,
+        12
+      ],
+      "false_numbers": [
+        7,
+        6,
+        23
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-03T22:36:48.126827",
+      "missed_numbers": [
+        2,
+        19
+      ],
+      "false_numbers": [
+        10,
+        11
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-03T22:54:27.141335",
+      "missed_numbers": [
+        24,
+        17,
+        26
+      ],
+      "false_numbers": [
+        8,
+        10,
+        11
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-03T23:29:43.055959",
+      "missed_numbers": [
+        19,
+        12,
+        6
+      ],
+      "false_numbers": [
+        1,
+        5,
+        14
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T00:04:53.349083",
+      "missed_numbers": [
+        19,
+        21,
+        23
+      ],
+      "false_numbers": [
+        5,
+        14,
+        7
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T00:40:00.408517",
+      "missed_numbers": [
+        14,
+        7
+      ],
+      "false_numbers": [
+        1,
+        2,
+        23
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T00:57:33.925593",
+      "missed_numbers": [
+        1,
+        21,
+        6
+      ],
+      "false_numbers": [
+        24,
+        11,
+        23
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T01:15:09.232591",
+      "missed_numbers": [
+        4,
+        5,
+        23
+      ],
+      "false_numbers": [
+        1,
+        3,
+        6
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T01:32:38.658684",
+      "missed_numbers": [
+        25,
+        20,
+        23
+      ],
+      "false_numbers": [
+        19,
+        21,
+        14
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T01:50:10.057427",
+      "missed_numbers": [
+        25,
+        26,
+        5
+      ],
+      "false_numbers": [
+        18,
+        12,
+        7
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T02:07:41.689683",
+      "missed_numbers": [
+        8,
+        17,
+        4
+      ],
+      "false_numbers": [
+        24,
+        2,
+        3
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T02:25:09.534140",
+      "missed_numbers": [
+        17,
+        13
+      ],
+      "false_numbers": [
+        8,
+        10
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T03:17:36.134980",
+      "missed_numbers": [
+        25,
+        12,
+        5
+      ],
+      "false_numbers": [
+        8,
+        3,
+        7
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T03:52:26.651111",
+      "missed_numbers": [
+        4,
+        13
+      ],
+      "false_numbers": [
+        1,
+        18
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T04:09:58.082370",
+      "missed_numbers": [
+        24,
+        1,
+        4
+      ],
+      "false_numbers": [
+        16,
+        25,
+        6
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T07:31:30.533183",
+      "missed_numbers": [
+        7,
+        21,
+        15
+      ],
+      "false_numbers": [
+        25,
+        13,
+        6
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T08:06:30.088641",
+      "missed_numbers": [
+        10,
+        12,
+        7
+      ],
+      "false_numbers": [
+        2,
+        20,
+        5
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T10:09:45.275233",
+      "missed_numbers": [
+        8,
+        4,
+        21
+      ],
+      "false_numbers": [
+        9,
+        10,
+        3
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T11:02:41.893446",
+      "missed_numbers": [
+        2,
+        21,
+        23
+      ],
+      "false_numbers": [
+        16,
+        9,
+        11
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T11:55:55.441842",
+      "missed_numbers": [
+        21,
+        22
+      ],
+      "false_numbers": [
+        25,
+        12,
+        15
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T13:43:16.447354",
+      "missed_numbers": [
+        19,
+        22,
+        7
+      ],
+      "false_numbers": [
+        25,
+        11,
+        21
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T14:01:10.137788",
+      "missed_numbers": [
+        20,
+        15
+      ],
+      "false_numbers": [
+        25,
+        11,
+        5
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T16:16:25.998834",
+      "missed_numbers": [
+        26,
+        2,
+        6
+      ],
+      "false_numbers": [
+        1,
+        18,
+        7
+      ],
+      "accuracy": 0.25
+    }
+  ]
 }

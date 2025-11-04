@@ -1,4 +1,3 @@
-# telegram_polling.py - АЛЬТЕРНАТИВА WEBHOOK
 #!/usr/bin/env python3
 """
 Telegram бот через Long Polling (без вебхука)
@@ -7,10 +6,12 @@ Telegram бот через Long Polling (без вебхука)
 import os
 import sys
 import time
+import json
 import logging
 import requests
 from datetime import datetime
 
+# Настройка путей
 PROJECT_PATH = '/opt/project'
 sys.path.insert(0, PROJECT_PATH)
 sys.path.insert(0, os.path.dirname(__file__))
@@ -31,7 +32,8 @@ class TelegramPollingBot:
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except:
+        except Exception as e:
+            logger.error(f"❌ Ошибка загрузки конфига: {e}")
             return {'enabled': False}
     
     def init_auto_service(self):
@@ -74,6 +76,7 @@ class TelegramPollingBot:
             logger.error(f"❌ Ошибка получения updates: {e}")
             return []
     
+    
     def process_message(self, message):
         """Обработка сообщения"""
         text = message.get('text', '').strip()
@@ -83,10 +86,11 @@ class TelegramPollingBot:
         
         if text == '/start':
             response = "🤖 <b>AI Prediction System активирован!</b>\n\n" \
-                      "Доступные команды:\n" \
-                      "/status - статус системы\n" \
-                      "/predictions - последние прогнозы\n" \
-                      "/help - помощь"
+                    "Доступные команды:\n" \
+                    "/status - статус системы\n" \
+                    "/predictions - последние прогнозы\n" \
+                    "/autoprognoz - включить/выключить авто-прогнозы\n" \
+                    "/help - помощь"
             self.send_message(chat_id, response)
             
         elif text == '/status':
@@ -95,16 +99,55 @@ class TelegramPollingBot:
         elif text == '/predictions':
             self.send_last_predictions(chat_id)
             
+        elif text == '/autoprognoz':
+            self.toggle_auto_predictions(chat_id)
+            
         elif text == '/help':
             response = "🆘 <b>Помощь по командам:</b>\n\n" \
-                      "/status - полный статус системы\n" \
-                      "/predictions - последние 4 прогноза\n" \
-                      "/help - эта справка"
+                    "/status - полный статус системы\n" \
+                    "/predictions - последние 4 прогноза\n" \
+                    "/autoprognoz - включить/выключить авто-прогнозы\n" \
+                    "/help - эта справка"
             self.send_message(chat_id, response)
             
         else:
             self.send_message(chat_id, "❌ Неизвестная команда. Используйте /help")
-    
+
+    def toggle_auto_predictions(self, chat_id):
+        """Включение/выключение авто-прогнозов"""
+        try:
+            # Загружаем текущий конфиг
+            config_path = os.path.join(os.path.dirname(__file__), 'telegram_config.json')
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            
+            # Переключаем настройку
+            current_state = config.get('notifications', {}).get('predictions', False)
+            new_state = not current_state
+            
+            # Обновляем конфиг
+            if 'notifications' not in config:
+                config['notifications'] = {}
+            config['notifications']['predictions'] = new_state
+            
+            # Сохраняем
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(config, f, ensure_ascii=False, indent=2)
+            
+            # Обновляем конфиг в боте
+            self.config = config
+            
+            status = "ВКЛЮЧЕНЫ" if new_state else "ВЫКЛЮЧЕНЫ"
+            message = f"🔔 Авто-прогнозы **{status}**\n\n"
+            message += "Теперь после каждого дообучения новые прогнозы будут автоматически отправляться в этот чат." if new_state else "Автоматическая отправка прогнозов отключена."
+            
+            self.send_message(chat_id, message)
+            logger.info(f"🔧 Авто-прогнозы {'включены' if new_state else 'выключены'} для чата {chat_id}")
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка переключения авто-прогнозов: {e}")
+            self.send_message(chat_id, f"❌ Ошибка: {e}")
+      
     def send_message(self, chat_id, text):
         """Отправка сообщения"""
         try:
@@ -128,21 +171,44 @@ class TelegramPollingBot:
         except Exception as e:
             logger.error(f"❌ Ошибка отправки сообщения: {e}")
             return False
-    
+
+
     def send_system_status(self, chat_id):
-        """Отправка статуса системы"""
+        """Отправка статуса системы с аналитикой самообучения"""
         try:
+            # 🔄 АКТУАЛЬНЫЕ ДАННЫЕ
+            web_running = self.is_web_running()
+            current_draw = self.get_current_draw()
+            auto_service_running = self.is_auto_service_running()  # ← НОВАЯ ПРОВЕРКА
+            
             if self.auto_service:
                 status_data = self.auto_service.get_service_status()
+                
+                # 🔄 ПЕРЕЗАГРУЖАЕМ ДАННЫЕ САМООБУЧЕНИЯ
+                try:
+                    from model.self_learning import SelfLearningSystem
+                    learning_system = SelfLearningSystem("/opt/project/data/learning_results.json")
+                    learning_stats = learning_system.get_performance_stats()
+                except Exception as e:
+                    logger.error(f"❌ Ошибка загрузки аналитики: {e}")
+                    learning_stats = status_data.get('learning_stats', {})
                 
                 message = "🤖 <b>СТАТУС СИСТЕМЫ</b>\n\n"
                 message += f"✅ Модель: {'Обучена' if status_data.get('model_trained') else 'Не обучена'}\n"
                 message += f"📊 Групп в датасете: {status_data.get('dataset_size', 0)}\n"
-                message += f"🌐 Веб-версия: {'Запущена' if status_data.get('web_running') else 'Не запущена'}\n"
-                message += f"🔧 Автосервис: {'Активен' if status_data.get('service_active') else 'Остановлен'}\n"
-                message += f"🕐 Последний тираж: {status_data.get('last_processed_draw', 'Нет')}\n"
+                message += f"🌐 Веб-версия: {'Запущена' if web_running else 'Не запущена'}\n"
+                message += f"🔧 Автосервис: {'Активен' if auto_service_running else 'Остановлен'}\n"  # ← ИСПРАВЛЕНО
+                message += f"🕐 Последний тираж: {current_draw}\n"
                 
-                # Добавляем прогнозы если есть
+                # ✅ АНАЛИТИКА САМООБУЧЕНИЯ
+                if learning_stats and 'message' not in learning_stats:
+                    message += "\n📈 <b>АНАЛИТИКА САМООБУЧЕНИЯ:</b>\n"
+                    message += f"🎯 Средняя точность: {learning_stats.get('recent_accuracy_avg', 0)*100:.1f}%\n"
+                    message += f"📊 Проанализировано прогнозов: {learning_stats.get('total_predictions_analyzed', 0)}\n"
+                    message += f"🏆 Лучшая точность: {learning_stats.get('best_accuracy', 0)*100:.1f}%\n"
+                    message += f"📉 Худшая точность: {learning_stats.get('worst_accuracy', 0)*100:.1f}%\n"
+                
+                # Прогнозы
                 predictions = status_data.get('last_predictions', [])
                 if predictions:
                     message += "\n🔮 <b>ПОСЛЕДНИЕ ПРОГНОЗЫ:</b>\n"
@@ -153,11 +219,48 @@ class TelegramPollingBot:
                 self.send_message(chat_id, message)
             else:
                 self.send_message(chat_id, "❌ Сервис временно недоступен")
-                
-        except Exception as e:
+                    
+        except Exception as e:  # ← ДОБАВИТЬ ЭТУ СТРОКУ
             logger.error(f"❌ Ошибка отправки статуса: {e}")
             self.send_message(chat_id, f"❌ Ошибка получения статуса: {e}")
-    
+
+    def is_auto_service_running(self):
+        """Проверка, запущен ли автосервис"""
+        try:
+            result = subprocess.run(['pgrep', '-f', 'auto_learning_service.py --schedule'], 
+                                capture_output=True, text=True)
+            return result.returncode == 0
+        except:
+            return False
+
+    def is_web_running(self):
+        """Проверка, запущена ли веб-версия"""
+        try:
+            # Проверяем порт 8501 - самый надежный способ
+            import socket
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(2)
+            result = sock.connect_ex(('127.0.0.1', 8501))
+            sock.close()
+            
+            is_running = (result == 0)
+            logger.info(f"🌐 Проверка веб-версии (порт 8501): {'Запущена' if is_running else 'Не запущена'}")
+            return is_running
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка проверки веб-версии: {e}")
+            return False
+
+    def get_current_draw(self):
+        """Получение актуального тиража из info.json"""
+        try:
+            info_path = '/opt/project/api_data/info.json'
+            with open(info_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            return data.get('current_draw', 'Нет данных')
+        except:
+            return 'Ошибка чтения'
+      
     def send_last_predictions(self, chat_id):
         """Отправка последних прогнозов"""
         try:

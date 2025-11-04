@@ -136,7 +136,7 @@ class TelegramNotifier:
         if stacktrace:
             message += f"\n<code>{stacktrace[:1000]}</code>"
         
-        self.send_message(message, retry_critical=True)
+        self.telegram.send_message(message, retry_critical=True)
     
     def send_service_stop(self, draw, reason):
         """Отправка уведомления об остановке сервиса"""
@@ -149,23 +149,54 @@ class TelegramNotifier:
         message += f"📝 Причина: {reason}\n"
         message += f"🔧 Требуется ручной перезапуск"
         
-        self.send_message(message, retry_critical=True)
+        self.telegram.send_message(message, retry_critical=True)
     
-    def send_predictions(self, predictions, draw):
-        """Отправка прогнозов после дообучения"""
+    def send_predictions(self, predictions, draw, actual_group=None, comparison_result=None):
+        """Отправка улучшенных прогнозов в Telegram как в веб-версии"""
         if not self.config.get('notifications', {}).get('predictions', False):
             return
         
-        message = f"🔮 <b>НОВЫЕ ПРОГНОЗЫ</b>\n"
-        message += f"📦 После тиража: {draw}\n"
-        message += f"🕐 Время: {datetime.now().strftime('%H:%M:%S')}\n\n"
-        
-        for i, (group, score) in enumerate(predictions[:4], 1):  # ✅ ТОЛЬКО 4 ПРОГНОЗА
-            confidence = "🟢" if score > 0.02 else "🟡" if score > 0.01 else "🔴"
-            message += f"{i}. {group[0]} {group[1]} {group[2]} {group[3]} ({score:.4f}) {confidence}\n"
-        
-        self.send_message(message)
-    
+        try:
+            message = f"🔮 <b>НОВЫЕ ПРОГНОЗЫ</b>\n\n"
+            message += f"📦 Тираж: {draw}\n"
+            message += f"📥 Добавлена группа: {actual_group}\n"
+            message += f"🕐 Время: {datetime.now().strftime('%H:%M:%S')}\n\n"
+            
+            # Детальная информация о совпадениях как в веб-версии
+            if comparison_result and comparison_result.get('matches_found', 0) > 0:
+                matches_count = comparison_result['matches_found']
+                matches_details = comparison_result.get('matches_details', [])
+                
+                message += f"🔍 <b>Найдено совпадений с {matches_count} предсказаниями:</b>\n\n"
+                
+                for i, match in enumerate(matches_details[:3], 1):  # Показываем до 3 лучших совпадений
+                    pred_group = match['predicted_group']
+                    matches_info = match['matches']
+                    total_matches = matches_info['total_matches']
+                    
+                    message += f"<b>{i}. Прогноз:</b> {pred_group[0]} {pred_group[1]} {pred_group[2]} {pred_group[3]}\n"
+                    message += f"   - Совпадения по парам: <b>{total_matches}/4</b>\n"
+                    
+                    if matches_info.get('exact_matches', 0) > 0:
+                        message += f"   - Точных совпадений: {matches_info['exact_matches']}\n"
+                    
+                    message += f"   - Уверенность прогноза: {match['score']:.4f}\n\n"
+            else:
+                message += "📝 <b>Совпадений с предыдущими прогнозами нет</b>\n\n"
+            
+            # Новые прогнозы
+            message += "<b>🎯 ОБНОВЛЕННЫЕ ПРОГНОЗЫ:</b>\n"
+            for i, (group, score) in enumerate(predictions[:4], 1):
+                confidence = "🟢 ВЫСОКАЯ" if score > 0.02 else "🟡 СРЕДНЯЯ" if score > 0.01 else "🔴 НИЗКАЯ"
+                message += f"<b>{i}.</b> {group[0]} {group[1]} {group[2]} {group[3]}\n"
+                message += f"   Уверенность: <code>{score:.4f}</code> {confidence}\n\n"
+            
+            self.telegram.send_message(message)
+            logger.info(f"📤 Детальные прогнозы отправлены в Telegram")
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка отправки детальных прогнозов: {e}")
+     
     def process_status_command(self, status_data):
         """Обработка команды /status"""
         if not self.config.get('notifications', {}).get('status_command', False):
@@ -190,7 +221,7 @@ class TelegramNotifier:
                         if message.get('text') == '/status':
                             # Отправляем статус
                             status_message = self.format_status_message(status_data)
-                            self.send_message(status_message)
+                            self.telegram.send_message(status_message)
                             # Помечаем как обработанное
                             self.acknowledge_update(update['update_id'])
         except Exception as e:
@@ -450,15 +481,22 @@ class AutoLearningService:
         
         info_path = os.path.join(os.path.dirname(__file__), 'info.json')
         return self.safe_file_operation(mark_operation, info_path, draw)
-    
+
     def is_web_running(self):
         """Проверка, запущена ли веб-версия"""
         try:
-            result = subprocess.run(['pgrep', '-f', 'streamlit'], capture_output=True, text=True)
-            return result.returncode == 0
+            # Проверяем разные варианты запуска streamlit
+            result1 = subprocess.run(['pgrep', '-f', 'streamlit'], capture_output=True, text=True)
+            result2 = subprocess.run(['pgrep', '-f', 'run_web.py'], capture_output=True, text=True)
+            result3 = subprocess.run(['pgrep', '-f', 'sequence-predictor-web'], capture_output=True, text=True)
+        
+            # Если любой из процессов найден - веб запущена
+            return (result1.returncode == 0 or 
+                result2.returncode == 0 or 
+                result3.returncode == 0)
         except:
-            return False
-    
+            return False    
+
     def call_api_with_retries(self):
         """Вызов API с повторными попытками и обработкой ошибок"""
         from get_group import get_data_with_curl
@@ -603,7 +641,7 @@ class AutoLearningService:
             comparison_result = self.compare_with_predictions(new_combination)
             
             # 🔧 Шаг 5: ВСЕГДА ТОЛЬКО ДООБУЧЕНИЕ (никогда полное обучение)
-            learning_result = self.add_data_and_retrain(new_combination, 3)
+            learning_result = self.add_data_and_retrain(new_combination, 5)
             
             # Шаг 6: Помечаем как обработанную
             self.mark_entry_processed(processing_draw)
@@ -625,12 +663,22 @@ class AutoLearningService:
             
             # Шаг 8: Отправляем прогнозы если включено
             if learning_result:
-                self.telegram.send_predictions(learning_result, processing_draw)
+                # Проверяем настройку авто-прогнозов
+                if self.config.get('notifications', {}).get('predictions', False):
+                    self.telegram.send_predictions(
+                        learning_result, 
+                        processing_draw,
+                        actual_group=new_combination,  # ← Добавляем группу
+                        comparison_result=comparison_result  # ← Добавляем совпадения
+                    )
+                    logger.info(f"📤 Улучшенные авто-прогнозы отправлены в Telegram")
+                else:
+                    logger.info(f"📝 Авто-прогнозы отключены в настройках")
             
             logger.info(f"✅ Обработка завершена! Новых прогнозов: {len(learning_result)}")
             
             return True
-            
+ 
         except Exception as e:
             logger.error(f"❌ Критическая ошибка обработки новой группы: {e}")
             
