@@ -847,11 +847,107 @@
         "exact_matches": 1
       },
       "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T23:36:37.593441",
+      "actual_group": "13 10 5 3",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-04T23:52:36.803487",
+      "actual_group": "6 16 1 11",
+      "best_prediction": [
+        3,
+        4,
+        11,
+        5
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 0,
+        "pair2_matches": 1,
+        "exact_matches": 0
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-05T00:12:38.761331",
+      "actual_group": "14 3 12 5",
+      "best_prediction": [
+        3,
+        4,
+        14,
+        16
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 0
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-05T00:32:38.937920",
+      "actual_group": "14 21 15 1",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-05T00:52:41.642102",
+      "actual_group": "6 11 24 20",
+      "best_prediction": [
+        11,
+        6,
+        22,
+        5
+      ],
+      "matches_count": 2,
+      "comparison_details": {
+        "total_matches": 2,
+        "pair1_matches": 2,
+        "pair2_matches": 0,
+        "exact_matches": 0
+      },
+      "accuracy_score": 0.5
+    },
+    {
+      "timestamp": "2025-11-05T01:12:28.455861",
+      "actual_group": "24 11 26 25",
+      "best_prediction": [
+        15,
+        11,
+        20,
+        18
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-05T01:32:15.775275",
+      "actual_group": "17 12 17 25",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
     }
   ],
   "model_performance": {},
   "learning_patterns": {},
-  "last_analysis": "2025-11-04T16:31:45.268194",
+  "last_analysis": "2025-11-05T01:32:15.775370",
   "error_patterns": [
     {
       "timestamp": "2025-11-03T21:43:38.465283",
@@ -1186,6 +1282,46 @@
         1,
         18,
         7
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-04T23:52:36.803487",
+      "missed_numbers": [
+        16,
+        1,
+        6
+      ],
+      "false_numbers": [
+        3,
+        4,
+        5
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-05T00:12:38.761331",
+      "missed_numbers": [
+        12,
+        5
+      ],
+      "false_numbers": [
+        16,
+        4
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-05T01:12:28.455861",
+      "missed_numbers": [
+        24,
+        25,
+        26
+      ],
+      "false_numbers": [
+        18,
+        20,
+        15
       ],
       "accuracy": 0.25
     }
