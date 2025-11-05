@@ -1,8 +1,8 @@
-# [file name]: api_data/auto_learning_service.py (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+# [file name]: api_data/auto_learning_service.py (ФИНАЛЬНАЯ ВЕРСИЯ)
 #!/usr/bin/env python3
 """
 Автономный сервис для автоматического получения данных и дообучения
-С УМНЫМ РАСПИСАНИЕМ И TELEGRAM УВЕДОМЛЕНИЯМИ - ИСПРАВЛЕННАЯ ВЕРСИЯ
+С УМНЫМ РАСПИСАНИЕМ И TELEGRAM УВЕДОМЛЕНИЯМИ - ФИНАЛЬНАЯ ВЕРСИЯ
 """
 
 import os
@@ -304,6 +304,7 @@ class AutoLearningService:
         self.max_consecutive_errors = 3
         self.telegram = TelegramNotifier()
         self.next_scheduled_run = None
+        self._first_run = True  # 🔧 НОВЫЙ ФЛАГ ДЛЯ ПРОВЕРКИ СИНХРОНИЗАЦИИ
         self.initialize_system()
         self.load_service_state()
     
@@ -355,7 +356,7 @@ class AutoLearningService:
             logger.error(f"❌ Ошибка сохранения состояния сервиса: {e}")
     
     def calculate_next_run_time(self):
-        """🎯 УЛУЧШЕННЫЙ РАСЧЕТ: следующее время запуска с учетом буфера и критических интервалов"""
+        """🎯 РАСЧЕТ СЛЕДУЮЩЕГО ВРЕМЕНИ ЗАПУСКА С БУФЕРОМ"""
         now = datetime.now()
         current_minute = now.minute
         
@@ -390,11 +391,10 @@ class AutoLearningService:
             return 0
             
         elif time_until_next <= 7:
-            # Используем буфер 7 минут
+            # 🔧 ИСПОЛЬЗУЕМ БУФЕР 7 МИНУТ
             buffer_time = 7
-            next_time = now + timedelta(minutes=buffer_time)
             logger.info(f"⏰ Ближайший слот через {time_until_next:.1f} мин - используем буфер {buffer_time} мин")
-            self.next_scheduled_run = next_time
+            self.next_scheduled_run = now + timedelta(minutes=buffer_time)
             return buffer_time
             
         else:
@@ -600,6 +600,74 @@ class AutoLearningService:
                     time.sleep(API_RETRY_DELAY)
         
         return None
+
+    def _check_draw_synchronization(self):
+        """🔧 ПРОВЕРКА СИНХРОНИЗАЦИИ ТИРАЖЕЙ ПЕРЕД ПЕРВЫМ ЗАПРОСОМ"""
+        try:
+            logger.info("🔍 Проверка синхронизации тиражей...")
+            
+            # Получаем информацию о предстоящих тиражах
+            url = "https://www.stoloto.ru/p/api/mobile/api/v35/service/games/details/time-to-draw"
+            response = requests.get(url, timeout=10)
+            
+            if response.status_code != 200:
+                logger.error(f"❌ Ошибка при запросе тиражей: {response.status_code}")
+                return False
+            
+            data = response.json()
+            
+            if data.get('requestStatus') != 'success':
+                logger.error(f"❌ API вернуло ошибку: {data.get('errors', 'unknown')}")
+                return False
+            
+            # Ищем игру "dvazhdydva" в списке тиражей
+            draws = data.get('draws', [])
+            dvazhdydva_draw = None
+            
+            for draw_info in draws:
+                if draw_info.get('game') == 'dvazhdydva':
+                    dvazhdydva_draw = draw_info.get('drawNumber')
+                    break
+            
+            if dvazhdydva_draw is None:
+                logger.error("❌ Не найдена игра 'dvazhdydva' в списке тиражей")
+                return False
+            
+            # Получаем текущий тираж из info.json
+            current_info = self.get_current_info()
+            current_draw = current_info.get('current_draw')
+            
+            if not current_draw:
+                logger.error("❌ Не удалось получить текущий тираж из info.json")
+                return False
+            
+            # 🔧 ИСПРАВЛЕННАЯ ЛОГИКА:
+            # - API показывает БУДУЩИЙ тираж (dvazhdydva_draw)
+            # - ПОСЛЕДНИЙ ПРОШЕДШИЙ тираж = dvazhdydva_draw - 1
+            # - Мы ожидаем запросить следующий после current_draw = current_draw + 1
+            api_draw = int(dvazhdydva_draw)
+            last_completed_draw = api_draw - 1  # Последний прошедший тираж
+            expected_next_draw = int(current_draw) + 1  # Что мы хотим запросить
+            
+            logger.info(f"📊 Текущий в info.json: {current_draw}")
+            logger.info(f"📊 Ожидаем запросить: {expected_next_draw}")
+            logger.info(f"📊 API будущий тираж: {api_draw}")
+            logger.info(f"📊 API последний прошедший: {last_completed_draw}")
+            
+            # 🔧 Сравниваем: что мы хотим запросить vs последний прошедший тираж
+            if expected_next_draw != last_completed_draw:
+                logger.error(f"🚨 РАСХОЖДЕНИЕ ТИРАЖЕЙ!")
+                logger.error(f"🚨 Ожидали запросить: {expected_next_draw}")
+                logger.error(f"🚨 Последний прошедший в API: {last_completed_draw}")
+                logger.error("🛑 Возможно пропущен тираж или ошибка в данных")
+                return False
+            
+            logger.info(f"✅ Синхронизация тиражей подтверждена: ожидаем {expected_next_draw}, последний прошедший {last_completed_draw}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка при проверке синхронизации тиражей: {e}")
+            return False
     
     def add_data_and_retrain(self, new_combination: str, retrain_epochs: int = 3):
         """🔧 ИСПРАВЛЕННЫЙ МЕТОД: Добавление данных и дообучение модели"""
@@ -629,7 +697,7 @@ class AutoLearningService:
             return []
     
     def process_new_group(self):
-        """🔧 ИСПРАВЛЕННЫЙ МЕТОД: Основной метод обработки новой группы"""
+        """🔧 ИСПРАВЛЕННЫЙ МЕТОД: Основной метод обработки новой группы с проверкой синхронизации"""
         if not self.service_active:
             logger.info("⏸️ Сервис остановлен из-за ошибок API. Требуется ручной перезапуск.")
             return False
@@ -637,6 +705,24 @@ class AutoLearningService:
         logger.info("🔄 Запуск обработки новой группы...")
         
         try:
+            # 🔧 ШАГ 0: ПРОВЕРКА СИНХРОНИЗАЦИИ ТИРАЖЕЙ ПРИ ПЕРВОМ ЗАПУСКЕ
+            if self._first_run:
+                logger.info("🔍 Первый запуск - проверяем синхронизацию тиражей...")
+                if not self._check_draw_synchronization():
+                    logger.error("🚨 Проверка синхронизации тиражей не пройдена. Сервис остановлен.")
+                    self.service_active = False
+                    self.save_service_state()
+                    
+                    current_info = self.get_current_info()
+                    current_draw = current_info.get('current_draw', 'unknown')
+                    self.telegram.send_service_stop(
+                        current_draw, 
+                        "Расхождение в номерах тиражей. Требуется ручная проверка."
+                    )
+                    return False
+                logger.info("✅ Проверка синхронизации пройдена успешно")
+                self._first_run = False
+            
             # Шаг 1: Получаем новую группу через API
             result = self.call_api_with_retries()
             
@@ -907,6 +993,7 @@ class AutoLearningService:
             logger.info("🔄 Ручной перезапуск сервиса...")
             self.service_active = True
             self.consecutive_api_errors = 0
+            self._first_run = True  # 🔧 СБРАСЫВАЕМ ФЛАГ ПРИ ПЕРЕЗАПУСКЕ
             self.save_service_state()
             
             # Telegram уведомление о перезапуске
@@ -934,9 +1021,9 @@ class AutoLearningService:
             logger.info(f"⏰ Следующий запрос через {next_interval:.1f} минут")
         
         return success
-    
+
     def start_scheduled_service(self):
-        """Запуск сервиса по расписанию"""
+        """Запуск сервиса по расписанию с учетом буфера и фиксированных слотов"""
         if not self.service_active:
             logger.error("🚨 Сервис остановлен из-за ошибок API. Запуск по расписанию отменен.")
             logger.info("💡 Используйте: python3 auto_learning_service.py --restart")
@@ -944,15 +1031,28 @@ class AutoLearningService:
         
         logger.info("⏰ Запуск сервиса по расписанию")
         
-        # Рассчитываем первый интервал
-        first_interval = self.calculate_next_run_time()
-        logger.info(f"⏰ Первый запрос через {first_interval:.1f} минут")
+        # 🔧 РАСЧЕТ ПЕРВОГО ИНТЕРВАЛА С БУФЕРОМ
+        next_interval = self.calculate_next_run_time()
         
-        # Настраиваем расписание
-        schedule.every(15).minutes.do(self.safe_scheduled_task)
+        if next_interval == 0:  # Сервис остановлен из-за критического интервала
+            return
         
-        # Запускаем сразу при старте
+        logger.info(f"⏰ Первый запрос через {next_interval:.1f} минут")
+        
+        # 🔧 НАСТРОЙКА АДАПТИВНОГО РАСПИСАНИЯ
+        schedule.clear()
+        
+        # 1. ПЕРВЫЙ ЗАПРОС - СРАЗУ
+        logger.info("🚀 Немедленный запуск первого запроса...")
         self.safe_scheduled_task()
+        
+        # 2. ВТОРОЙ ЗАПРОС - ЧЕРЕЗ РАСЧЕТНЫЙ ИНТЕРВАЛ (С БУФЕРОМ)
+        if next_interval > 0:
+            schedule.every(next_interval).minutes.do(self._setup_fixed_schedule_and_run)
+            logger.info(f"⏰ Второй запрос через {next_interval:.1f} минут")
+        else:
+            # Если расчетный интервал 0, сразу переходим к фиксированному расписанию
+            self._setup_fixed_schedule_and_run()
         
         logger.info("✅ Сервис запущен. Ожидание следующего запуска...")
         
@@ -963,12 +1063,25 @@ class AutoLearningService:
                 self.telegram.process_status_command(status_data)
                 
                 schedule.run_pending()
-                time.sleep(60)  # Проверяем каждую минуту
+                time.sleep(60)
                 
         except KeyboardInterrupt:
             logger.info("🛑 Сервис остановлен пользователем")
         except Exception as e:
             logger.error(f"❌ Критическая ошибка в основном цикле сервиса: {e}")
+
+    def _setup_fixed_schedule_and_run(self):
+        """Настройка фиксированного расписания и выполнение запроса"""
+        # 🔧 ВЫПОЛНЯЕМ ТЕКУЩИЙ ЗАПРОС
+        logger.info("🔔 Выполнение запроса по расписанию...")
+        self.safe_scheduled_task()
+        
+        # 🔧 ПЕРЕХОДИМ НА ФИКСИРОВАННОЕ РАСПИСАНИЕ
+        schedule.clear()
+        for minute in SCHEDULE_MINUTES:
+            schedule.every().hour.at(f":{minute:02d}").do(self.safe_scheduled_task)
+        
+        logger.info(f"✅ Переход на фиксированное расписание: {SCHEDULE_MINUTES}")
     
     def safe_scheduled_task(self):
         """Безопасное выполнение запланированной задачи"""
