@@ -550,17 +550,35 @@ class AutoLearningService:
         for attempt in range(MAX_API_RETRIES):
             try:
                 logger.info(f"📡 Попытка {attempt + 1}/{MAX_API_RETRIES}: запрос к API...")
+                
+                # 🔧 ДОБАВЛЕНО: Детальное логирование
+                logger.info("🔍 Запуск get_data_with_curl...")
                 result = get_data_with_curl()
                 
                 if result:
                     # Успешный запрос - сбрасываем счетчик ошибок
                     self.consecutive_api_errors = 0
                     self.save_service_state()
+                    logger.info(f"✅ API запрос успешен: получены данные для тиража")
                     return result
                 else:
                     # Ошибка API
                     self.consecutive_api_errors += 1
-                    logger.warning(f"⚠️ Ошибка API (попытка {attempt + 1}). Всего ошибок подряд: {self.consecutive_api_errors}")
+                    logger.error(f"❌ API вернуло None (попытка {attempt + 1}). Всего ошибок подряд: {self.consecutive_api_errors}")
+                    
+                    # 🔧 ДОБАВЛЕНО: Попробуем получить больше информации
+                    try:
+                        # Проверим доступность API вручную
+                        import requests
+                        test_url = "https://www.stoloto.ru/dvazhdydva/archive"
+                        logger.info(f"🔍 Проверка доступности {test_url}...")
+                        response = requests.get(test_url, timeout=10)
+                        if response.status_code == 200:
+                            logger.info("✅ Основной сайт доступен")
+                        else:
+                            logger.error(f"❌ Основной сайт недоступен: статус {response.status_code}")
+                    except Exception as e:
+                        logger.error(f"❌ Ошибка при проверке доступности сайта: {e}")
                     
                     if self.consecutive_api_errors >= self.max_consecutive_errors:
                         logger.error("🚨 Достигнут максимум ошибок API. Останавливаем сервис.")
@@ -577,9 +595,17 @@ class AutoLearningService:
                     if attempt < MAX_API_RETRIES - 1:
                         time.sleep(API_RETRY_DELAY)
                         
+            except ImportError as e:
+                logger.error(f"❌ Ошибка импорта модуля get_group: {e}")
+                self.service_active = False
+                self.save_service_state()
+                return None
+                
             except Exception as e:
                 self.consecutive_api_errors += 1
                 logger.error(f"❌ Исключение при вызове API (попытка {attempt + 1}): {e}")
+                import traceback
+                logger.error(f"🔍 Traceback: {traceback.format_exc()}")
                 
                 if self.consecutive_api_errors >= self.max_consecutive_errors:
                     logger.error("🚨 Достигнут максимум ошибок API. Останавливаем сервис.")
@@ -587,7 +613,6 @@ class AutoLearningService:
                     self.save_service_state()
                     
                     # Telegram уведомление
-                    import traceback
                     self.telegram.send_critical_error(
                         'unknown', 
                         f"Исключение API: {str(e)}", 
