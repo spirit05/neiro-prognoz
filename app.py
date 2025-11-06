@@ -101,7 +101,7 @@ def run_operation_sync(operation_type, **kwargs):
         elif operation_type == "add_data":
             sequence_input = kwargs.get('sequence_input', '')
             logger.info("🎯 Запуск добавления данных")
-            result = st.session_state.system.add_data_and_retrain(sequence_input, retrain_epochs=3)
+            result = st.session_state.system.add_data_and_retrain(sequence_input, retrain_epochs=5)
             logger.info(f"✅ Добавление данных завершено, получено {len(result) if result else 0} прогнозов")
             
         else:

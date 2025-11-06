@@ -1,0 +1,156 @@
+Исправление с однократным запуском через бота
+# БЕЗОПАСНЫЙ ВАРИАНТ:
+/stop_service    # ✅ Убеждаемся, что сервис остановлен  
+/run_once        # ✅ Тестовый запрос (без расписания)
+# Если ок → /restart_service
+# Если не ок → повтор правок и /run_once
+
+## 🎯 **ИСПРАВЛЕННЫЕ КОМАНДЫ ДЛЯ УПРАВЛЕНИЯ:**
+
+### **🌐 ВЕБ-ВЕРСИЯ:**
+```bash
+# Запуск
+sudo systemctl start sequence-predictor-web
+
+# Остановка  
+sudo systemctl stop sequence-predictor-web
+
+# Перезапуск
+sudo systemctl restart sequence-predictor-web
+
+# Статус
+sudo systemctl status sequence-predictor-web
+
+# Логи
+sudo journalctl -u sequence-predictor-web -f
+```
+
+### **🤖 TELEGRAM БОТ:**
+```bash
+# Запуск
+sudo systemctl start telegram-bot
+
+# Остановка
+sudo systemctl stop telegram-bot
+
+# Перезапуск
+sudo systemctl restart telegram-bot
+
+# Статус
+sudo systemctl status telegram-bot
+
+# Логи
+sudo journalctl -u telegram-bot -f
+```
+
+### **🔧 АВТОСЕРВИС:**
+```bash
+# Запуск (демон)
+cd /opt/project/api_data
+nohup /opt/project/env/bin/python /opt/project/api_data/auto_learning_service.py --schedule > auto_schedule.log 2>&1 &
+
+# Запуск (однократно)
+cd /opt/project/api_data
+nohup /opt/project/env/bin/python /opt/project/api_data/auto_learning_service.py --once
+
+# Перезапуск
+cd /opt/project/api_data
+/opt/project/env/bin/python auto_learning_service.py --restart
+
+# Остановка
+pkill -f "auto_learning_service.py --schedule"
+
+# Проверка процессов
+ps aux | grep "auto_learning_service.py"
+
+# Логи автосервиса
+tail -f /opt/project/api_data/auto_schedule.log
+tail -f /opt/project/api_data/auto_learning.log
+```
+
+### **📊 ПРОВЕРКА СТАТУСА ВСЕЙ СИСТЕМЫ:**
+```bash
+# Проверить все компоненты
+sudo systemctl status sequence-predictor-web telegram-bot
+ps aux | grep -E "(run_web.py|telegram_polling.py|auto_learning_service.py)" | grep -v grep
+
+# Проверить порты
+netstat -tlnp | grep -E "(8501|5000)"
+
+# Общий статус
+cd /opt/project/api_data
+python3 check_service.py
+```
+
+### **🔄 ПЕРЕЗАПУСК ВСЕЙ СИСТЕМЫ:**
+```bash
+# Остановить все
+sudo systemctl stop sequence-predictor-web
+sudo systemctl stop telegram-bot
+pkill -f "auto_learning_service.py"
+
+# Запустить все
+sudo systemctl start sequence-predictor-web
+sudo systemctl start telegram-bot
+nohup /opt/project/env/bin/python /opt/project/api_data/auto_learning_service.py --schedule > auto_schedule.log 2>&1 &
+
+# Проверить
+sleep 10
+sudo systemctl status sequence-predictor-web telegram-bot
+ps aux | grep -E "(run_web.py|telegram_polling.py|auto_learning_service.py)" | grep -v grep
+```
+
+# Cкачать архив для обработки тиражей
+https://www.stoloto.ru/p/api/mobile/api/v35/service/draws/dvazhdydva/download?period=WEEK&with_superprize=false
+
+промт для обработки архива
+Отличный промпт для обработки подобных списков:
+
+## Промпт для обработки списков результатов
+
+```
+Обработай предоставленный список данных и создай 2 структуры:
+
+**Исходные данные в формате:**
+[ID] [Дата] [Время] [Число1,Число2,Число3,Число4]
+
+**Требуемый результат:**
+
+1. **Список объектов JSON** с полями:
+   - `draw` - первые 6 цифр (ID)
+   - `combination` - последние 4 числа, разделенные пробелами (вместо запятых)
+   - `timestamp` - фиксированная дата в формате "2025-11-04T15:00:51.310365"
+   - `processed` - всегда true
+   - `service_type` - всегда "api_request"
+   - `processing_time` - фиксированная дата в формате "2025-11-04T15:03:35.427250"
+
+Формат каждого объекта:
+```json
+{
+  "draw": "308961",
+  "combination": "4 16 10 23",
+  "timestamp": "2025-11-04T15:00:51.310365",
+  "processed": true,
+  "service_type": "api_request",
+  "processing_time": "2025-11-04T15:03:35.427250"
+}
+```
+
+2. **Отдельный список комбинаций** в формате:
+   - Каждая комбинация в двойных кавычках
+   - Числа разделены пробелами
+   - Каждая строка начинается с 2 пробелов
+   - В конце каждой строки запятая
+   - Весь список в обратном порядке (от последней строки исходных данных к первой)
+
+Формат:
+```json
+  "17 13 13 1",
+  "19 2 1 23",
+  "7 12 19 22",
+```
+
+**Обработка:**
+- Разверни оба списка в обратном порядке
+- Замени запятые в комбинациях на пробелы
+- Сохрани форматирование как в примерах

@@ -1,13 +1,13 @@
-# [file name]: tests/conftest.py (ИСПРАВЛЕННЫЙ)
+# tests/conftest.py (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 #!/usr/bin/env python3
 """
-Конфигурация тестовой среды - исправленные импорты
+Конфигурация тестовой среды - ИСПРАВЛЕННЫЕ МОКИ
 """
 
 import os
 import sys
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 import pytest
 
 # Добавляем пути для импорта
@@ -22,8 +22,13 @@ TEST_DATA_DIR = os.path.join(TEST_BASE_DIR, 'test_data')
 TEST_CONFIG_DIR = os.path.join(TEST_BASE_DIR, 'test_config') 
 TEST_LOGS_DIR = os.path.join(TEST_BASE_DIR, 'test_logs')
 
-# Мокаем schedule до импорта auto_learning_service
-sys.modules['schedule'] = MagicMock()
+# СОЗДАЕМ ПОЛНОЦЕННЫЙ МОК ДЛЯ SCHEDULE
+schedule_mock = MagicMock()
+every_mock = MagicMock()
+do_mock = MagicMock()
+every_mock.minutes.do.return_value = do_mock
+schedule_mock.every.return_value = every_mock
+sys.modules['schedule'] = schedule_mock
 
 @pytest.fixture(scope='session', autouse=True)
 def setup_test_environment():
@@ -120,15 +125,12 @@ def mock_all_paths():
         patch('model.data_loader.DATASET_PATH', os.path.join(TEST_DATA_DIR, 'dataset.json')),
         patch('model.data_loader.STATE_PATH', os.path.join(TEST_DATA_DIR, 'predictions_state.json')),
         
-        patch('api_data.auto_learning_service.PROJECT_PATH', PROJECT_PATH),
-        patch('api_data.auto_learning_service.TELEGRAM_CONFIG_FILE', os.path.join(TEST_CONFIG_DIR, 'telegram_config.json')),
-        patch('api_data.auto_learning_service.SERVICE_STATE_FILE', os.path.join(TEST_DATA_DIR, 'service_state.json')),
+        patch('auto_learning_service.PROJECT_PATH', PROJECT_PATH),
+        patch('auto_learning_service.TELEGRAM_CONFIG_FILE', os.path.join(TEST_CONFIG_DIR, 'telegram_config.json')),
+        patch('auto_learning_service.SERVICE_STATE_FILE', os.path.join(TEST_DATA_DIR, 'service_state.json')),
         
-        patch('api_data.get_group.DATA_DIR', TEST_DATA_DIR),
-        patch('api_data.get_group.STATE_PATH', os.path.join(TEST_DATA_DIR, 'info.json')),
-        
-        # Патчим пути в SimpleSystem
-        patch('model.simple_system.SimpleNeuralSystem.__init__', lambda self: None),
+        patch('get_group.DATA_DIR', TEST_DATA_DIR),
+        patch('get_group.STATE_PATH', os.path.join(TEST_DATA_DIR, 'info.json')),
     ]
     
     for p in patches:
@@ -142,7 +144,7 @@ def mock_all_paths():
 @pytest.fixture
 def mock_simple_system():
     """Мокаем SimpleSystem чтобы избежать реальной инициализации"""
-    with patch('api_data.auto_learning_service.SimpleNeuralSystem') as mock:
+    with patch('auto_learning_service.SimpleNeuralSystem') as mock:
         mock_instance = MagicMock()
         mock_instance.is_trained = True
         mock_instance.get_status.return_value = {

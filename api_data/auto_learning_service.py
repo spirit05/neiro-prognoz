@@ -1,8 +1,8 @@
-# api_data/auto_learning_service.py
+# [file name]: api_data/auto_learning_service.py (ФИНАЛЬНАЯ ВЕРСИЯ)
 #!/usr/bin/env python3
 """
 Автономный сервис для автоматического получения данных и дообучения
-С УМНЫМ РАСПИСАНИЕМ И TELEGRAM УВЕДОМЛЕНИЯМИ
+С УМНЫМ РАСПИСАНИЕМ И TELEGRAM УВЕДОМЛЕНИЯМИ - ФИНАЛЬНАЯ ВЕРСИЯ
 """
 
 import os
@@ -39,6 +39,9 @@ API_RETRY_DELAY = 30
 SERVICE_STATE_FILE = os.path.join(os.path.dirname(__file__), 'service_state.json')
 TELEGRAM_CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'telegram_config.json')
 
+# ФИКСИРОВАННОЕ РАСПИСАНИЕ - запросы в :14, :29, :44, :59 каждого часа
+SCHEDULE_MINUTES = [14, 29, 44, 59]
+
 class FileLock:
     """Класс для блокировки файлов"""
     def __init__(self, filename):
@@ -65,10 +68,12 @@ class FileLock:
                 pass
 
 class TelegramNotifier:
-    """Класс для работы с Telegram"""
+    """Класс для работы с Telegram с управлением сервисом"""
     
-    def __init__(self):
+    def __init__(self, auto_learning_service=None):
         self.config = self.load_config()
+        self.service = auto_learning_service  # 🔧 Ссылка на основной сервис
+        self.last_update_id = 0  # 🔧 Для обработки команд
     
     def load_config(self):
         """Загрузка конфигурации Telegram"""
@@ -121,6 +126,160 @@ class TelegramNotifier:
         except Exception as e:
             logger.error(f"❌ Критическая ошибка Telegram: {e}")
             return False
+
+    def process_commands(self):
+        """🔧 ОБРАБОТКА КОМАНД УПРАВЛЕНИЯ СЕРВИСОМ"""
+        if not self.config.get('enabled', False):
+            return
+        
+        try:
+            bot_token = self.config.get('bot_token')
+            chat_id = self.config.get('chat_id')
+            
+            if not bot_token or not chat_id:
+                return
+            
+            url = f"https://api.telegram.org/bot{bot_token}/getUpdates"
+            params = {'offset': self.last_update_id + 1, 'timeout': 5}
+            
+            response = requests.get(url, params=params, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('ok'):
+                    for update in data.get('result', []):
+                        self.last_update_id = update['update_id']
+                        message = update.get('message', {})
+                        text = message.get('text', '').strip()
+                        
+                        # 🔧 ОБРАБОТКА КОМАНД
+                        if text.startswith('/'):
+                            self.handle_command(text, message.get('chat', {}).get('id'))
+                            
+        except Exception as e:
+            logger.warning(f"⚠️ Ошибка проверки команд Telegram: {e}")
+
+    def handle_command(self, command, chat_id):
+        """🔧 ОБРАБОТКА КОНКРЕТНЫХ КОМАНД"""
+        if not self.service:
+            return
+        
+        command = command.lower()
+        
+        if command == '/start':
+            message = "🤖 <b>АВТОСЕРВИС УПРАВЛЕНИЯ</b>\n\n"
+            message += "Доступные команды:\n"
+            message += "▶️  /start - показать это сообщение\n"
+            message += "📊 /status - статус сервиса\n"
+            message += "▶️  /start_service - запустить сервис\n"
+            message += "⏸️  /stop_service - остановить сервис\n"
+            message += "🔁 /restart_service - перезапустить сервис\n"
+            message += "🚀 /run_once - выполнить один запрос\n"
+            message += "🛑 /shutdown - полная остановка\n"
+            self.send_message(message)
+            
+        elif command == '/status':
+            status_data = self.service.get_service_status()
+            message = self.format_status_message(status_data)
+            self.send_message(message)
+            
+        elif command == '/start_service':
+            if self.service.service_active:
+                self.send_message("✅ <b>Сервис уже запущен</b>")
+            else:
+                self.service.service_active = True
+                self.service.consecutive_api_errors = 0
+                self.service._first_run = True
+                self.service.save_service_state()
+                self.send_message("✅ <b>СЕРВИС ЗАПУЩЕН</b>\nАвтосервис активирован")
+                logger.info("✅ Сервис запущен через Telegram команду")
+                
+        elif command == '/stop_service':
+            if not self.service.service_active:
+                self.send_message("⏸️ <b>Сервис уже остановлен</b>")
+            else:
+                self.service.service_active = False
+                self.service.save_service_state()
+                self.send_message("⏸️ <b>СЕРВИС ОСТАНОВЛЕН</b>\nАвтосервис приостановлен")
+                logger.info("✅ Сервис остановлен через Telegram команду")
+                
+        elif command == '/restart_service':
+            if self.service.manual_restart():
+                self.send_message("🔁 <b>СЕРВИС ПЕРЕЗАПУЩЕН</b>\nВсе ошибки сброшены")
+            else:
+                self.send_message("✅ <b>Сервис уже активен</b>")
+                
+        elif command == '/run_once':
+            if not self.service.service_active:
+                self.send_message("❌ <b>Сервис остановлен</b>\nИспользуйте /start_service для запуска")
+            else:
+                self.send_message("🚀 <b>ВЫПОЛНЯЮ ОДИН ЗАПРОС</b>")
+                success = self.service.run_once()
+                if success:
+                    self.send_message("✅ <b>Запрос выполнен успешно</b>")
+                else:
+                    self.send_message("❌ <b>Ошибка при выполнении запроса</b>")
+                    
+        elif command == '/shutdown':
+            self.service.service_active = False
+            self.service.save_service_state()
+            self.send_message("🛑 <b>ПОЛНАЯ ОСТАНОВКА СЕРВИСА</b>\nТребуется ручной запуск")
+            logger.info("✅ Сервис полностью остановлен через Telegram команду")
+            
+        else:
+            self.send_message("❌ <b>Неизвестная команда</b>\nИспользуйте /start для списка команд")
+
+    # 🔧 ОБНОВЛЯЕМ СУЩЕСТВУЮЩИЕ МЕТОДЫ
+    def process_status_command(self, status_data):
+        """Обработка команды /status (для обратной совместимости)"""
+        self.process_commands()  # 🔧 Теперь используем общий метод
+
+    def send_predictions(self, predictions, draw, actual_group=None, comparison_result=None):
+        """Отправка улучшенных прогнозов в Telegram как в веб-версии"""
+        if not self.config.get('notifications', {}).get('predictions', False):
+            return
+        
+        try:
+            message = f"🔮 <b>НОВЫЕ ПРОГНОЗЫ</b>\n\n"
+            message += f"📦 Тираж: {draw}\n"
+            if actual_group:
+                message += f"📥 Добавлена группа: {actual_group}\n"
+            message += f"🕐 Время: {datetime.now().strftime('%H:%M:%S')}\n\n"
+            
+            # Детальная информация о совпадениях как в веб-версии
+            if comparison_result and comparison_result.get('matches_found', 0) > 0:
+                matches_count = comparison_result['matches_found']
+                matches_details = comparison_result.get('matches_details', [])
+                
+                message += f"🔍 <b>Найдено совпадений с {matches_count} предсказаниями:</b>\n\n"
+                
+                for i, match in enumerate(matches_details[:3], 1):
+                    pred_group = match['predicted_group']
+                    matches_info = match['matches']
+                    total_matches = matches_info['total_matches']
+                    
+                    message += f"<b>{i}. Прогноз:</b> {pred_group[0]} {pred_group[1]} {pred_group[2]} {pred_group[3]}\n"
+                    message += f"   - Совпадения по парам: <b>{total_matches}/4</b>\n"
+                    
+                    if matches_info.get('exact_matches', 0) > 0:
+                        message += f"   - Точных совпадений: {matches_info['exact_matches']}\n"
+                    
+                    message += f"   - Уверенность прогноза: {match['score']:.4f}\n\n"
+            else:
+                message += "📝 <b>Совпадений с предыдущими прогнозами нет</b>\n\n"
+            
+            # Новые прогнозы
+            message += "<b>🎯 ОБНОВЛЕННЫЕ ПРОГНОЗЫ:</b>\n"
+            for i, (group, score) in enumerate(predictions[:4], 1):
+                confidence = "🟢 ВЫСОКАЯ" if score > 0.02 else "🟡 СРЕДНЯЯ" if score > 0.01 else "🔴 НИЗКАЯ"
+                message += f"<b>{i}.</b> {group[0]} {group[1]} {group[2]} {group[3]}\n"
+                message += f"   Уверенность: <code>{score:.4f}</code> {confidence}\n\n"
+            
+            self.send_message(message)
+            logger.info(f"📤 Детальные прогнозы отправлены в Telegram")
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка отправки детальных прогнозов: {e}")
     
     def send_critical_error(self, draw, error_message, stacktrace=None):
         """Отправка критической ошибки"""
@@ -149,21 +308,6 @@ class TelegramNotifier:
         message += f"🔧 Требуется ручной перезапуск"
         
         self.send_message(message, retry_critical=True)
-    
-    def send_predictions(self, predictions, draw):
-        """Отправка прогнозов после дообучения"""
-        if not self.config.get('notifications', {}).get('predictions', False):
-            return
-        
-        message = f"🔮 <b>НОВЫЕ ПРОГНОЗЫ</b>\n"
-        message += f"📦 После тиража: {draw}\n"
-        message += f"🕐 Время: {datetime.now().strftime('%H:%M:%S')}\n\n"
-        
-        for i, (group, score) in enumerate(predictions[:4], 1):
-            confidence = "🟢" if score > 0.02 else "🟡" if score > 0.01 else "🔴"
-            message += f"{i}. {group[0]} {group[1]} {group[2]} {group[3]} ({score:.4f}) {confidence}\n"
-        
-        self.send_message(message)
     
     def process_status_command(self, status_data):
         """Обработка команды /status"""
@@ -267,8 +411,9 @@ class AutoLearningService:
         self.service_active = True
         self.consecutive_api_errors = 0
         self.max_consecutive_errors = 3
-        self.telegram = TelegramNotifier()
+        self.telegram = TelegramNotifier(self)  # 🔧 Передаем ссылку на сервис
         self.next_scheduled_run = None
+        self._first_run = True
         self.initialize_system()
         self.load_service_state()
     
@@ -320,35 +465,77 @@ class AutoLearningService:
             logger.error(f"❌ Ошибка сохранения состояния сервиса: {e}")
     
     def calculate_next_run_time(self):
-        """Расчет времени следующего запуска с учетом временных слотов"""
+        """🎯 РАСЧЕТ СЛЕДУЮЩЕГО ВРЕМЕНИ ЗАПУСКА С БУФЕРОМ"""
         now = datetime.now()
         current_minute = now.minute
         
-        # Временные слоты API
-        api_slots = [14, 29, 44, 59]
-        
-        # Находим следующий слот
-        next_slot = None
-        for slot in api_slots:
-            if current_minute < slot:
-                next_slot = slot
+        # Находим следующий временной слот
+        next_minute = None
+        for minute in SCHEDULE_MINUTES:
+            if current_minute < minute:
+                next_minute = minute
                 break
         
         # Если все слоты прошли в этом часе, берем первый слот следующего часа
-        if next_slot is None:
-            next_time = now.replace(hour=now.hour+1, minute=api_slots[0], second=0, microsecond=0)
+        if next_minute is None:
+            next_time = now.replace(hour=now.hour+1, minute=SCHEDULE_MINUTES[0], second=0, microsecond=0)
+            time_until_next = (next_time - now).total_seconds() / 60
         else:
-            next_time = now.replace(minute=next_slot, second=0, microsecond=0)
+            next_time = now.replace(minute=next_minute, second=0, microsecond=0)
+            time_until_next = (next_time - now).total_seconds() / 60
         
-        # Расчет интервала до следующего слота
-        time_until_next = (next_time - now).total_seconds() / 60  # в минутах
+        # 🔧 ПРИМЕНЯЕМ ЛОГИКУ БУФЕРА И КРИТИЧЕСКИХ ИНТЕРВАЛОВ
+        if time_until_next <= 2:
+            # КРИТИЧЕСКАЯ ОШИБКА - слишком близко к временному слоту
+            logger.error(f"🚨 Критический интервал: {time_until_next:.1f} минут до слота {next_minute}")
+            logger.error("🛑 Останавливаем сервис - требуется ручная корректировка времени запуска")
+            self.service_active = False
+            self.save_service_state()
+            
+            # Отправляем уведомление в Telegram
+            self.telegram.send_critical_error(
+                self.last_processed_draw or 'unknown',
+                f"Критический интервал: {time_until_next:.1f} минут. Не попали во временной слот."
+            )
+            return 0
+            
+        elif time_until_next <= 7:
+            # 🔧 ИСПОЛЬЗУЕМ БУФЕР 7 МИНУТ
+            buffer_time = 7
+            logger.info(f"⏰ Ближайший слот через {time_until_next:.1f} мин - используем буфер {buffer_time} мин")
+            self.next_scheduled_run = now + timedelta(minutes=buffer_time)
+            return buffer_time
+            
+        else:
+            # Нормальный интервал - используем расчетное время
+            logger.info(f"⏰ Следующий запрос в {next_time.strftime('%H:%M')} (через {time_until_next:.1f} минут)")
+            self.next_scheduled_run = next_time
+            return time_until_next
+
+    def setup_fixed_schedule(self):
+        """🎯 НАСТРОЙКА АДАПТИВНОГО РАСПИСАНИЯ С БУФЕРОМ"""
+        # Очищаем существующее расписание
+        schedule.clear()
         
-        # Корректировка коротких интервалов
-        if time_until_next < 4:
-            time_until_next += 5  # добавляем 5 минут буфера
+        # 🔧 ПЕРВЫЙ ЗАПУСК - НЕМЕДЛЕННО
+        logger.info("🚀 Немедленный запуск первого запроса...")
+        self.safe_scheduled_task()
         
-        self.next_scheduled_run = now + timedelta(minutes=time_until_next)
-        return time_until_next
+        # 🔧 РАСЧЕТ СЛЕДУЮЩЕГО ЗАПУСКА С УЧЕТОМ БУФЕРА
+        next_interval = self.calculate_next_run_time()
+        
+        if next_interval > 0 and self.service_active:
+            # Планируем следующий запуск через расчетный интервал
+            schedule.every(next_interval).minutes.do(self.safe_scheduled_task)
+            logger.info(f"⏰ Следующий запрос через {next_interval:.1f} минут")
+            
+            # После корректировки переходим на стандартное расписание
+            for minute in SCHEDULE_MINUTES:
+                schedule.every().hour.at(f":{minute:02d}").do(self.safe_scheduled_task)
+            
+            logger.info(f"✅ Адаптивное расписание настроено. Слоты: {SCHEDULE_MINUTES}")
+        else:
+            logger.error("❌ Не удалось настроить расписание - сервис остановлен")
     
     def safe_file_operation(self, operation, filename, *args, **kwargs):
         """Безопасная операция с файлом с блокировкой"""
@@ -449,15 +636,22 @@ class AutoLearningService:
         
         info_path = os.path.join(os.path.dirname(__file__), 'info.json')
         return self.safe_file_operation(mark_operation, info_path, draw)
-    
+
     def is_web_running(self):
         """Проверка, запущена ли веб-версия"""
         try:
-            result = subprocess.run(['pgrep', '-f', 'streamlit'], capture_output=True, text=True)
-            return result.returncode == 0
+            # Проверяем разные варианты запуска streamlit
+            result1 = subprocess.run(['pgrep', '-f', 'streamlit'], capture_output=True, text=True)
+            result2 = subprocess.run(['pgrep', '-f', 'run_web.py'], capture_output=True, text=True)
+            result3 = subprocess.run(['pgrep', '-f', 'sequence-predictor-web'], capture_output=True, text=True)
+        
+            # Если любой из процессов найден - веб запущена
+            return (result1.returncode == 0 or 
+                result2.returncode == 0 or 
+                result3.returncode == 0)
         except:
-            return False
-    
+            return False    
+
     def call_api_with_retries(self):
         """Вызов API с повторными попытками и обработкой ошибок"""
         from get_group import get_data_with_curl
@@ -465,17 +659,35 @@ class AutoLearningService:
         for attempt in range(MAX_API_RETRIES):
             try:
                 logger.info(f"📡 Попытка {attempt + 1}/{MAX_API_RETRIES}: запрос к API...")
+                
+                # 🔧 ДОБАВЛЕНО: Детальное логирование
+                logger.info("🔍 Запуск get_data_with_curl...")
                 result = get_data_with_curl()
                 
                 if result:
                     # Успешный запрос - сбрасываем счетчик ошибок
                     self.consecutive_api_errors = 0
                     self.save_service_state()
+                    logger.info(f"✅ API запрос успешен: получены данные для тиража")
                     return result
                 else:
                     # Ошибка API
                     self.consecutive_api_errors += 1
-                    logger.warning(f"⚠️ Ошибка API (попытка {attempt + 1}). Всего ошибок подряд: {self.consecutive_api_errors}")
+                    logger.error(f"❌ API вернуло None (попытка {attempt + 1}). Всего ошибок подряд: {self.consecutive_api_errors}")
+                    
+                    # 🔧 ДОБАВЛЕНО: Попробуем получить больше информации
+                    try:
+                        # Проверим доступность API вручную
+                        import requests
+                        test_url = "https://www.stoloto.ru/dvazhdydva/archive"
+                        logger.info(f"🔍 Проверка доступности {test_url}...")
+                        response = requests.get(test_url, timeout=10)
+                        if response.status_code == 200:
+                            logger.info("✅ Основной сайт доступен")
+                        else:
+                            logger.error(f"❌ Основной сайт недоступен: статус {response.status_code}")
+                    except Exception as e:
+                        logger.error(f"❌ Ошибка при проверке доступности сайта: {e}")
                     
                     if self.consecutive_api_errors >= self.max_consecutive_errors:
                         logger.error("🚨 Достигнут максимум ошибок API. Останавливаем сервис.")
@@ -492,9 +704,17 @@ class AutoLearningService:
                     if attempt < MAX_API_RETRIES - 1:
                         time.sleep(API_RETRY_DELAY)
                         
+            except ImportError as e:
+                logger.error(f"❌ Ошибка импорта модуля get_group: {e}")
+                self.service_active = False
+                self.save_service_state()
+                return None
+                
             except Exception as e:
                 self.consecutive_api_errors += 1
                 logger.error(f"❌ Исключение при вызове API (попытка {attempt + 1}): {e}")
+                import traceback
+                logger.error(f"🔍 Traceback: {traceback.format_exc()}")
                 
                 if self.consecutive_api_errors >= self.max_consecutive_errors:
                     logger.error("🚨 Достигнут максимум ошибок API. Останавливаем сервис.")
@@ -502,7 +722,6 @@ class AutoLearningService:
                     self.save_service_state()
                     
                     # Telegram уведомление
-                    import traceback
                     self.telegram.send_critical_error(
                         'unknown', 
                         f"Исключение API: {str(e)}", 
@@ -515,9 +734,104 @@ class AutoLearningService:
                     time.sleep(API_RETRY_DELAY)
         
         return None
+
+    def _check_draw_synchronization(self):
+        """🔧 ПРОВЕРКА СИНХРОНИЗАЦИИ ТИРАЖЕЙ ПЕРЕД ПЕРВЫМ ЗАПРОСОМ"""
+        try:
+            logger.info("🔍 Проверка синхронизации тиражей...")
+            
+            # Получаем информацию о предстоящих тиражах
+            url = "https://www.stoloto.ru/p/api/mobile/api/v35/service/games/details/time-to-draw"
+            response = requests.get(url, timeout=10)
+            
+            if response.status_code != 200:
+                logger.error(f"❌ Ошибка при запросе тиражей: {response.status_code}")
+                return False
+            
+            data = response.json()
+            
+            if data.get('requestStatus') != 'success':
+                logger.error(f"❌ API вернуло ошибку: {data.get('errors', 'unknown')}")
+                return False
+            
+            # Ищем игру "dvazhdydva" в списке тиражей
+            draws = data.get('draws', [])
+            dvazhdydva_draw = None
+            
+            for draw_info in draws:
+                if draw_info.get('game') == 'dvazhdydva':
+                    dvazhdydva_draw = draw_info.get('drawNumber')
+                    break
+            
+            if dvazhdydva_draw is None:
+                logger.error("❌ Не найдена игра 'dvazhdydva' в списке тиражей")
+                return False
+            
+            # Получаем текущий тираж из info.json
+            current_info = self.get_current_info()
+            current_draw = current_info.get('current_draw')
+            
+            if not current_draw:
+                logger.error("❌ Не удалось получить текущий тираж из info.json")
+                return False
+            
+            # 🔧 ИСПРАВЛЕННАЯ ЛОГИКА:
+            # - API показывает БУДУЩИЙ тираж (dvazhdydva_draw)
+            # - ПОСЛЕДНИЙ ПРОШЕДШИЙ тираж = dvazhdydva_draw - 1
+            # - Мы ожидаем запросить следующий после current_draw = current_draw + 1
+            api_draw = int(dvazhdydva_draw)
+            last_completed_draw = api_draw - 1  # Последний прошедший тираж
+            expected_next_draw = int(current_draw) + 1  # Что мы хотим запросить
+            
+            logger.info(f"📊 Текущий в info.json: {current_draw}")
+            logger.info(f"📊 Ожидаем запросить: {expected_next_draw}")
+            logger.info(f"📊 API будущий тираж: {api_draw}")
+            logger.info(f"📊 API последний прошедший: {last_completed_draw}")
+            
+            # 🔧 Сравниваем: что мы хотим запросить vs последний прошедший тираж
+            if expected_next_draw != last_completed_draw:
+                logger.error(f"🚨 РАСХОЖДЕНИЕ ТИРАЖЕЙ!")
+                logger.error(f"🚨 Ожидали запросить: {expected_next_draw}")
+                logger.error(f"🚨 Последний прошедший в API: {last_completed_draw}")
+                logger.error("🛑 Возможно пропущен тираж или ошибка в данных")
+                return False
+            
+            logger.info(f"✅ Синхронизация тиражей подтверждена: ожидаем {expected_next_draw}, последний прошедший {last_completed_draw}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка при проверке синхронизации тиражей: {e}")
+            return False
+    
+    def add_data_and_retrain(self, new_combination: str, retrain_epochs: int = 3):
+        """🔧 ИСПРАВЛЕННЫЙ МЕТОД: Добавление данных и дообучение модели"""
+        try:
+            logger.info("🧠 Добавление данных и дообучение модели...")
+            
+            # 🔧 ПЕРЕЗАГРУЗКА МОДЕЛИ ПЕРЕД КАЖДОЙ ОБРАБОТКОЙ
+            if not self.system.load():
+                logger.error("❌ Не удалось загрузить модель для дообучения")
+                return []
+            
+            # 🔧 ВСЕГДА ТОЛЬКО ДООБУЧЕНИЕ (5 эпох для лучшей точности)
+            predictions = self.system.add_data_and_retrain(new_combination, retrain_epochs)
+            
+            # 🔧 СОХРАНЯЕМ ПРОГНОЗЫ В ОБЩИЙ ФАЙЛ ДЛЯ ВЕБ-ВЕРСИИ
+            if predictions:
+                from model.data_loader import save_predictions
+                # ✅ СОХРАНЯЕМ ТОЛЬКО TOP-4 ПРОГНОЗА
+                save_predictions(predictions[:4])
+                logger.info(f"💾 Сохранено {len(predictions[:4])} прогнозов в predictions_state.json")
+            
+            # ✅ ВОЗВРАЩАЕМ ТОЛЬКО TOP-4 ПРОГНОЗА
+            return predictions[:4] if predictions else []
+                
+        except Exception as e:
+            logger.error(f"❌ Ошибка дообучения: {e}")
+            return []
     
     def process_new_group(self):
-        """Основной метод обработки новой группы"""
+        """🔧 ИСПРАВЛЕННЫЙ МЕТОД: Основной метод обработки новой группы с проверкой синхронизации"""
         if not self.service_active:
             logger.info("⏸️ Сервис остановлен из-за ошибок API. Требуется ручной перезапуск.")
             return False
@@ -525,6 +839,24 @@ class AutoLearningService:
         logger.info("🔄 Запуск обработки новой группы...")
         
         try:
+            # 🔧 ШАГ 0: ПРОВЕРКА СИНХРОНИЗАЦИИ ТИРАЖЕЙ ПРИ ПЕРВОМ ЗАПУСКЕ
+            if self._first_run:
+                logger.info("🔍 Первый запуск - проверяем синхронизацию тиражей...")
+                if not self._check_draw_synchronization():
+                    logger.error("🚨 Проверка синхронизации тиражей не пройдена. Сервис остановлен.")
+                    self.service_active = False
+                    self.save_service_state()
+                    
+                    current_info = self.get_current_info()
+                    current_draw = current_info.get('current_draw', 'unknown')
+                    self.telegram.send_service_stop(
+                        current_draw, 
+                        "Расхождение в номерах тиражей. Требуется ручная проверка."
+                    )
+                    return False
+                logger.info("✅ Проверка синхронизации пройдена успешно")
+                self._first_run = False
+            
             # Шаг 1: Получаем новую группу через API
             result = self.call_api_with_retries()
             
@@ -574,8 +906,8 @@ class AutoLearningService:
             # Шаг 4: Сравниваем с предыдущими прогнозами
             comparison_result = self.compare_with_predictions(new_combination)
             
-            # Шаг 5: Добавляем данные и дообучаем модель
-            learning_result = self.add_data_and_retrain(new_combination)
+            # 🔧 Шаг 5: ВСЕГДА ТОЛЬКО ДООБУЧЕНИЕ (никогда полное обучение)
+            learning_result = self.add_data_and_retrain(new_combination, 5)  # 5 эпох для лучшей точности
             
             # Шаг 6: Помечаем как обработанную
             self.mark_entry_processed(processing_draw)
@@ -597,12 +929,22 @@ class AutoLearningService:
             
             # Шаг 8: Отправляем прогнозы если включено
             if learning_result:
-                self.telegram.send_predictions(learning_result, processing_draw)
+                # Проверяем настройку авто-прогнозов
+                if self.telegram.config.get('notifications', {}).get('predictions', False):
+                    self.telegram.send_predictions(
+                        learning_result, 
+                        processing_draw,
+                        actual_group=new_combination,
+                        comparison_result=comparison_result
+                    )
+                    logger.info(f"📤 Улучшенные авто-прогнозы отправлены в Telegram")
+                else:
+                    logger.info(f"📝 Авто-прогнозы отключены в настройках")
             
-            logger.info(f"✅ Обработка завершена! Новых прогнозов: {len(learning_result) if learning_result else 0}")
+            logger.info(f"✅ Обработка завершена! Новых прогнозов: {len(learning_result)}")
             
             return True
-            
+ 
         except Exception as e:
             logger.error(f"❌ Критическая ошибка обработки новой группы: {e}")
             
@@ -659,47 +1001,8 @@ class AutoLearningService:
             logger.error(f"❌ Ошибка сравнения с прогнозами: {e}")
             return {'matches_found': 0, 'error': str(e)}
     
-    def add_data_and_retrain(self, new_combination: str):
-        """Добавление данных и дообучение модели"""
-        try:
-            logger.info("🧠 Добавление данных и дообучение модели...")
-            
-            predictions = self.system.add_data_and_retrain(new_combination, retrain_epochs=3)
-            
-            if predictions:
-                logger.info(f"✅ Дообучение завершено. Сгенерировано {len(predictions)} прогнозов")
-                return predictions
-            else:
-                logger.warning("⚠️ Дообучение завершено, но прогнозы не сгенерированы")
-                return []
-                
-        except Exception as e:
-            logger.error(f"❌ Ошибка дообучения: {e}")
-            return []
-    
-    def save_learning_result(self, result_data):
-        """Сохранение результата обучения"""
-        def save_operation(filename, data):
-            if os.path.exists(filename):
-                with open(filename, 'r', encoding='utf-8') as f:
-                    all_results = json.load(f)
-            else:
-                all_results = []
-            
-            all_results.append(data)
-            
-            if len(all_results) > 100:
-                all_results = all_results[-100:]
-            
-            with open(filename, 'w', encoding='utf-8') as f:
-                json.dump(all_results, f, ensure_ascii=False, indent=2)
-        
-        result_path = os.path.join(os.path.dirname(__file__), 'learning_results.json')
-        self.safe_file_operation(save_operation, result_path, result_data)
-        logger.info("💾 Результат обучения сохранен")
-    
     def get_service_status(self):
-        """Получение статуса сервиса"""
+        """Получение статуса сервиса для Telegram и проверки"""
         from model.data_loader import load_predictions
         
         status = {
@@ -708,7 +1011,6 @@ class AutoLearningService:
             'system_initialized': self.system is not None,
             'last_processed_draw': self.last_processed_draw,
             'model_trained': self.system.is_trained if self.system else False,
-            'web_running': self.is_web_running(),
             'consecutive_api_errors': self.consecutive_api_errors,
             'max_consecutive_errors': self.max_consecutive_errors,
             'next_scheduled_run': self.next_scheduled_run.isoformat() if self.next_scheduled_run else None,
@@ -732,14 +1034,100 @@ class AutoLearningService:
             except Exception as e:
                 status['system_status_error'] = str(e)
         
+        # Проверяем веб-версию
+        try:
+            result = subprocess.run(['pgrep', '-f', 'streamlit'], capture_output=True, text=True)
+            status['web_running'] = result.returncode == 0
+        except:
+            status['web_running'] = False
+        
         return status
     
+
+    def save_learning_result(self, result_data):
+        """🔧 ПРАВИЛЬНЫЙ МЕТОД: Дополнение аналитики самообучения"""
+        def save_operation(filename, data):
+            # Загружаем существующую аналитику самообучения
+            if os.path.exists(filename):
+                try:
+                    with open(filename, 'r', encoding='utf-8') as f:
+                        existing_data = json.load(f)
+                except Exception as e:
+                    logger.error(f"❌ Ошибка загрузки аналитики: {e}")
+                    existing_data = self._create_learning_results_structure()
+            else:
+                existing_data = self._create_learning_results_structure()
+            
+            # 🔧 ДОБАВЛЯЕМ данные автосервиса в predictions_accuracy
+            accuracy_entry = {
+                'timestamp': data.get('timestamp'),
+                'actual_group': data.get('combination'),
+                'accuracy_score': data.get('comparison', {}).get('matches_found', 0) / 4.0,
+                'matches_count': data.get('comparison', {}).get('matches_found', 0),
+                'learning_success': data.get('learning_success', False),
+                'service_type': 'auto_learning',
+                'draw': data.get('draw'),
+                'new_predictions_count': data.get('new_predictions_count', 0)
+            }
+            
+            # Добавляем запись
+            existing_data['predictions_accuracy'].append(accuracy_entry)
+            
+            # 🔧 ОБНОВЛЯЕМ error_patterns если точность низкая
+            if accuracy_entry['accuracy_score'] < 0.5:
+                error_pattern = {
+                    'timestamp': data.get('timestamp'),
+                    'missed_numbers': self._analyze_missed_numbers(data),
+                    'false_numbers': self._analyze_false_numbers(data),
+                    'accuracy': accuracy_entry['accuracy_score']
+                }
+                existing_data['error_patterns'].append(error_pattern)
+            
+            # Ограничиваем размер истории
+            if len(existing_data['predictions_accuracy']) > 200:
+                existing_data['predictions_accuracy'] = existing_data['predictions_accuracy'][-200:]
+            if len(existing_data['error_patterns']) > 100:
+                existing_data['error_patterns'] = existing_data['error_patterns'][-100:]
+            
+            existing_data['last_analysis'] = datetime.now().isoformat()
+            
+            # Сохраняем обновленную аналитику
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(existing_data, f, ensure_ascii=False, indent=2)
+            
+            return existing_data
+        
+        result_path = '/opt/project/data/learning_results.json'  # 🔧 ОБЩИЙ ФАЙЛ
+        updated_data = self.safe_file_operation(save_operation, result_path, result_data)
+        logger.info(f"💾 Аналитика самообучения обновлена: {len(updated_data['predictions_accuracy'])} записей")
+
+    def _create_learning_results_structure(self):
+        """Создает правильную структуру для аналитики самообучения"""
+        return {
+            "predictions_accuracy": [],
+            "model_performance": {},
+            "learning_patterns": {},
+            "last_analysis": None,
+            "error_patterns": []
+        }
+
+    def _analyze_missed_numbers(self, data):
+        """Анализ пропущенных чисел для error_patterns"""
+        # TODO: Реализовать анализ какие числа были в реальной группе, но не в прогнозах
+        return []
+
+    def _analyze_false_numbers(self, data):
+        """Анализ лишних чисел для error_patterns"""
+        # TODO: Реализовать анализ какие числа были в прогнозах, но не в реальной группе
+        return []
+     
     def manual_restart(self):
         """Ручной перезапуск сервиса после остановки"""
         if not self.service_active:
             logger.info("🔄 Ручной перезапуск сервиса...")
             self.service_active = True
             self.consecutive_api_errors = 0
+            self._first_run = True  # 🔧 СБРАСЫВАЕМ ФЛАГ ПРИ ПЕРЕЗАПУСКЕ
             self.save_service_state()
             
             # Telegram уведомление о перезапуске
@@ -767,9 +1155,9 @@ class AutoLearningService:
             logger.info(f"⏰ Следующий запрос через {next_interval:.1f} минут")
         
         return success
-    
+
     def start_scheduled_service(self):
-        """Запуск сервиса по расписанию"""
+        """Запуск сервиса по расписанию с обработкой Telegram команд"""
         if not self.service_active:
             logger.error("🚨 Сервис остановлен из-за ошибок API. Запуск по расписанию отменен.")
             logger.info("💡 Используйте: python3 auto_learning_service.py --restart")
@@ -777,31 +1165,56 @@ class AutoLearningService:
         
         logger.info("⏰ Запуск сервиса по расписанию")
         
-        # Рассчитываем первый интервал
-        first_interval = self.calculate_next_run_time()
-        logger.info(f"⏰ Первый запрос через {first_interval:.1f} минут")
+        # 🔧 РАСЧЕТ ПЕРВОГО ИНТЕРВАЛА С БУФЕРОМ
+        next_interval = self.calculate_next_run_time()
         
-        # Настраиваем расписание
-        schedule.every(15).minutes.do(self.safe_scheduled_task)
+        if next_interval == 0:  # Сервис остановлен из-за критического интервала
+            return
         
-        # Запускаем сразу при старте
+        logger.info(f"⏰ Первый запрос через {next_interval:.1f} минут")
+        
+        # 🔧 НАСТРОЙКА АДАПТИВНОГО РАСПИСАНИЯ
+        schedule.clear()
+        
+        # 1. ПЕРВЫЙ ЗАПРОС - СРАЗУ
+        logger.info("🚀 Немедленный запуск первого запроса...")
         self.safe_scheduled_task()
+        
+        # 2. ВТОРОЙ ЗАПРОС - ЧЕРЕЗ РАСЧЕТНЫЙ ИНТЕРВАЛ (С БУФЕРОМ)
+        if next_interval > 0:
+            schedule.every(next_interval).minutes.do(self._setup_fixed_schedule_and_run)
+            logger.info(f"⏰ Второй запрос через {next_interval:.1f} минут")
+        else:
+            # Если расчетный интервал 0, сразу переходим к фиксированному расписанию
+            self._setup_fixed_schedule_and_run()
         
         logger.info("✅ Сервис запущен. Ожидание следующего запуска...")
         
         try:
             while True:
-                # Проверяем команды Telegram
-                status_data = self.get_service_status()
-                self.telegram.process_status_command(status_data)
+                # 🔧 ОБРАБОТКА TELEGRAM КОМАНД КАЖДУЮ МИНУТУ
+                self.telegram.process_commands()
                 
                 schedule.run_pending()
-                time.sleep(60)  # Проверяем каждую минуту
+                time.sleep(60)
                 
         except KeyboardInterrupt:
             logger.info("🛑 Сервис остановлен пользователем")
         except Exception as e:
             logger.error(f"❌ Критическая ошибка в основном цикле сервиса: {e}")
+
+    def _setup_fixed_schedule_and_run(self):
+        """Настройка фиксированного расписания и выполнение запроса"""
+        # 🔧 ВЫПОЛНЯЕМ ТЕКУЩИЙ ЗАПРОС
+        logger.info("🔔 Выполнение запроса по расписанию...")
+        self.safe_scheduled_task()
+        
+        # 🔧 ПЕРЕХОДИМ НА ФИКСИРОВАННОЕ РАСПИСАНИЕ
+        schedule.clear()
+        for minute in SCHEDULE_MINUTES:
+            schedule.every().hour.at(f":{minute:02d}").do(self.safe_scheduled_task)
+        
+        logger.info(f"✅ Переход на фиксированное расписание: {SCHEDULE_MINUTES}")
     
     def safe_scheduled_task(self):
         """Безопасное выполнение запланированной задачи"""
