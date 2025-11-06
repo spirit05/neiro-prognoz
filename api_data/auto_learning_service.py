@@ -1,3 +1,4 @@
+from utils.logging_system import get_training_logger, get_ml_system_logger, get_auto_learning_logger
 # [file name]: api_data/auto_learning_service.py (ФИНАЛЬНАЯ ВЕРСИЯ)
 #!/usr/bin/env python3
 """
@@ -31,7 +32,7 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-logger = logging.getLogger('AutoLearningService')
+logger = get_AutoLearningService_logger()
 
 # Константы
 MAX_API_RETRIES = 3

@@ -1,33 +1,52 @@
-# [file name]: run_web.py
-import sys
+# run_web.py
+#!/usr/bin/env python3
+"""
+Запуск веб-интерфейса - ОБНОВЛЕННЫЙ
+"""
+
 import os
+import sys
+import subprocess
 
-# Принудительно устанавливаем пути
-PROJECT_PATH = '/opt/project'
-sys.path.insert(0, PROJECT_PATH)
-sys.path.insert(0, os.path.join(PROJECT_PATH, 'model'))
+# Добавляем корень проекта в путь
+PROJECT_ROOT = '/home/spirit/Desktop/project'
+sys.path.insert(0, PROJECT_ROOT)
 
-print(f"🔧 PYTHONPATH: {sys.path}")
-
-# Проверяем импорты
-try:
-    from model.simple_system import SimpleNeuralSystem
-    from model.data_loader import load_dataset
-    print("✅ Все импорты успешны!")
+def main():
+    """Запуск веб-интерфейса"""
+    print("🚀 Запуск веб-интерфейса AI Prediction System...")
     
-    # Тестируем систему
-    system = SimpleNeuralSystem()
-    print("✅ Система инициализирована!")
+    # Проверяем наличие необходимых файлов
+    required_files = [
+        os.path.join(PROJECT_ROOT, 'web', 'app.py'),
+        os.path.join(PROJECT_ROOT, 'config', 'paths.py'),
+        os.path.join(PROJECT_ROOT, 'ml', 'core', 'system.py')
+    ]
     
-except Exception as e:
-    print(f"❌ Ошибка импорта: {e}")
-    import traceback
-    traceback.print_exc()
-    sys.exit(1)
+    for file_path in required_files:
+        if not os.path.exists(file_path):
+            print(f"❌ Не найден файл: {file_path}")
+            return False
+    
+    print("✅ Все необходимые файлы найдены")
+    
+    # Запускаем Streamlit
+    try:
+        cmd = [
+            'streamlit', 'run', 
+            os.path.join(PROJECT_ROOT, 'web', 'app.py'),
+            '--server.port=8501',
+            '--server.address=0.0.0.0'
+        ]
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Ошибка запуска Streamlit: {e}")
+        return False
+    except KeyboardInterrupt:
+        print("\n🛑 Веб-интерфейс остановлен")
+    
+    return True
 
-# Запускаем Streamlit
 if __name__ == "__main__":
-    # Импортируем и запускаем app.py через Streamlit
-    from streamlit.web.cli import main
-    sys.argv = ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
-    sys.exit(main())
+    success = main()
+    sys.exit(0 if success else 1)

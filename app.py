@@ -3,6 +3,7 @@
 import sys
 import os
 import logging
+from utils.logging_system import get_training_logger, get_ml_system_logger, get_auto_learning_logger
 
 # ⚡ ПРИНУДИТЕЛЬНО УСТАНАВЛИВАЕМ ПУТИ
 PROJECT_PATH = '/opt/project'
@@ -31,7 +32,7 @@ from datetime import datetime
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger('SequencePredictorWeb')
+logger = get_SequencePredictorWeb_logger()
 
 st.set_page_config(page_title="AI Прогноз Последовательностей", page_icon="🔢", layout="wide")
 

@@ -1,3 +1,4 @@
+from config.paths import paths
 # [file name]: model/simple_nn/trainer.py (ИСПРАВЛЕННЫЙ)
 """
 Обучение УСИЛЕННОЙ нейросети - ИСПРАВЛЕННЫЙ
@@ -34,7 +35,7 @@ class EnhancedTrainer:
         
         # Записываем в файл
         try:
-            with open("/opt/project/training_log.txt", "a", encoding="utf-8") as f:
+            with open(paths.TRAINING_LOG, "a", encoding="utf-8") as f:
                 f.write(formatted_message + "\n")
         except Exception as e:
             print(f"❌ Ошибка записи в лог: {e}")

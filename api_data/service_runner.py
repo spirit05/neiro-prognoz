@@ -1,3 +1,4 @@
+from utils.logging_system import get_training_logger, get_ml_system_logger, get_auto_learning_logger
 # api_data/service_runner.py
 #!/usr/bin/env python3
 """
@@ -26,7 +27,7 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-logger = logging.getLogger('ServiceRunner')
+logger = get_ServiceRunner_logger()
 
 def main():
     """Основная функция запуска сервиса"""

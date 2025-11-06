@@ -7,9 +7,9 @@ import json
 import os
 from typing import List, Tuple, Dict
 from config.paths import DATASET, PREDICTIONS
-from config.logging_config import setup_logger  # Исправленный импорт
+from config.logging_config import setup_logging  # ← ИСПРАВЛЕНО ИМЯ
 
-logger = setup_logger('DataLoader')
+logger = setup_logging('DataLoader')
 
 def load_dataset() -> List[str]:
     """Загрузка dataset.json"""

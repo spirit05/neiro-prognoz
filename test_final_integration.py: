@@ -1,0 +1,82 @@
+# test_final_integration.py
+#!/usr/bin/env python3
+"""
+Финальный тест всей системы
+"""
+
+import sys
+import os
+
+PROJECT_ROOT = '/home/spirit/Desktop/project'
+sys.path.insert(0, PROJECT_ROOT)
+
+def test_web_imports():
+    """Тестируем импорты веб-интерфейса"""
+    print("🔍 Тестируем веб-интерфейс...")
+    
+    try:
+        from web.app import main, init_session_state
+        print("✅ Веб-интерфейс импортируется")
+        return True
+    except Exception as e:
+        print(f"❌ Ошибка веб-интерфейса: {e}")
+        return False
+
+def test_ml_system():
+    """Тестируем ML систему"""
+    print("\n🔍 Тестируем ML систему...")
+    
+    try:
+        from ml.core.system import SimpleNeuralSystem
+        system = SimpleNeuralSystem()
+        
+        # Проверяем основные методы
+        status = system.get_status()
+        predictions = system.predict(top_k=5)
+        
+        print("✅ ML система работает корректно")
+        print(f"   - Статус: {status['is_trained']}")
+        print(f"   - Прогнозы: {len(predictions)}")
+        return True
+    except Exception as e:
+        print(f"❌ Ошибка ML системы: {e}")
+        return False
+
+def test_services():
+    """Тестируем сервисы"""
+    print("\n🔍 Тестируем сервисы...")
+    
+    try:
+        from services.auto_learning.service import AutoLearningService
+        from services.monitoring.service_runner import main as runner_main
+        
+        service = AutoLearningService()
+        status = service.get_service_status()
+        
+        print("✅ Сервисы работают корректно")
+        print(f"   - Сервис активен: {status['service_active']}")
+        return True
+    except Exception as e:
+        print(f"❌ Ошибка сервисов: {e}")
+        return False
+
+if __name__ == "__main__":
+    print("🎯 ФИНАЛЬНЫЙ ТЕСТ СИСТЕМЫ")
+    print("=" * 50)
+    
+    success1 = test_web_imports()
+    success2 = test_ml_system()
+    success3 = test_services()
+    
+    print("\n" + "=" * 50)
+    if success1 and success2 and success3:
+        print("🎉 ВСЕ СИСТЕМЫ РАБОТАЮТ КОРРЕКТНО!")
+        print("\n📋 Краткое описание новой архитектуры:")
+        print("   • web/ - Streamlit интерфейс")
+        print("   • ml/ - модульная ML система") 
+        print("   • services/ - автосервис и Telegram бот")
+        print("   • config/ - единая конфигурация")
+        print("   • data/ - организованные данные")
+    else:
+        print("❌ Есть проблемы в системе")
+        sys.exit(1)

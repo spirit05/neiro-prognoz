@@ -1,3 +1,4 @@
+from utils.logging_system import get_training_logger, get_ml_system_logger, get_auto_learning_logger
 # [file name]: api_data/telegram_polling.py
 #!/usr/bin/env python3
 """
@@ -19,7 +20,7 @@ sys.path.insert(0, PROJECT_PATH)
 sys.path.insert(0, os.path.dirname(__file__))
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('TelegramPolling')
+logger = get_TelegramPolling_logger()
 
 class TelegramPollingBot:
     def __init__(self):
