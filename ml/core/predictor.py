@@ -65,7 +65,7 @@ class EnhancedPredictor:
             return False
             
         try:
-            checkpoint = torch.load(self.model_path, map_location='cpu')
+            checkpoint = torch.load(self.model_path, weights_only=False, map_location='cpu')
             config = checkpoint['model_config']
             
             from ml.core.model import EnhancedNumberPredictor
