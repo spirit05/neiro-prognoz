@@ -1,44 +1,29 @@
-# config/paths.py
 import os
 
-# Динамическое определение корня проекта
 def find_project_root():
-    """Находит корень проекта автоматически"""
-    # Текущая директория этого файла
     current_dir = os.path.dirname(os.path.abspath(__file__))
-
-    # Поднимаемся на уровень выше (из config/ в корень)
     potential_root = os.path.dirname(current_dir)
-
-    # Проверяем наличие ожидаемой структуры
     expected_dirs = ['web', 'ml', 'services', 'data']
-    if all(os.path.exists(os.path.join(potential_root, dir)) for dir in expected_dirs):
+    if all(os.path.exists(os.path.join(potential_root, d)) for d in expected_dirs):
         return potential_root
-
-    # Если не нашли, используем текущую рабочую директорию
     cwd = os.getcwd()
-    if all(os.path.exists(os.path.join(cwd, dir)) for dir in expected_dirs):
+    if all(os.path.exists(os.path.join(cwd, d)) for d in expected_dirs):
         return cwd
-
-    # Запасной вариант для сервера
     return '/opt/project'
 
 PROJECT_ROOT = find_project_root()
 
 class Paths:
-    """Единый менеджер путей для всего проекта"""
-
     def __init__(self):
         self.PROJECT_ROOT = PROJECT_ROOT
 
-    # === ДАННЫЕ ===
     @property
     def DATASET(self):
         return os.path.join(self.PROJECT_ROOT, 'data', 'datasets', 'dataset.json')
 
     @property
     def PREDICTIONS(self):
-        return os.path.join(self.PROJECT_ROOT, 'data', 'analytics', 'predictions_state.json')
+        return os.path.join(self.PROJECT_ROOT, 'data', 'analytics', 'predictions.json')
 
     @property
     def LEARNING_RESULTS(self):
@@ -48,7 +33,6 @@ class Paths:
     def MODEL(self):
         return os.path.join(self.PROJECT_ROOT, 'data', 'models', 'simple_model.pth')
 
-    # === КОНФИГИ ===
     @property
     def TELEGRAM_CONFIG(self):
         return os.path.join(self.PROJECT_ROOT, 'config', 'telegram.json')
@@ -61,7 +45,6 @@ class Paths:
     def INFO_JSON(self):
         return os.path.join(self.PROJECT_ROOT, 'data', 'analytics', 'info.json')
 
-    # === ЛОГИ ===
     @property
     def TRAINING_LOG(self):
         return os.path.join(self.PROJECT_ROOT, 'data', 'logs', 'training.log')
@@ -90,26 +73,35 @@ class Paths:
     def API_CLIENT_LOG(self):
         return os.path.join(self.PROJECT_ROOT, 'data', 'logs', 'api_client.log')
 
-    # === ДИРЕКТОРИИ ===
-    @property
-    def DATA_DIR(self):
-        return os.path.join(self.PROJECT_ROOT, 'data')
-
-    @property
-    def DATASETS_DIR(self):
-        return os.path.join(self.PROJECT_ROOT, 'data', 'datasets')
-
-    @property
-    def MODELS_DIR(self):
-        return os.path.join(self.PROJECT_ROOT, 'data', 'models')
-
-    @property
-    def ANALYTICS_DIR(self):
-        return os.path.join(self.PROJECT_ROOT, 'data', 'analytics')
-
-    @property
-    def LOGS_DIR(self):
-        return os.path.join(self.PROJECT_ROOT, 'data', 'logs')
-
-# Глобальный экземпляр для импорта
 paths = Paths()
+
+# Обратная совместимость для старых импортов
+DATASET = paths.DATASET
+MODEL = paths.MODEL
+PREDICTIONS = paths.PREDICTIONS
+LEARNING_RESULTS = paths.LEARNING_RESULTS
+TELEGRAM_CONFIG = paths.TELEGRAM_CONFIG
+SERVICE_STATE = paths.SERVICE_STATE
+INFO_JSON = paths.INFO_JSON
+TRAINING_LOG = paths.TRAINING_LOG
+AUTO_LEARNING_LOG = paths.AUTO_LEARNING_LOG
+SERVICE_RUNNER_LOG = paths.SERVICE_RUNNER_LOG
+TELEGRAM_BOT_LOG = paths.TELEGRAM_BOT_LOG
+WEB_INTERFACE_LOG = paths.WEB_INTERFACE_LOG
+ML_SYSTEM_LOG = paths.ML_SYSTEM_LOG
+API_CLIENT_LOG = paths.API_CLIENT_LOG
+# Обратная совместимость для старых импортов
+DATASET = paths.DATASET
+MODEL = paths.MODEL
+PREDICTIONS = paths.PREDICTIONS
+LEARNING_RESULTS = paths.LEARNING_RESULTS
+TELEGRAM_CONFIG = paths.TELEGRAM_CONFIG
+SERVICE_STATE = paths.SERVICE_STATE
+INFO_JSON = paths.INFO_JSON
+TRAINING_LOG = paths.TRAINING_LOG
+AUTO_LEARNING_LOG = paths.AUTO_LEARNING_LOG
+SERVICE_RUNNER_LOG = paths.SERVICE_RUNNER_LOG
+TELEGRAM_BOT_LOG = paths.TELEGRAM_BOT_LOG
+WEB_INTERFACE_LOG = paths.WEB_INTERFACE_LOG
+ML_SYSTEM_LOG = paths.ML_SYSTEM_LOG
+API_CLIENT_LOG = paths.API_CLIENT_LOG
