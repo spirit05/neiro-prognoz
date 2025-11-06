@@ -1,4 +1,4 @@
-from utils.logging_system import get_training_logger, get_ml_system_logger, get_auto_learning_logger
+from utils.logging_system import get_training_logger, get_ml_system_logger, get_auto_learning_logger, get_AutoLearningService_logger
 # services/auto_learning/service.py
 """
 Основной сервис автообучения - ИСПРАВЛЕННАЯ ВЕРСИЯ

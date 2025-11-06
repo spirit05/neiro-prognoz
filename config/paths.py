@@ -17,6 +17,7 @@ class Paths:
     def __init__(self):
         self.PROJECT_ROOT = PROJECT_ROOT
 
+    # === ДАННЫЕ ===
     @property
     def DATASET(self):
         return os.path.join(self.PROJECT_ROOT, 'data', 'datasets', 'dataset.json')
@@ -33,6 +34,7 @@ class Paths:
     def MODEL(self):
         return os.path.join(self.PROJECT_ROOT, 'data', 'models', 'simple_model.pth')
 
+    # === КОНФИГ ===
     @property
     def TELEGRAM_CONFIG(self):
         return os.path.join(self.PROJECT_ROOT, 'config', 'telegram.json')
@@ -45,6 +47,7 @@ class Paths:
     def INFO_JSON(self):
         return os.path.join(self.PROJECT_ROOT, 'data', 'analytics', 'info.json')
 
+    # === ЛОГИ ===
     @property
     def TRAINING_LOG(self):
         return os.path.join(self.PROJECT_ROOT, 'data', 'logs', 'training.log')
@@ -73,9 +76,30 @@ class Paths:
     def API_CLIENT_LOG(self):
         return os.path.join(self.PROJECT_ROOT, 'data', 'logs', 'api_client.log')
 
+    # === ДИРЕКТОРИИ ===
+    @property
+    def DATA_DIR(self):
+        return os.path.join(self.PROJECT_ROOT, 'data')
+
+    @property
+    def DATASETS_DIR(self):
+        return os.path.join(self.PROJECT_ROOT, 'data', 'datasets')
+
+    @property
+    def MODELS_DIR(self):
+        return os.path.join(self.PROJECT_ROOT, 'data', 'models')
+
+    @property
+    def ANALYTICS_DIR(self):
+        return os.path.join(self.PROJECT_ROOT, 'data', 'analytics')
+
+    @property
+    def LOGS_DIR(self):
+        return os.path.join(self.PROJECT_ROOT, 'data', 'logs')
+
 paths = Paths()
 
-# Обратная совместимость для старых импортов
+# Обратная совместимость для старых импортов (без дублирования)
 DATASET = paths.DATASET
 MODEL = paths.MODEL
 PREDICTIONS = paths.PREDICTIONS
@@ -90,18 +114,8 @@ TELEGRAM_BOT_LOG = paths.TELEGRAM_BOT_LOG
 WEB_INTERFACE_LOG = paths.WEB_INTERFACE_LOG
 ML_SYSTEM_LOG = paths.ML_SYSTEM_LOG
 API_CLIENT_LOG = paths.API_CLIENT_LOG
-# Обратная совместимость для старых импортов
-DATASET = paths.DATASET
-MODEL = paths.MODEL
-PREDICTIONS = paths.PREDICTIONS
-LEARNING_RESULTS = paths.LEARNING_RESULTS
-TELEGRAM_CONFIG = paths.TELEGRAM_CONFIG
-SERVICE_STATE = paths.SERVICE_STATE
-INFO_JSON = paths.INFO_JSON
-TRAINING_LOG = paths.TRAINING_LOG
-AUTO_LEARNING_LOG = paths.AUTO_LEARNING_LOG
-SERVICE_RUNNER_LOG = paths.SERVICE_RUNNER_LOG
-TELEGRAM_BOT_LOG = paths.TELEGRAM_BOT_LOG
-WEB_INTERFACE_LOG = paths.WEB_INTERFACE_LOG
-ML_SYSTEM_LOG = paths.ML_SYSTEM_LOG
-API_CLIENT_LOG = paths.API_CLIENT_LOG
+DATA_DIR = paths.DATA_DIR
+DATASETS_DIR = paths.DATASETS_DIR
+MODELS_DIR = paths.MODELS_DIR
+ANALYTICS_DIR = paths.ANALYTICS_DIR
+LOGS_DIR = paths.LOGS_DIR

@@ -42,6 +42,13 @@ def get_telegram_logger():
 def get_api_client_logger():
     return ProjectLogger.get_logger('APIClient', paths.API_CLIENT_LOG, logging.INFO)
 
+
+# Псевдонимы для обратной совместимости
+
+
+# Псевдонимы для обратной совместимости
+get_AutoLearningService_logger = get_auto_learning_logger
+
 def setup_all_loggers():
     loggers = [
         get_training_logger(),
@@ -54,3 +61,7 @@ def setup_all_loggers():
     for logger in loggers:
         logger.info(f"Логгер {logger.name} инициализирован")
     return loggers
+
+# Псевдонимы для обратной совместимости
+
+# Псевдонимы для обратной совместимости

@@ -125,3 +125,28 @@ class SimpleNeuralSystem:
         except Exception as e:
             self._report_progress(f"❌ Ошибка обучения: {e}")
             return []
+
+    def get_status(self):
+        """Возвращает статус системы"""
+        return {
+            'is_trained': self.is_trained,
+            'dataset_size': 0,  # TODO: заменить на реальный размер датасета
+            'model_type': 'EnhancedNumberPredictor',
+            'learning_stats': {
+                'recent_accuracy_avg': 0.5
+            }
+        }
+
+    def predict(self, top_k=10):
+        """Генерация предсказаний - заглушка"""
+        # TODO: заменить на реальную логику предсказаний
+        return [((1, 2, 3, 4), 0.5), ((5, 6, 7, 8), 0.3)]
+
+    def add_data_and_retrain(self, new_group):
+        """Добавление данных и дообучение - заглушка"""
+        # TODO: заменить на реальную логику
+        return [((1, 2, 3, 4), 0.5), ((5, 6, 7, 8), 0.3)]
+        
+    def set_progress_callback(self, callback):
+        """Установка callback-функции для отслеживания прогресса"""
+        self.progress_callback = callback
