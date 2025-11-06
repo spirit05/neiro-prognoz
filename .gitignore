@@ -6,7 +6,6 @@ dataset.json
 api_data/telegram_config.json
 # C extensions
 *.so
-/data
 # Distribution / packaging
 .Python
 build/
