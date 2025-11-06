@@ -1,3 +1,10 @@
+Исправление с однократным запуском через бота
+# БЕЗОПАСНЫЙ ВАРИАНТ:
+/stop_service    # ✅ Убеждаемся, что сервис остановлен  
+/run_once        # ✅ Тестовый запрос (без расписания)
+# Если ок → /restart_service
+# Если не ок → повтор правок и /run_once
+
 ## 🎯 **ИСПРАВЛЕННЫЕ КОМАНДЫ ДЛЯ УПРАВЛЕНИЯ:**
 
 ### **🌐 ВЕБ-ВЕРСИЯ:**
@@ -45,6 +52,10 @@ nohup /opt/project/env/bin/python /opt/project/api_data/auto_learning_service.py
 # Запуск (однократно)
 cd /opt/project/api_data
 nohup /opt/project/env/bin/python /opt/project/api_data/auto_learning_service.py --once
+
+# Перезапуск
+cd /opt/project/api_data
+/opt/project/env/bin/python auto_learning_service.py --restart
 
 # Остановка
 pkill -f "auto_learning_service.py --schedule"

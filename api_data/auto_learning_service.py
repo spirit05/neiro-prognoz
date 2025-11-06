@@ -68,10 +68,12 @@ class FileLock:
                 pass
 
 class TelegramNotifier:
-    """Класс для работы с Telegram"""
+    """Класс для работы с Telegram с управлением сервисом"""
     
-    def __init__(self):
+    def __init__(self, auto_learning_service=None):
         self.config = self.load_config()
+        self.service = auto_learning_service  # 🔧 Ссылка на основной сервис
+        self.last_update_id = 0  # 🔧 Для обработки команд
     
     def load_config(self):
         """Загрузка конфигурации Telegram"""
@@ -124,6 +126,113 @@ class TelegramNotifier:
         except Exception as e:
             logger.error(f"❌ Критическая ошибка Telegram: {e}")
             return False
+
+    def process_commands(self):
+        """🔧 ОБРАБОТКА КОМАНД УПРАВЛЕНИЯ СЕРВИСОМ"""
+        if not self.config.get('enabled', False):
+            return
+        
+        try:
+            bot_token = self.config.get('bot_token')
+            chat_id = self.config.get('chat_id')
+            
+            if not bot_token or not chat_id:
+                return
+            
+            url = f"https://api.telegram.org/bot{bot_token}/getUpdates"
+            params = {'offset': self.last_update_id + 1, 'timeout': 5}
+            
+            response = requests.get(url, params=params, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('ok'):
+                    for update in data.get('result', []):
+                        self.last_update_id = update['update_id']
+                        message = update.get('message', {})
+                        text = message.get('text', '').strip()
+                        
+                        # 🔧 ОБРАБОТКА КОМАНД
+                        if text.startswith('/'):
+                            self.handle_command(text, message.get('chat', {}).get('id'))
+                            
+        except Exception as e:
+            logger.warning(f"⚠️ Ошибка проверки команд Telegram: {e}")
+
+    def handle_command(self, command, chat_id):
+        """🔧 ОБРАБОТКА КОНКРЕТНЫХ КОМАНД"""
+        if not self.service:
+            return
+        
+        command = command.lower()
+        
+        if command == '/start':
+            message = "🤖 <b>АВТОСЕРВИС УПРАВЛЕНИЯ</b>\n\n"
+            message += "Доступные команды:\n"
+            message += "▶️  /start - показать это сообщение\n"
+            message += "📊 /status - статус сервиса\n"
+            message += "▶️  /start_service - запустить сервис\n"
+            message += "⏸️  /stop_service - остановить сервис\n"
+            message += "🔁 /restart_service - перезапустить сервис\n"
+            message += "🚀 /run_once - выполнить один запрос\n"
+            message += "🛑 /shutdown - полная остановка\n"
+            self.send_message(message)
+            
+        elif command == '/status':
+            status_data = self.service.get_service_status()
+            message = self.format_status_message(status_data)
+            self.send_message(message)
+            
+        elif command == '/start_service':
+            if self.service.service_active:
+                self.send_message("✅ <b>Сервис уже запущен</b>")
+            else:
+                self.service.service_active = True
+                self.service.consecutive_api_errors = 0
+                self.service._first_run = True
+                self.service.save_service_state()
+                self.send_message("✅ <b>СЕРВИС ЗАПУЩЕН</b>\nАвтосервис активирован")
+                logger.info("✅ Сервис запущен через Telegram команду")
+                
+        elif command == '/stop_service':
+            if not self.service.service_active:
+                self.send_message("⏸️ <b>Сервис уже остановлен</b>")
+            else:
+                self.service.service_active = False
+                self.service.save_service_state()
+                self.send_message("⏸️ <b>СЕРВИС ОСТАНОВЛЕН</b>\nАвтосервис приостановлен")
+                logger.info("✅ Сервис остановлен через Telegram команду")
+                
+        elif command == '/restart_service':
+            if self.service.manual_restart():
+                self.send_message("🔁 <b>СЕРВИС ПЕРЕЗАПУЩЕН</b>\nВсе ошибки сброшены")
+            else:
+                self.send_message("✅ <b>Сервис уже активен</b>")
+                
+        elif command == '/run_once':
+            if not self.service.service_active:
+                self.send_message("❌ <b>Сервис остановлен</b>\nИспользуйте /start_service для запуска")
+            else:
+                self.send_message("🚀 <b>ВЫПОЛНЯЮ ОДИН ЗАПРОС</b>")
+                success = self.service.run_once()
+                if success:
+                    self.send_message("✅ <b>Запрос выполнен успешно</b>")
+                else:
+                    self.send_message("❌ <b>Ошибка при выполнении запроса</b>")
+                    
+        elif command == '/shutdown':
+            self.service.service_active = False
+            self.service.save_service_state()
+            self.send_message("🛑 <b>ПОЛНАЯ ОСТАНОВКА СЕРВИСА</b>\nТребуется ручной запуск")
+            logger.info("✅ Сервис полностью остановлен через Telegram команду")
+            
+        else:
+            self.send_message("❌ <b>Неизвестная команда</b>\nИспользуйте /start для списка команд")
+
+    # 🔧 ОБНОВЛЯЕМ СУЩЕСТВУЮЩИЕ МЕТОДЫ
+    def process_status_command(self, status_data):
+        """Обработка команды /status (для обратной совместимости)"""
+        self.process_commands()  # 🔧 Теперь используем общий метод
 
     def send_predictions(self, predictions, draw, actual_group=None, comparison_result=None):
         """Отправка улучшенных прогнозов в Telegram как в веб-версии"""
@@ -302,9 +411,9 @@ class AutoLearningService:
         self.service_active = True
         self.consecutive_api_errors = 0
         self.max_consecutive_errors = 3
-        self.telegram = TelegramNotifier()
+        self.telegram = TelegramNotifier(self)  # 🔧 Передаем ссылку на сервис
         self.next_scheduled_run = None
-        self._first_run = True  # 🔧 НОВЫЙ ФЛАГ ДЛЯ ПРОВЕРКИ СИНХРОНИЗАЦИИ
+        self._first_run = True
         self.initialize_system()
         self.load_service_state()
     
@@ -1048,7 +1157,7 @@ class AutoLearningService:
         return success
 
     def start_scheduled_service(self):
-        """Запуск сервиса по расписанию с учетом буфера и фиксированных слотов"""
+        """Запуск сервиса по расписанию с обработкой Telegram команд"""
         if not self.service_active:
             logger.error("🚨 Сервис остановлен из-за ошибок API. Запуск по расписанию отменен.")
             logger.info("💡 Используйте: python3 auto_learning_service.py --restart")
@@ -1083,9 +1192,8 @@ class AutoLearningService:
         
         try:
             while True:
-                # Проверяем команды Telegram
-                status_data = self.get_service_status()
-                self.telegram.process_status_command(status_data)
+                # 🔧 ОБРАБОТКА TELEGRAM КОМАНД КАЖДУЮ МИНУТУ
+                self.telegram.process_commands()
                 
                 schedule.run_pending()
                 time.sleep(60)
