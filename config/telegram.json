@@ -1,0 +1,12 @@
+{
+  "enabled": true,
+  "bot_token": "YOUR_BOT_TOKEN_HERE",
+  "chat_id": "YOUR_CHAT_ID_HERE",
+  "notifications": {
+    "critical_errors": true,
+    "all_errors": true,
+    "service_stop": true,
+    "predictions": false,
+    "status_command": true
+  }
+}
