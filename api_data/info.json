@@ -1,5 +1,5 @@
 {
-  "current_draw": "309002",
+  "current_draw": "309052",
   "service_status": "active",
   "history": [
     {
@@ -662,6 +662,405 @@
       "timestamp": "2025-11-05T08:54:23.312674",
       "processed": false,
       "service_type": "api_request"
+    },
+    {
+      "draw": "309003",
+      "combination": "20 26 18 13",
+      "timestamp": "2025-11-05T09:05:23.018025",
+      "processed": false,
+      "service_type": "api_request"
+    },
+    {
+      "draw": "309004",
+      "combination": "7 4 7 6",
+      "timestamp": "2025-11-04T15:00:51.310365",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-04T15:03:35.427250"
+    },
+    {
+      "draw": "309005",
+      "combination": "24 14 23 25",
+      "timestamp": "2025-11-04T15:00:51.310365",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-04T15:03:35.427250"
+    },
+    {
+      "draw": "309006",
+      "combination": "2 7 18 17",
+      "timestamp": "2025-11-05T09:21:20.803973",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T09:26:11.266962"
+    },
+    {
+      "draw": "309007",
+      "combination": "15 18 20 3",
+      "timestamp": "2025-11-05T09:34:13.696273",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T09:38:52.144608"
+    },
+    {
+      "draw": "309008",
+      "combination": "24 8 6 20",
+      "timestamp": "2025-11-05T09:44:53.907138",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T09:49:34.967387"
+    },
+    {
+      "draw": "309009",
+      "combination": "8 21 7 10",
+      "timestamp": "2025-11-05T09:59:37.661520",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T10:04:23.286249"
+    },
+    {
+      "draw": "309010",
+      "combination": "16 4 20 17",
+      "timestamp": "2025-11-05T10:14:26.028491",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T10:19:20.359458"
+    },
+    {
+      "draw": "309011",
+      "combination": "5 26 12 19",
+      "timestamp": "2025-11-05T10:29:23.178603",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T10:34:11.777056"
+    },
+    {
+      "draw": "309012",
+      "combination": "4 18 16 22",
+      "timestamp": "2025-11-05T10:44:14.438288",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T10:49:03.895858"
+    },
+    {
+      "draw": "309013",
+      "combination": "23 13 26 3",
+      "timestamp": "2025-11-05T10:59:06.620745",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T11:03:56.713930"
+    },
+    {
+      "draw": "309014",
+      "combination": "25 21 11 24",
+      "timestamp": "2025-11-05T11:14:59.692454",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T11:19:53.107521"
+    },
+    {
+      "draw": "309015",
+      "combination": "23 3 1 9",
+      "timestamp": "2025-11-05T11:29:55.823635",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T11:34:49.417364"
+    },
+    {
+      "draw": "309016",
+      "combination": "22 19 7 2",
+      "timestamp": "2025-11-05T11:44:52.163814",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T11:49:42.763156"
+    },
+    {
+      "draw": "309017",
+      "combination": "5 1 18 8",
+      "timestamp": "2025-11-05T11:59:45.540557",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T12:04:41.289734"
+    },
+    {
+      "draw": "309018",
+      "combination": "10 13 21 6",
+      "timestamp": "2025-11-05T12:14:44.026542",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T12:19:29.851120"
+    },
+    {
+      "draw": "309019",
+      "combination": "24 17 13 5",
+      "timestamp": "2025-11-05T12:29:32.560013",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T12:34:23.042731"
+    },
+    {
+      "draw": "309020",
+      "combination": "7 26 6 16",
+      "timestamp": "2025-11-05T12:44:25.887372",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T12:49:20.981262"
+    },
+    {
+      "draw": "309021",
+      "combination": "22 14 25 23",
+      "timestamp": "2025-11-05T12:59:23.791859",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T13:04:14.001062"
+    },
+    {
+      "draw": "309022",
+      "combination": "11 10 3 8",
+      "timestamp": "2025-11-05T13:14:16.818203",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T13:19:05.613741"
+    },
+    {
+      "draw": "309023",
+      "combination": "20 18 15 17",
+      "timestamp": "2025-11-05T13:29:08.396632",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T13:33:56.482638"
+    },
+    {
+      "draw": "309024",
+      "combination": "19 11 22 21",
+      "timestamp": "2025-11-05T13:44:59.512653",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T13:49:54.620972"
+    },
+    {
+      "draw": "309025",
+      "combination": "15 10 6 9",
+      "timestamp": "2025-11-05T13:59:57.507802",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T14:04:59.488860"
+    },
+    {
+      "draw": "309026",
+      "combination": "8 3 10 13",
+      "timestamp": "2025-11-05T14:14:02.392012",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T14:18:56.031003"
+    },
+    {
+      "draw": "309027",
+      "combination": "20 7 12 14",
+      "timestamp": "2025-11-05T14:29:59.066454",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T14:34:58.440357"
+    },
+    {
+      "draw": "309028",
+      "combination": "20 7 16 4",
+      "timestamp": "2025-11-05T14:44:00.946527",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T14:48:55.238861"
+    },
+    {
+      "draw": "309029",
+      "combination": "12 1 10 2",
+      "timestamp": "2025-11-05T14:59:58.418856",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T15:04:49.751406"
+    },
+    {
+      "draw": "309030",
+      "combination": "12 17 17 20",
+      "timestamp": "2025-11-05T15:14:52.539304",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T15:19:47.803984"
+    },
+    {
+      "draw": "309031",
+      "combination": "2 25 18 3",
+      "timestamp": "2025-11-05T15:29:50.720329",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T15:34:46.824822"
+    },
+    {
+      "draw": "309032",
+      "combination": "14 19 14 24",
+      "timestamp": "2025-11-05T15:44:49.628056",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T15:49:39.413379"
+    },
+    {
+      "draw": "309033",
+      "combination": "21 3 25 19",
+      "timestamp": "2025-11-05T15:59:42.224839",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T16:04:44.733158"
+    },
+    {
+      "draw": "309034",
+      "combination": "2 26 4 2",
+      "timestamp": "2025-11-05T16:14:47.484846",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T16:19:47.289203"
+    },
+    {
+      "draw": "309035",
+      "combination": "2 24 5 20",
+      "timestamp": "2025-11-05T16:29:50.120282",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T16:34:51.187738"
+    },
+    {
+      "draw": "309036",
+      "combination": "12 10 6 9",
+      "timestamp": "2025-11-05T16:44:54.023411",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T16:49:51.693721"
+    },
+    {
+      "draw": "309037",
+      "combination": "25 18 14 9",
+      "timestamp": "2025-11-05T16:59:54.433385",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T17:04:58.387244"
+    },
+    {
+      "draw": "309038",
+      "combination": "2 18 16 20",
+      "timestamp": "2025-11-05T17:14:00.924943",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T17:18:59.305804"
+    },
+    {
+      "draw": "309039",
+      "combination": "14 19 13 9",
+      "timestamp": "2025-11-05T17:29:02.201857",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T17:34:10.541029"
+    },
+    {
+      "draw": "309040",
+      "combination": "25 4 9 21",
+      "timestamp": "2025-11-05T17:44:13.756735",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T17:49:19.963290"
+    },
+    {
+      "draw": "309041",
+      "combination": "9 14 4 25",
+      "timestamp": "2025-11-05T17:59:22.923395",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T18:04:24.920772"
+    },
+    {
+      "draw": "309042",
+      "combination": "12 14 19 22",
+      "timestamp": "2025-11-05T18:14:27.813414",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T18:19:27.896197"
+    },
+    {
+      "draw": "309043",
+      "combination": "7 2 7 12",
+      "timestamp": "2025-11-05T18:29:30.868707",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T18:34:39.130004"
+    },
+    {
+      "draw": "309044",
+      "combination": "11 7 24 14",
+      "timestamp": "2025-11-05T18:44:41.965017",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T18:49:50.526568"
+    },
+    {
+      "draw": "309045",
+      "combination": "12 3 23 10",
+      "timestamp": "2025-11-05T18:59:53.379103",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T19:05:04.687458"
+    },
+    {
+      "draw": "309046",
+      "combination": "12 22 17 4",
+      "timestamp": "2025-11-05T19:14:07.261663",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T19:19:10.832495"
+    },
+    {
+      "draw": "309047",
+      "combination": "10 6 8 3",
+      "timestamp": "2025-11-05T19:29:13.712924",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T19:34:12.573966"
+    },
+    {
+      "draw": "309048",
+      "combination": "5 11 12 4",
+      "timestamp": "2025-11-05T19:44:15.424989",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T19:49:24.213616"
+    },
+    {
+      "draw": "309049",
+      "combination": "6 23 16 15",
+      "timestamp": "2025-11-05T19:59:29.324624",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T20:04:33.387566"
+    },
+    {
+      "draw": "309050",
+      "combination": "12 21 18 8",
+      "timestamp": "2025-11-05T20:14:36.211733",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T20:19:40.444604"
+    },
+    {
+      "draw": "309051",
+      "combination": "8 18 9 6",
+      "timestamp": "2025-11-05T20:29:43.379354",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T20:34:41.190781"
+    },
+    {
+      "draw": "309052",
+      "combination": "16 14 15 23",
+      "timestamp": "2025-11-05T20:44:44.370647",
+      "processed": true,
+      "service_type": "api_request",
+      "processing_time": "2025-11-05T20:49:47.431243"
     }
   ]
 }
