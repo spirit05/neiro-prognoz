@@ -61,7 +61,12 @@ class AdvancedPatternAnalyzer:
             return 0.5
         
         try:
-            lags = range(2, min(20, len(ts)//2))
+            # Создаем безопасные лаги
+            max_lag = min(20, len(ts) // 2)
+            if max_lag < 2:
+                return 0.5
+                
+            lags = list(range(2, max_lag + 1))
             tau = []
             valid_lags = []
             
@@ -69,29 +74,66 @@ class AdvancedPatternAnalyzer:
                 if lag >= len(ts):
                     continue
                     
-                # Вычисляем разность
-                diff = ts[lag:] - ts[:-lag]
-                if len(diff) == 0:
-                    continue
+                try:
+                    # Вычисляем разность с защитой от ошибок
+                    diff = ts[lag:] - ts[:-lag]
+                    if len(diff) < 2:
+                        continue
+                        
+                    std_val = np.std(diff)
                     
-                std_val = np.std(diff)
-                if std_val > 0 and not np.isnan(std_val):  # ⚡ ФИЛЬТРУЕМ НЕВАЛИДНЫЕ ЗНАЧЕНИЯ
-                    tau.append(std_val)
-                    valid_lags.append(lag)
+                    # Проверяем на валидность (не NaN, не бесконечность, > 0)
+                    if (not np.isnan(std_val) and 
+                        not np.isinf(std_val) and 
+                        std_val > 1e-10 and 
+                        lag > 0):
+                        tau.append(std_val)
+                        valid_lags.append(lag)
+                except:
+                    continue
             
-            if len(tau) < 2:
+            # Нужно минимум 3 точки для регрессии
+            if len(tau) < 3:
                 return 0.5
             
-            # Преобразуем в numpy arrays и проверяем на положительные значения
+            # Преобразуем в numpy arrays с защитой
             lags_array = np.array(valid_lags, dtype=np.float64)
             tau_array = np.array(tau, dtype=np.float64)
             
-            # ⚡ ГАРАНТИРУЕМ, что значения > 0 для логарифма
-            lags_array = np.maximum(lags_array, 1.0)  # lags всегда >= 1
-            tau_array = np.maximum(tau_array, 1e-10)  # tau всегда > 0
+            # Дополнительная проверка на положительные значения
+            mask = (lags_array > 0) & (tau_array > 1e-10)
+            if np.sum(mask) < 3:
+                return 0.5
+                
+            lags_array = lags_array[mask]
+            tau_array = tau_array[mask]
             
-            poly = np.polyfit(np.log(lags_array), np.log(tau_array), 1)
-            return poly[0]
+            # Вычисляем логарифмы с защитой
+            log_lags = np.log(lags_array)
+            log_tau = np.log(tau_array)
+            
+            # Проверяем на NaN/Inf после логарифмирования
+            valid_mask = ~(np.isnan(log_lags) | np.isinf(log_lags) | 
+                        np.isnan(log_tau) | np.isinf(log_tau))
+            
+            if np.sum(valid_mask) < 3:
+                return 0.5
+                
+            log_lags = log_lags[valid_mask]
+            log_tau = log_tau[valid_mask]
+            
+            # Вычисляем линейную регрессию
+            poly = np.polyfit(log_lags, log_tau, 1)
+            
+            # Проверяем результат на валидность
+            if np.isnan(poly[0]) or np.isinf(poly[0]):
+                return 0.5
+                
+            return float(poly[0])
+            
+        except Exception as e:
+            # В случае любой ошибки возвращаем нейтральное значение
+            return 0.5
             
         except Exception as e:
             print(f"⚠️  Ошибка расчета Херста: {e}")
