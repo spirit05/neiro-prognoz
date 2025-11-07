@@ -1,6 +1,6 @@
-# [file name]: model/advanced_features.py
+# [file name]: ml/features/advanced.py
 """
-Продвинутые features для анализа временных рядов
+Продвинутые features для анализа временных рядов - РЕФАКТОРИНГ ДЛЯ НОВОЙ СТРУКТУРЫ
 """
 
 import numpy as np
@@ -51,92 +51,51 @@ class AdvancedPatternAnalyzer:
             'dominant_frequency': dominant_freq,
             'linear_trend': linear_trend,
             'volatility': np.std(ts) if len(ts) > 1 else 0,
-            'hurst_exponent': self._calculate_hurst(ts),
+            'hurst_exponent': self._calculate_hurst_safe(ts),
             'mean_reversion': self._check_mean_reversion(ts)
         }
     
-    def _calculate_hurst(self, ts: np.ndarray) -> float:
-        """Вычисление экспоненты Херста для определения персистентности"""
+    def _calculate_hurst_safe(self, ts: np.ndarray) -> float:
+        """Безопасный расчет Hurst exponent с полной защитой от ошибок"""
         if len(ts) < 20:
             return 0.5
         
         try:
-            # Создаем безопасные лаги
-            max_lag = min(20, len(ts) // 2)
-            if max_lag < 2:
+            # Упрощенный, но стабильный расчет Hurst
+            # Используем метод R/S (rescaled range)
+            n = len(ts)
+            if n < 10:
                 return 0.5
                 
-            lags = list(range(2, max_lag + 1))
-            tau = []
-            valid_lags = []
+            # Вычисляем кумулятивное отклонение от среднего
+            mean_val = np.mean(ts)
+            deviations = ts - mean_val
+            cumulative_deviations = np.cumsum(deviations)
             
-            for lag in lags:
-                if lag >= len(ts):
-                    continue
-                    
-                try:
-                    # Вычисляем разность с защитой от ошибок
-                    diff = ts[lag:] - ts[:-lag]
-                    if len(diff) < 2:
-                        continue
-                        
-                    std_val = np.std(diff)
-                    
-                    # Проверяем на валидность (не NaN, не бесконечность, > 0)
-                    if (not np.isnan(std_val) and 
-                        not np.isinf(std_val) and 
-                        std_val > 1e-10 and 
-                        lag > 0):
-                        tau.append(std_val)
-                        valid_lags.append(lag)
-                except:
-                    continue
+            # Вычисляем диапазон
+            data_range = np.max(cumulative_deviations) - np.min(cumulative_deviations)
             
-            # Нужно минимум 3 точки для регрессии
-            if len(tau) < 3:
-                return 0.5
+            # Вычисляем стандартное отклонение
+            std_dev = np.std(ts)
             
-            # Преобразуем в numpy arrays с защитой
-            lags_array = np.array(valid_lags, dtype=np.float64)
-            tau_array = np.array(tau, dtype=np.float64)
-            
-            # Дополнительная проверка на положительные значения
-            mask = (lags_array > 0) & (tau_array > 1e-10)
-            if np.sum(mask) < 3:
+            if std_dev == 0:
                 return 0.5
                 
-            lags_array = lags_array[mask]
-            tau_array = tau_array[mask]
+            # R/S статистика
+            rs_statistic = data_range / std_dev
             
-            # Вычисляем логарифмы с защитой
-            log_lags = np.log(lags_array)
-            log_tau = np.log(tau_array)
-            
-            # Проверяем на NaN/Inf после логарифмирования
-            valid_mask = ~(np.isnan(log_lags) | np.isinf(log_lags) | 
-                        np.isnan(log_tau) | np.isinf(log_tau))
-            
-            if np.sum(valid_mask) < 3:
+            # Преобразуем в приблизительный Hurst exponent
+            # Для случайного блуждания H ≈ 0.5, для персистентного H > 0.5
+            if rs_statistic <= 0:
                 return 0.5
                 
-            log_lags = log_lags[valid_mask]
-            log_tau = log_tau[valid_mask]
+            hurst = np.log(rs_statistic) / np.log(n)
             
-            # Вычисляем линейную регрессию
-            poly = np.polyfit(log_lags, log_tau, 1)
-            
-            # Проверяем результат на валидность
-            if np.isnan(poly[0]) or np.isinf(poly[0]):
-                return 0.5
-                
-            return float(poly[0])
+            # Ограничиваем значения разумными пределами
+            return float(np.clip(hurst, 0.1, 0.9))
             
         except Exception as e:
             # В случае любой ошибки возвращаем нейтральное значение
-            return 0.5
-            
-        except Exception as e:
-            print(f"⚠️  Ошибка расчета Херста: {e}")
             return 0.5
     
     def _check_mean_reversion(self, ts: np.ndarray) -> float:
@@ -147,6 +106,7 @@ class AdvancedPatternAnalyzer:
         mean = np.mean(ts)
         deviations = np.abs(ts - mean)
         return float(np.mean(deviations) / (np.std(ts) + 1e-8))
+
 
 class FrequencyBasedPredictor:
     def __init__(self):
@@ -214,6 +174,7 @@ class FrequencyBasedPredictor:
         
         # Нормализация и логарифмирование для стабильности
         return max(1e-10, score)
+
 
 class SmartNumberSelector:
     def __init__(self, memory_size: int = 50):
