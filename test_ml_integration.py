@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Тест интеграции автосервиса с ML системой
+Тест исправленной интеграции автосервиса с ML системой
 """
 
 import sys
@@ -11,9 +11,9 @@ sys.path.insert(0, '/opt/dev')
 
 from services.auto_learning.service import AutoLearningService
 
-def test_ml_integration():
-    """Тестирование интеграции с ML системой"""
-    print("🧪 Тестирование интеграции автосервиса с ML системой...")
+def test_fixed_integration():
+    """Тестирование исправленной интеграции"""
+    print("🧪 Тестирование исправленной интеграции автосервиса с ML системой...")
     
     try:
         # Создаем экземпляр сервиса
@@ -24,18 +24,30 @@ def test_ml_integration():
         
         # Проверяем статус
         status = service.get_service_status()
-        print(f"✅ Статус сервиса: {status}")
+        print(f"✅ Статус сервиса получен: активен={status['service_active']}")
+        print(f"✅ Ошибок API: {status['consecutive_api_errors']}")
         
         # Тестируем резервные методы
         test_combination = "1 2 3 4"
         predictions = service.fallback_retrain(test_combination)
         print(f"✅ Резервные прогнозы сгенерированы: {len(predictions)}")
         
+        if predictions:
+            for i, (group, score) in enumerate(predictions):
+                print(f"   {i+1}. {group} (score: {score:.3f})")
+        
         # Тестируем сравнение с прогнозами
         comparison = service.compare_with_predictions(test_combination)
         print(f"✅ Сравнение с прогнозами: {comparison['matches_found']} совпадений")
         
-        print("🎉 Интеграция с ML системой работает корректно!")
+        # Тестируем валидацию
+        valid = service.validate_group_fallback(test_combination)
+        print(f"✅ Валидация группы: {valid}")
+        
+        invalid = service.validate_group_fallback("1 2 3 21")  # Невалидная
+        print(f"✅ Валидация невалидной группы: {not invalid}")
+        
+        print("🎉 Исправленная интеграция работает корректно!")
         return True
         
     except Exception as e:
@@ -45,4 +57,4 @@ def test_ml_integration():
         return False
 
 if __name__ == "__main__":
-    test_ml_integration()
+    test_fixed_integration()

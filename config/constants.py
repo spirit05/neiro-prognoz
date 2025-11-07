@@ -17,9 +17,28 @@ CRITICAL_INTERVAL_MINUTES = 2  # 🔧 Критический интервал
 # Расписание автообучения
 SCHEDULE_MINUTES = [14, 29, 44, 59]  # 🔧 ФИКСИРОВАННОЕ РАСПИСАНИЕ
 
+# === ДОБАВЛЕННЫЕ ПАРАМЕТРЫ ОБУЧЕНИЯ ===
+# Основное обучение
+MAIN_TRAINING_EPOCHS = 20
+MAIN_BATCH_SIZE = 32
+MAIN_LEARNING_RATE = 0.001
+
+# Дообучение (автосервис)  
+RETRAIN_EPOCHS = 3
+RETRAIN_BATCH_SIZE = 16
+RETRAIN_LEARNING_RATE = 0.0005
+
+# Параметры ансамбля
+ENSEMBLE_TOP_K = 4
+ENSEMBLE_MIN_CONFIDENCE = 0.01
+
+# Параметры самообучения
+SELF_LEARNING_RETRAIN_EPOCHS = 2
+SELF_LEARNING_ANALYSIS_WINDOW = 50
+# === КОНЕЦ ДОБАВЛЕННЫХ ПАРАМЕТРОВ ===
+
 # Настройки модели
 DEFAULT_EPOCHS = 20
-RETRAIN_EPOCHS = 5
 MIN_DATASET_SIZE = 50
 PREDICTION_TOP_K = 4  # ✅ Только TOP-4 прогноза вместо 10
 

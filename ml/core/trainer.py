@@ -33,10 +33,16 @@ class EnhancedTrainer:
         if self.progress_callback:
             self.progress_callback(message)
     
-    def train(self, groups: List[str], epochs: int = None, batch_size: int = 64) -> List[Tuple[Tuple[int, int, int, int], float]]:
+    def train(self, groups: List[str], epochs=None, batch_size=None, learning_rate=None) -> List[Tuple[Tuple[int, int, int, int], float]]:
         """Обучение модели с улучшенными параметрами и детальным логированием"""
-        epochs = epochs or constants.DEFAULT_EPOCHS
-        total_start_time = time.time()
+        from config.constants import MAIN_TRAINING_EPOCHS, MAIN_BATCH_SIZE, MAIN_LEARNING_RATE
+        if epochs is None:
+            epochs = MAIN_TRAINING_EPOCHS
+        if batch_size is None:
+            batch_size = MAIN_BATCH_SIZE
+        if learning_rate is None:
+            learning_rate = MAIN_LEARNING_RATE
+        total_start_time = time.time() 
         
         self._report_progress(f"🚀 СТАРТ обучения: {len(groups)} групп, {epochs} эпох, batch_size={batch_size}")
         

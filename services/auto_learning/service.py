@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Автономный сервис для автоматического получения данных и дообучения
-С РЕАЛЬНОЙ ИНТЕГРАЦИЕЙ ML СИСТЕМЫ
+С ПРАВИЛЬНОЙ ИНТЕГРАЦИЕЙ ML СИСТЕМЫ
 """
 
 import os
@@ -54,20 +54,13 @@ class AutoLearningService:
         self.load_service_state()
     
     def initialize_system(self):
-        """Инициализация AI системы с реальной ML интеграцией"""
+        """Инициализация AI системы с правильной ML интеграцией"""
         try:
             # Импортируем реальные компоненты ML системы
-            from ml.core.data_processor import DataProcessor
             from ml.learning.self_learning import SelfLearningSystem
-            from ml.ensemble.ensemble import EnsemblePredictor
             
-            # Инициализируем систему самообучения
+            # Инициализируем систему самообучения (без callback, т.к. его нет в API)
             self.system = SelfLearningSystem()
-            
-            def progress_callback(message):
-                logger.info(f"📢 ML System: {message}")
-            
-            self.system.set_progress_callback(progress_callback)
             
             logger.info("✅ AI система инициализирована с реальной ML интеграцией")
             return True
@@ -80,31 +73,46 @@ class AutoLearningService:
     def initialize_fallback_system(self):
         """Резервная инициализация системы"""
         try:
-            # Пробуем импортировать базовые компоненты
-            from ml.core.predictor import EnhancedPredictor
-            from ml.core.trainer import EnhancedTrainer
-            
             logger.info("🔄 Используется резервная инициализация ML системы")
+            
+            # Создаем простую резервную систему
             self.system = type('FallbackSystem', (), {
                 'is_trained': True,
-                'add_data_and_retrain': lambda x, **kwargs: self.fallback_retrain(x),
-                'get_status': lambda: {'status': 'fallback', 'model_trained': True},
-                'get_learning_insights': lambda: {'status': 'fallback'}
+                'add_data_and_retrain': self.fallback_retrain,
+                'get_status': self.fallback_get_status,
+                'get_learning_insights': self.fallback_get_insights
             })()
             return True
         except Exception as e:
             logger.error(f"❌ Резервная инициализация также не удалась: {e}")
             return False
     
-    def fallback_retrain(self, combination):
+    def fallback_get_status(self):
+        """Резервный метод получения статуса"""
+        return {
+            'status': 'fallback', 
+            'model_trained': True,
+            'dataset_size': 0,
+            'fallback_mode': True
+        }
+    
+    def fallback_get_insights(self):
+        """Резервный метод получения аналитики"""
+        return {
+            'status': 'fallback',
+            'recent_accuracy_avg': 0.0,
+            'total_predictions_analyzed': 0
+        }
+    
+    def fallback_retrain(self, combination, retrain_epochs=None):
+        from config.constants import RETRAIN_EPOCHS
+        if retrain_epochs is None:
+            retrain_epochs = RETRAIN_EPOCHS
         """Резервный метод дообучения"""
         logger.info(f"🔄 Резервное дообучение на данных: {combination}")
         try:
-            # Простая логика генерации прогнозов
-            from ml.core.data_processor import DataProcessor
-            
-            # Валидация группы
-            if not DataProcessor.validate_group(combination):
+            # Простая валидация группы
+            if not self.validate_group_fallback(combination):
                 logger.error(f"❌ Невалидная группа в резервном режиме: {combination}")
                 return []
             
@@ -125,6 +133,20 @@ class AutoLearningService:
         except Exception as e:
             logger.error(f"❌ Ошибка в резервном дообучении: {e}")
             return []
+    
+    def validate_group_fallback(self, combination: str) -> bool:
+        """Резервная валидация группы чисел"""
+        try:
+            numbers = [int(x) for x in combination.split()]
+            if len(numbers) != 4:
+                return False
+            if any(x < 1 or x > 20 for x in numbers):
+                return False
+            if len(set(numbers)) != 4:
+                return False
+            return True
+        except:
+            return False
     
     def load_service_state(self):
         """Загрузка состояния сервиса"""
@@ -233,8 +255,7 @@ class AutoLearningService:
             logger.info(f"🎯 Обработка тиража {processing_draw}: {new_combination}")
             
             # Шаг 3: Проверяем валидность группы
-            from ml.core.data_processor import DataProcessor
-            if not DataProcessor.validate_group(new_combination):
+            if not self.validate_group_fallback(new_combination):
                 logger.error(f"❌ Невалидная группа: {new_combination}")
                 return False
             
@@ -288,8 +309,6 @@ class AutoLearningService:
     def compare_with_predictions(self, new_combination: str):
         """Сравнение новой группы с предыдущими прогнозами"""
         try:
-            from ml.core.data_processor import DataProcessor
-            
             # Загружаем предыдущие прогнозы
             predictions_path = os.path.join(PROJECT_ROOT, 'data', 'predictions_state.json')
             if not os.path.exists(predictions_path):
@@ -310,7 +329,7 @@ class AutoLearningService:
                 pred_group = pred.get('group')
                 if pred_group and len(pred_group) == 4:
                     pred_tuple = tuple(pred_group)
-                    comparison = DataProcessor.compare_groups(pred_tuple, new_tuple)
+                    comparison = self.compare_groups_fallback(pred_tuple, new_tuple)
                     if comparison['total_matches'] > 0:
                         matches.append({
                             'predicted_group': pred_tuple,
@@ -335,13 +354,22 @@ class AutoLearningService:
             logger.error(f"❌ Ошибка сравнения с прогнозами: {e}")
             return {'matches_found': 0, 'error': str(e)}
     
+    def compare_groups_fallback(self, group1, group2):
+        """Резервное сравнение групп"""
+        matches = 0
+        for num in group1:
+            if num in group2:
+                matches += 1
+        return {'total_matches': matches}
+    
     def add_data_and_retrain(self, new_combination: str):
         """Добавление данных и дообучение модели с реальной ML системой"""
         try:
             logger.info("🧠 Добавление данных и дообучение модели...")
             
             # Используем реальную систему самообучения
-            predictions = self.system.add_data_and_retrain(new_combination, retrain_epochs=3)
+            from config.constants import RETRAIN_EPOCHS
+            predictions = self.system.add_data_and_retrain(new_combination, retrain_epochs=RETRAIN_EPOCHS)
             
             if predictions:
                 logger.info(f"✅ Дообучение завершено. Сгенерировано {len(predictions)} прогнозов")
@@ -406,7 +434,6 @@ class AutoLearningService:
         
         return status
     
-    # Остальные методы остаются без изменений...
     def manual_restart(self):
         """Ручной перезапуск сервиса после остановки"""
         if not self.service_active:
