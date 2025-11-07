@@ -74,6 +74,10 @@ class SelfLearningSystem:
                 'accuracy_score': best_score / 4.0  # Нормализованная точность
             }
             
+            # ⚡ ИСПРАВЛЕНИЕ: Проверяем существование ключа перед добавлением
+            if 'predictions_accuracy' not in self.learning_data:
+                self.learning_data['predictions_accuracy'] = []
+                
             self.learning_data['predictions_accuracy'].append(analysis_result)
             self._save_learning_data()
             

@@ -52,7 +52,7 @@ class EnhancedPredictor:
         """Ленивая загрузка анализатора паттернов"""
         if self._pattern_analyzer is None:
             try:
-                from ml.features.analyzer import AdvancedPatternAnalyzer
+                from ml.features.advanced import AdvancedPatternAnalyzer
                 self._pattern_analyzer = AdvancedPatternAnalyzer()
             except ImportError as e:
                 logger.warning(f"⚠️  Не удалось загрузить анализатор паттернов: {e}")
@@ -186,7 +186,7 @@ class EnhancedPredictor:
         """Генерация кандидатов на основе частотного анализа"""
         try:
             from ml.utils.data_utils import load_dataset
-            from ml.ensemble.patterns import FrequencyBasedPredictor
+            from ml.features.advanced import FrequencyBasedPredictor
             
             dataset = load_dataset()
             if not dataset:

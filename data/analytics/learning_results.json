@@ -21,5 +21,44 @@
     }
   ],
   "last_updated": "2025-11-06T22:01:15.009810",
-  "system_version": "1.0"
+  "system_version": "1.0",
+  "predictions_accuracy": [
+    {
+      "timestamp": "2025-11-07T09:04:27.775214",
+      "actual_group": "1 2 3 4",
+      "best_prediction": [
+        19,
+        20,
+        4,
+        24
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 0,
+        "pair2_matches": 1,
+        "exact_matches": 0
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-07T09:04:27.786990",
+      "actual_group": "1 2 3 4",
+      "best_prediction": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "matches_count": 4,
+      "comparison_details": {
+        "total_matches": 4,
+        "pair1_matches": 2,
+        "pair2_matches": 2,
+        "exact_matches": 4
+      },
+      "accuracy_score": 1.0
+    }
+  ],
+  "last_analysis": "2025-11-07T09:04:27.787063"
 }
