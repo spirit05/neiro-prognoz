@@ -51,23 +51,51 @@ class AdvancedPatternAnalyzer:
             'dominant_frequency': dominant_freq,
             'linear_trend': linear_trend,
             'volatility': np.std(ts) if len(ts) > 1 else 0,
-            'hurst_exponent': self._calculate_hurst(ts),
+            'hurst_exponent': self._calculate_hurst_safe(ts),
             'mean_reversion': self._check_mean_reversion(ts)
         }
     
-    def _calculate_hurst(self, ts: np.ndarray) -> float:
-        """Вычисление экспоненты Херста для определения персистентности"""
+    def _calculate_hurst_safe(self, ts: np.ndarray) -> float:
+        """Безопасный расчет Hurst exponent с полной защитой от ошибок"""
         if len(ts) < 20:
             return 0.5
         
         try:
-            lags = range(2, min(20, len(ts)//2))
-            tau = [np.std(np.subtract(ts[lag:], ts[:-lag])) for lag in lags]
-            if len(tau) < 2:
+            # Упрощенный, но стабильный расчет Hurst
+            # Используем метод R/S (rescaled range)
+            n = len(ts)
+            if n < 10:
                 return 0.5
-            poly = np.polyfit(np.log(lags), np.log(tau), 1)
-            return poly[0]
-        except:
+                
+            # Вычисляем кумулятивное отклонение от среднего
+            mean_val = np.mean(ts)
+            deviations = ts - mean_val
+            cumulative_deviations = np.cumsum(deviations)
+            
+            # Вычисляем диапазон
+            data_range = np.max(cumulative_deviations) - np.min(cumulative_deviations)
+            
+            # Вычисляем стандартное отклонение
+            std_dev = np.std(ts)
+            
+            if std_dev == 0:
+                return 0.5
+                
+            # R/S статистика
+            rs_statistic = data_range / std_dev
+            
+            # Преобразуем в приблизительный Hurst exponent
+            # Для случайного блуждания H ≈ 0.5, для персистентного H > 0.5
+            if rs_statistic <= 0:
+                return 0.5
+                
+            hurst = np.log(rs_statistic) / np.log(n)
+            
+            # Ограничиваем значения разумными пределами
+            return float(np.clip(hurst, 0.1, 0.9))
+            
+        except Exception as e:
+            # В случае любой ошибки возвращаем нейтральное значение
             return 0.5
     
     def _check_mean_reversion(self, ts: np.ndarray) -> float:
