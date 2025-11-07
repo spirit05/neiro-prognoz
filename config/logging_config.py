@@ -61,6 +61,10 @@ def get_web_interface_logger():
     """Логгер для веб-интерфейса"""
     return setup_logging("web_interface")
 
+def get_ml_system_logger():
+    """Получение логгера для ML системы"""
+    return setup_logging("ml_system")
+
 # Утилиты логирования
 class ProgressLogger:
     """Класс для логирования прогресса с callback поддержкой"""

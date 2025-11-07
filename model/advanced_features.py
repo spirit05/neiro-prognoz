@@ -62,12 +62,39 @@ class AdvancedPatternAnalyzer:
         
         try:
             lags = range(2, min(20, len(ts)//2))
-            tau = [np.std(np.subtract(ts[lag:], ts[:-lag])) for lag in lags]
+            tau = []
+            valid_lags = []
+            
+            for lag in lags:
+                if lag >= len(ts):
+                    continue
+                    
+                # Вычисляем разность
+                diff = ts[lag:] - ts[:-lag]
+                if len(diff) == 0:
+                    continue
+                    
+                std_val = np.std(diff)
+                if std_val > 0 and not np.isnan(std_val):  # ⚡ ФИЛЬТРУЕМ НЕВАЛИДНЫЕ ЗНАЧЕНИЯ
+                    tau.append(std_val)
+                    valid_lags.append(lag)
+            
             if len(tau) < 2:
                 return 0.5
-            poly = np.polyfit(np.log(lags), np.log(tau), 1)
+            
+            # Преобразуем в numpy arrays и проверяем на положительные значения
+            lags_array = np.array(valid_lags, dtype=np.float64)
+            tau_array = np.array(tau, dtype=np.float64)
+            
+            # ⚡ ГАРАНТИРУЕМ, что значения > 0 для логарифма
+            lags_array = np.maximum(lags_array, 1.0)  # lags всегда >= 1
+            tau_array = np.maximum(tau_array, 1e-10)  # tau всегда > 0
+            
+            poly = np.polyfit(np.log(lags_array), np.log(tau_array), 1)
             return poly[0]
-        except:
+            
+        except Exception as e:
+            print(f"⚠️  Ошибка расчета Херста: {e}")
             return 0.5
     
     def _check_mean_reversion(self, ts: np.ndarray) -> float:

@@ -1,3 +1,4 @@
+# [file name]: ml/features/extractor.py
 """
 Извлечение features из истории чисел - МОДУЛЬНАЯ АРХИТЕКТУРА
 """
