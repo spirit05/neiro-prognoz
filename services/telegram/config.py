@@ -1,10 +1,11 @@
+# services/telegram/config.py
 """
 Конфигурация Telegram бота
 """
 
 import json
 import logging
-from typing import Dict, Any
+from typing import Dict, Any  # ← ДОБАВЛЯЕМ ИМПОРТ
 from config.paths import TELEGRAM_CONFIG_FILE
 
 logger = logging.getLogger('telegram_bot')
@@ -16,7 +17,7 @@ class TelegramConfig:
         self.config_path = TELEGRAM_CONFIG_FILE
         self.config = self._load_config()
     
-    def _load_config(self) -> Dict[str, Any]:
+    def _load_config(self) -> Dict[str, Any]:  # ← ТЕПЕРЬ Dict ОПРЕДЕЛЕН
         """Загрузка конфигурации из файла"""
         try:
             with open(self.config_path, 'r', encoding='utf-8') as f:
