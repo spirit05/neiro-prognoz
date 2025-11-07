@@ -34,7 +34,7 @@ class DataProcessor:
         all_numbers = []
         valid_groups = 0
         
-        for i, group_str in enumerate(groups[:10]):  # Проверим только первые 10
+        for i, group_str in enumerate(groups):  # Проверим только первые 10
             logger.info(f"🔍 DEBUG Группа {i}: '{group_str}' (тип: {type(group_str)})")
             if not isinstance(group_str, str):
                 logger.warning(f"🔴 Группа {i} не строка: {type(group_str)}")
@@ -59,7 +59,7 @@ class DataProcessor:
             logger.error(f"❌ Недостаточно данных: {len(all_numbers)} чисел (нужно 50)")
             return np.array([]), np.array([])
         
-            features = []
+        features = []
         targets = []
         feature_extractor = self._get_feature_extractor()
         
