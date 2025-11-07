@@ -17,40 +17,49 @@ class DataProcessor:
         """Ленивая загрузка FeatureExtractor"""
         if self._feature_extractor is None:
             try:
-                from ml.features.extractor import FeatureExtractor
-                self._feature_extractor = FeatureExtractor(self.history_size)
-            except ImportError as e:
-                logger.error(f"❌ Не удалось загрузить FeatureExtractor: {e}")
-                # Fallback на базовый экстрактор
-                from ml.features.extractor import BaseFeatureExtractor
+                from ml.features.extractor import BaseFeatureExtractor  # ← ПРАВИЛЬНЫЙ ИМПОРТ
                 self._feature_extractor = BaseFeatureExtractor(self.history_size)
+            except ImportError as e:
+                logger.error(f"❌ Не удалось загрузить BaseFeatureExtractor: {e}")
+                # Создаем простой экстрактор на месте как fallback
+                self._create_fallback_extractor()
         return self._feature_extractor
     
     def prepare_training_data(self, groups: List[str]) -> Tuple[np.ndarray, np.ndarray]:
-        """Подготовка данных для обучения"""
-        logger.info("📊 Подготовка данных для упрощенной нейросети...")
+        logger.info(f"🔍 DEBUG: Получено {len(groups)} групп")
+        logger.info(f"🔍 DEBUG: Тип groups: {type(groups)}")
+        logger.info(f"🔍 DEBUG: Тип первого элемента: {type(groups[0]) if groups else 'N/A'}")
+        logger.info(f"🔍 DEBUG: Первые 3 группы: {groups[:3] if groups else 'N/A'}")
         
         all_numbers = []
         valid_groups = 0
         
-        for group_str in groups:
+        for i, group_str in enumerate(groups[:10]):  # Проверим только первые 10
+            logger.info(f"🔍 DEBUG Группа {i}: '{group_str}' (тип: {type(group_str)})")
             if not isinstance(group_str, str):
+                logger.warning(f"🔴 Группа {i} не строка: {type(group_str)}")
                 continue
             try:
                 numbers = [int(x) for x in group_str.strip().split()]
+                logger.info(f"🔍 DEBUG Группа {i} числа: {numbers}")
                 if len(numbers) == 4 and all(1 <= x <= 26 for x in numbers):
                     all_numbers.extend(numbers)
                     valid_groups += 1
-            except:
+                    logger.info(f"✅ Группа {i} валидна")
+                else:
+                    logger.warning(f"🟡 Группа {i} невалидна: {numbers}")
+            except Exception as e:
+                logger.error(f"🔴 Ошибка в группе {i}: {e}")
                 continue
         
-        logger.info(f"✅ Обработано {valid_groups} групп, {len(all_numbers)} чисел")
+        logger.info(f"🔍 DEBUG: Валидных групп: {valid_groups}, всего чисел: {len(all_numbers)}")
         
-        if len(all_numbers) < self.history_size + 4:
-            logger.error(f"❌ Недостаточно данных для создания примеров")
+        # ВРЕМЕННО уменьшим порог для теста
+        if len(all_numbers) < 50:
+            logger.error(f"❌ Недостаточно данных: {len(all_numbers)} чисел (нужно 50)")
             return np.array([]), np.array([])
         
-        features = []
+            features = []
         targets = []
         feature_extractor = self._get_feature_extractor()
         

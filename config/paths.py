@@ -26,7 +26,7 @@ def get_project_root():
 
 # Базовые пути
 PROJECT_ROOT = get_project_root()
-OLD_PROJECT_ROOT = Path("/Desktop/project")  # Для обратной совместимости
+OLD_PROJECT_ROOT = Path("/opt/project")  # Для обратной совместимости
 
 # Основные директории
 ML_SYSTEM_DIR = PROJECT_ROOT / "ml"
