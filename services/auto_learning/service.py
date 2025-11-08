@@ -422,7 +422,13 @@ class AutoLearningService:
         
         if self.system:
             try:
-                system_status = self.system.get_status()
+                if hasattr(self.system, 'get_status'):
+                    system_status = self.system.get_status()
+                else:
+                    # Для SelfLearningSystem используем другой метод
+                    system_status = {"status": "initialized", "type": "SelfLearningSystem"}
+            except Exception as e:
+                system_status = {"status": f"error: {e}", "type": "unknown"}
                 status.update(system_status)
                 
                 # Добавляем аналитику самообучения

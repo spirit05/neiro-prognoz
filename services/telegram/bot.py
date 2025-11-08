@@ -1,26 +1,41 @@
-# services/telegram/bot.py
-#!/usr/bin/env python3
+# [file name]: services/telegram/bot.py
 """
-Telegram Polling Bot - МОДУЛЬНАЯ ВЕРСИЯ для новой архитектуры
-Использует модульную структуру без дублирования кода
+Telegram Polling Bot - ОСНОВНОЙ ФАЙЛ БОТА
 """
-
-import os
-import time
 import sys
-import logging
-from datetime import datetime
+sys.path.insert(0, '/opt/dev')
+import os
+import time  # ← ДОБАВИТЬ ЭТОТ ИМПОРТ
 
-# Импорты новой модульной структуры
+# ⚡ КРИТИЧЕСКИ ВАЖНО: Добавляем корень проекта в путь ДО любых импортов
+sys.path.insert(0, '/opt/dev')
+
+# ТЕПЕРЬ импортируем все остальное
 from config.logging_config import get_telegram_bot_logger
-from services.auto_learning.service import AutoLearningService
+from services.telegram.config import TelegramConfig
+from services.telegram.security import SecurityManager
+from services.telegram.commands import CommandHandler
+from services.telegram.handlers import MessageHandler
+from services.telegram.utils import SystemChecker
 
-# Импорты модулей Telegram бота
-from .commands import CommandHandler
-from .handlers import MessageHandler
-from .security import SecurityManager
-from .config import TelegramConfig
-from .utils import MessageSender
+# ⚡ ДОБАВЛЯЕМ НЕДОСТАЮЩИЕ ИМПОРТЫ
+try:
+    from services.auto_learning.service import AutoLearningService
+except ImportError as e:
+    print(f"⚠️ AutoLearningService не доступен: {e}")
+    AutoLearningService = None
+
+try:
+    from services.telegram.utils import MessageSender
+except ImportError as e:
+    print(f"⚠️ MessageSender не доступен: {e}")
+    # Создаем заглушку
+    class MessageSender:
+        def __init__(self, bot, config):
+            self.bot = bot
+            self.config = config
+        def send_message(self, chat_id, text, **kwargs):
+            print(f"📨 MessageSender заглушка: {text[:50]}...")
 
 logger = get_telegram_bot_logger()
 

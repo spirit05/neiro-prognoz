@@ -58,7 +58,25 @@
         "exact_matches": 4
       },
       "accuracy_score": 1.0
+    },
+    {
+      "timestamp": "2025-11-07T15:57:12.545037",
+      "actual_group": "8 7 6 5",
+      "best_prediction": [
+        8,
+        9,
+        24,
+        16
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
     }
   ],
-  "last_analysis": "2025-11-07T09:04:27.787063"
+  "last_analysis": "2025-11-07T15:57:12.545111"
 }
