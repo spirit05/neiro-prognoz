@@ -52,6 +52,10 @@ GROUP_SIZE = 4
 MIN_NUMBER = 1
 MAX_NUMBER = 26
 
+# URLs
+API_GET_GROUP_URI = 'https://www.stoloto.ru/p/api/mobile/api/v35/service/games/details/draw-combination?game=dvazhdydva&draw='
+API_GET_LAST_DRAW_URI = 'https://www.stoloto.ru/p/api/mobile/api/v35/service/games/details/time-to-draw'
+
 # Telegram настройки по умолчанию
 DEFAULT_TELEGRAM_CONFIG = {
     "enabled": True,
