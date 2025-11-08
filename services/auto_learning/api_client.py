@@ -1,3 +1,4 @@
+
 # [file name]: services/auto_learning/api_client.py
 """
 API Client для получения данных с stoloto.ru - ИСПРАВЛЕННЫЕ ПУТИ
@@ -14,7 +15,7 @@ from typing import Dict, Any, Optional
 import sys
 sys.path.insert(0, '/opt/dev')
 from config.paths import INFO_FILE, DATA_DIR
-from config.constants import MAX_API_RETRIES, API_RETRY_DELAY, API_GET_GROUP_URI
+from config.constants import MAX_API_RETRIES, API_RETRY_DELAY, API_GET_GROUP_URI, API_GET_LAST_DRAW_URI
 
 class APIClient:
     def __init__(self):
@@ -102,7 +103,7 @@ class APIClient:
             except (ValueError, TypeError):
                 next_draw = 1
             
-            url = API_GET_GROUP_URI + next_draw
+            url = API_GET_GROUP_URI + str(next_draw)
             
             # Выполнение запроса через curl
             result = subprocess.run([
@@ -217,14 +218,14 @@ class APIClient:
             
         except Exception as e:
             print(f"❌ Ошибка сохранения данных: {e}")
-            
+
     def check_draw_synchronization(self) -> bool:
         """🔧 ПРОВЕРКА СИНХРОНИЗАЦИИ ТИРАЖЕЙ ПЕРЕД ПЕРВЫМ ЗАПРОСОМ"""
         try:
             print("🔍 Проверка синхронизации тиражей...")
             
             # Получаем информацию о предстоящих тиражах
-            url = "https://www.stoloto.ru/p/api/mobile/api/v35/service/games/details/time-to-draw"
+            url = API_GET_LAST_DRAW_URI
             response = requests.get(url, timeout=10)
             
             if response.status_code != 200:

@@ -1,7 +1,7 @@
-# [file name]: services/auto_learning/service.py (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+# [file name]: services/auto_learning/service.py (ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ВЕРСИЯ)
 """
 Автономный сервис для автоматического получения данных и дообучения
-ПОЛНОСТЬЮ СОВМЕСТИМАЯ С МОНОЛИТНОЙ ВЕРСИЕЙ
+С ПРАВИЛЬНОЙ ИНТЕГРАЦИЕЙ ML СИСТЕМЫ И ИСПРАВЛЕННЫМИ ИМПОРТАМИ
 """
 
 import os
@@ -13,37 +13,45 @@ import schedule
 import subprocess
 from datetime import datetime, timedelta
 
-# Импорт логирования
-from config.logging_config import get_auto_learning_logger
-
-# Добавляем пути для импорта
+# 🔧 ПРАВИЛЬНЫЕ ПУТИ ДЛЯ НОВОЙ АРХИТЕКТУРЫ
 PROJECT_ROOT = '/opt/dev'
 sys.path.insert(0, PROJECT_ROOT)
+sys.path.insert(0, os.path.join(PROJECT_ROOT, 'ml'))
+sys.path.insert(0, os.path.join(PROJECT_ROOT, 'config'))
+sys.path.insert(0, os.path.join(PROJECT_ROOT, 'services', 'auto_learning'))
+sys.path.insert(0, os.path.join(PROJECT_ROOT, 'web', 'components'))
 
-# Импорты из новой структуры
-from services.auto_learning.api_client import APIClient
-from services.auto_learning.scheduler import SmartScheduler
-from services.auto_learning.file_manager import FileLock, safe_file_operation
-from services.auto_learning.state_manager import StateManager
-from services.auto_learning.notifier import TelegramNotifier
+# 🔧 ПРАВИЛЬНЫЕ ИМПОРТЫ ДЛЯ НОВОЙ АРХИТЕКТУРЫ
+try:
+    from services.auto_learning.api_client import APIClient
+    from services.auto_learning.scheduler import SmartScheduler
+    from services.auto_learning.file_manager import FileLock, safe_file_operation
+    from services.auto_learning.state_manager import StateManager
+    from services.auto_learning.notifier import TelegramNotifier
+    from config.paths import DATA_DIR, LOGS_DIR
+    from config.constants import *
+except ImportError as e:
+    print(f"❌ Ошибка импорта: {e}")
+    print("💡 Проверьте структуру проекта и пути импорта")
+    sys.exit(1)
 
-# Импортируем наш адаптер
-from ml.core.system_adapter import MLSystemAdapter
+# 🔧 ПРАВИЛЬНАЯ НАСТРОЙКА ЛОГГИРОВАНИЯ
+def setup_logging():
+    """Настройка логирования для новой архитектуры"""
+    log_file = os.path.join(LOGS_DIR, 'auto_learning.log')
+    os.makedirs(os.path.dirname(log_file), exist_ok=True)
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler()
+        ]
+    )
+    return logging.getLogger('AutoLearningService')
 
-# Настройка логирования
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(os.path.join(PROJECT_ROOT, 'data', 'logs', 'auto_learning.log')),
-        logging.StreamHandler()
-    ]
-)
-logger = get_auto_learning_logger()
-
-# Константы
-MAX_API_RETRIES = 3
-API_RETRY_DELAY = 30
+logger = setup_logging()
 
 class AutoLearningService:
     def __init__(self):
@@ -54,7 +62,7 @@ class AutoLearningService:
         self.telegram = TelegramNotifier()
         self.service_active = True
         self.consecutive_api_errors = 0
-        self.max_consecutive_errors = 3
+        self.max_consecutive_errors = MAX_CONSECUTIVE_ERRORS
         self.last_processed_draw = None
         self.next_scheduled_run = None
         
@@ -62,20 +70,26 @@ class AutoLearningService:
         self.load_service_state()
     
     def initialize_system(self):
-        """Инициализация AI системы через адаптер"""
+        """Инициализация AI системы с правильной ML интеграцией"""
         try:
+            # 🔧 ПРАВИЛЬНЫЙ ИМПОРТ ДЛЯ НОВОЙ АРХИТЕКТУРЫ
+            from web.components.ml_adapter import MLSystemAdapter
+            
+            # Инициализируем полную систему через адаптер
             self.system = MLSystemAdapter()
             
+            # Настраиваем callback для логирования прогресса
             def progress_callback(message):
                 logger.info(f"📢 {message}")
             
             self.system.set_progress_callback(progress_callback)
             
-            logger.info("✅ AI система инициализирована через адаптер")
+            logger.info("✅ AI система инициализирована через MLSystemAdapter")
             return True
             
         except Exception as e:
             logger.error(f"❌ Ошибка инициализации ML системы: {e}")
+            # 🔧 СТРОГОЕ СОБЛЮДЕНИЕ NO-FALLBACK POLICY
             return False
     
     def load_service_state(self):
@@ -108,8 +122,11 @@ class AutoLearningService:
         now = datetime.now()
         current_minute = now.minute
         
-        # Временные слоты API
-        api_slots = [14, 29, 44, 59]
+        # 🔧 ИСПОЛЬЗУЕМ КОНСТАНТЫ ИЗ config.constants
+        from config.constants import SCHEDULE_MINUTES, BUFFER_MINUTES
+        
+        # Временные слоты API из констант
+        api_slots = SCHEDULE_MINUTES
         
         # Находим следующий слот
         next_slot = None
@@ -127,9 +144,9 @@ class AutoLearningService:
         # Расчет интервала до следующего слота
         time_until_next = (next_time - now).total_seconds() / 60  # в минутах
         
-        # Корректировка коротких интервалов
-        if time_until_next < 4:
-            time_until_next += 5  # добавляем 5 минут буфера
+        # 🔧 Корректировка коротких интервалов из констант
+        if time_until_next < BUFFER_MINUTES:
+            time_until_next += BUFFER_MINUTES
         
         self.next_scheduled_run = now + timedelta(minutes=time_until_next)
         return time_until_next
@@ -235,7 +252,7 @@ class AutoLearningService:
             comparison_result = self.compare_with_predictions(new_combination)
             
             # Шаг 5: Добавляем данные и дообучаем модель
-            learning_result = self.system.add_data_and_retrain(new_combination, retrain_epochs=3)
+            learning_result = self.system.add_data_and_retrain(new_combination, retrain_epochs=RETRAIN_EPOCHS)
             
             # Шаг 6: Помечаем как обработанную
             self.api_client.mark_entry_processed(processing_draw)
@@ -325,22 +342,40 @@ class AutoLearningService:
             result_path = os.path.join(PROJECT_ROOT, 'data', 'analytics', 'learning_results.json')
             
             def save_operation(filename, data):
-                all_results = []
+                # 🔧 ИСПРАВЛЕНИЕ: Проверяем и корректно обрабатываем структуру файла
                 if os.path.exists(filename):
                     with open(filename, 'r', encoding='utf-8') as f:
-                        all_results = json.load(f)
+                        try:
+                            file_content = json.load(f)
+                            # Если это список - используем как есть, иначе создаем новый
+                            if isinstance(file_content, list):
+                                all_results = file_content
+                            else:
+                                all_results = [file_content] if file_content else []
+                        except json.JSONDecodeError:
+                            all_results = []
+                else:
+                    all_results = []
                 
+                # 🔧 Добавляем новые данные
                 all_results.append(data)
                 
+                # Ограничиваем размер истории
                 if len(all_results) > 100:
                     all_results = all_results[-100:]
                 
+                # Сохраняем обратно
                 with open(filename, 'w', encoding='utf-8') as f:
                     json.dump(all_results, f, ensure_ascii=False, indent=2)
+                
+                return True
             
-            safe_file_operation(save_operation, result_path, result_data)
-            logger.info("💾 Результат обучения сохранен")
-            
+            success = safe_file_operation(save_operation, result_path, result_data)
+            if success:
+                logger.info("💾 Результат обучения сохранен")
+            else:
+                logger.error("❌ Не удалось сохранить результат обучения")
+                
         except Exception as e:
             logger.error(f"❌ Ошибка сохранения результата обучения: {e}")
     
@@ -369,7 +404,7 @@ class AutoLearningService:
                 # Добавляем прогнозы
                 predictions = load_predictions()
                 if predictions:
-                    status['last_predictions'] = predictions[:4]
+                    status['last_predictions'] = predictions[:ENSEMBLE_TOP_K]
                 
                 # Добавляем аналитику самообучения
                 learning_stats = self.system.get_learning_insights()
@@ -509,3 +544,4 @@ if __name__ == "__main__":
         # По умолчанию показываем статус
         status = service.get_service_status()
         print(json.dumps(status, indent=2, ensure_ascii=False))
+
