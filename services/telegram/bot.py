@@ -7,9 +7,6 @@ sys.path.insert(0, '/opt/dev')
 import os
 import time  # ← ДОБАВИТЬ ЭТОТ ИМПОРТ
 
-# ⚡ КРИТИЧЕСКИ ВАЖНО: Добавляем корень проекта в путь ДО любых импортов
-sys.path.insert(0, '/opt/dev')
-
 # ТЕПЕРЬ импортируем все остальное
 from config.logging_config import get_telegram_bot_logger
 from services.telegram.config import TelegramConfig

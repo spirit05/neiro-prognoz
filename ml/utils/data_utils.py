@@ -1,27 +1,51 @@
-# [file name]:  ml/utils/data_utils.py
+# [file name]: ml/utils/data_utils.py
 """
-Утилиты для работы с данными - МОДУЛЬНАЯ АРХИТЕКТУРА
+Утилиты для работы с данными - ДЛЯ СОВМЕСТИМОСТИ
 """
 
 import json
 import os
 from typing import List, Tuple, Dict
-from config import paths, security, logging_config
-
-logger = logging_config.get_ml_system_logger()
+from config.paths import DATA_DIR
 
 def load_dataset() -> List[str]:
     """Загрузка dataset.json"""
-    return security.SafeFileOperations.read_json_safe(paths.DATASET_FILE, default=[])
+    dataset_path = os.path.join(DATA_DIR, "datasets", "dataset.json")
+    
+    if not os.path.exists(dataset_path):
+        return []
+    
+    try:
+        with open(dataset_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data if isinstance(data, list) else []
+    except:
+        return []
 
 def save_dataset(data: List[str]) -> None:
     """Сохранение dataset.json"""
-    security.SafeFileOperations.write_json_safe(paths.DATASET_FILE, data)
+    dataset_path = os.path.join(DATA_DIR, "datasets", "dataset.json")
+    os.makedirs(os.path.dirname(dataset_path), exist_ok=True)
+    
+    try:
+        with open(dataset_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"❌ Ошибка сохранения dataset.json: {e}")
 
 def validate_group(group_str: str) -> bool:
     """Валидация группы чисел"""
-    from config.security import DataValidator
-    return DataValidator.validate_group(group_str)
+    try:
+        numbers = [int(x) for x in group_str.strip().split()]
+        if len(numbers) != 4:
+            return False
+        if not all(1 <= x <= 26 for x in numbers):
+            return False
+        if numbers[0] == numbers[1] or numbers[2] == numbers[3]:
+            return False
+        return True
+    except:
+        return False
 
 def compare_groups(pred_group: Tuple[int, int, int, int], actual_group: Tuple[int, int, int, int]) -> Dict[str, int]:
     """
@@ -46,23 +70,39 @@ def compare_groups(pred_group: Tuple[int, int, int, int], actual_group: Tuple[in
         'exact_matches': exact_matches
     }
 
-def save_predictions(predictions: List[tuple]) -> None:
-    """Сохранение последних предсказаний"""
-    state = {
-        'predictions': [
-            {'group': list(group), 'score': score} for group, score in predictions
-        ]
-    }
-    security.SafeFileOperations.write_json_safe(paths.PREDICTIONS_STATE_FILE, state)
-
 def load_predictions() -> List[tuple]:
     """Загрузка последних предсказаний"""
-    state = security.SafeFileOperations.read_json_safe(paths.PREDICTIONS_STATE_FILE, default={'predictions': []})
+    predictions_path = os.path.join(DATA_DIR, "analytics", "predictions_state.json")
     
-    predictions = []
-    for item in state.get('predictions', []):
-        group = tuple(item['group'])
-        score = item['score']
-        predictions.append((group, score))
+    if not os.path.exists(predictions_path):
+        return []
     
-    return predictions
+    try:
+        with open(predictions_path, 'r', encoding='utf-8') as f:
+            state = json.load(f)
+        
+        predictions = []
+        for item in state.get('predictions', []):
+            group = tuple(item['group'])
+            score = item['score']
+            predictions.append((group, score))
+        
+        return predictions
+    except:
+        return []
+
+def save_predictions(predictions: List[tuple]) -> None:
+    """Сохранение последних предсказаний"""
+    predictions_path = os.path.join(DATA_DIR, "analytics", "predictions_state.json")
+    os.makedirs(os.path.dirname(predictions_path), exist_ok=True)
+    
+    try:
+        state = {
+            'predictions': [
+                {'group': list(group), 'score': score} for group, score in predictions
+            ]
+        }
+        with open(predictions_path, 'w', encoding='utf-8') as f:
+            json.dump(state, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"❌ Ошибка сохранения предсказаний: {e}")

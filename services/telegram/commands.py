@@ -1,11 +1,16 @@
+# [file name]: services/telegram/commands.py
 """
-Обработчики команд Telegram бота
+Обработчики команд Telegram бота - ИСПРАВЛЕННЫЕ ИМПОРТЫ
 """
 
 import json
 import logging
 import subprocess
 from typing import Dict, Callable
+
+# ✅ ПРАВИЛЬНЫЕ ИМПОРТЫ
+import sys
+sys.path.insert(0, '/opt/dev')
 from config.paths import TELEGRAM_CONFIG_FILE
 from services.auto_learning.service import AutoLearningService
 from ml.learning.self_learning import SelfLearningSystem

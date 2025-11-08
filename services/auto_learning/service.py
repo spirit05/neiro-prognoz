@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+# [file name]: services/auto_learning/service.py (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 """
 Автономный сервис для автоматического получения данных и дообучения
-С ПРАВИЛЬНОЙ ИНТЕГРАЦИЕЙ ML СИСТЕМЫ
+ПОЛНОСТЬЮ СОВМЕСТИМАЯ С МОНОЛИТНОЙ ВЕРСИЕЙ
 """
 
 import os
@@ -10,12 +10,15 @@ import time
 import json
 import logging
 import schedule
+import subprocess
 from datetime import datetime, timedelta
+
+# Импорт логирования
+from config.logging_config import get_auto_learning_logger
 
 # Добавляем пути для импорта
 PROJECT_ROOT = '/opt/dev'
 sys.path.insert(0, PROJECT_ROOT)
-sys.path.insert(0, os.path.join(PROJECT_ROOT, 'ml'))
 
 # Импорты из новой структуры
 from services.auto_learning.api_client import APIClient
@@ -23,6 +26,9 @@ from services.auto_learning.scheduler import SmartScheduler
 from services.auto_learning.file_manager import FileLock, safe_file_operation
 from services.auto_learning.state_manager import StateManager
 from services.auto_learning.notifier import TelegramNotifier
+
+# Импортируем наш адаптер
+from ml.core.system_adapter import MLSystemAdapter
 
 # Настройка логирования
 logging.basicConfig(
@@ -33,7 +39,7 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-logger = logging.getLogger('AutoLearningService')
+logger = get_auto_learning_logger()
 
 # Константы
 MAX_API_RETRIES = 3
@@ -49,103 +55,27 @@ class AutoLearningService:
         self.service_active = True
         self.consecutive_api_errors = 0
         self.max_consecutive_errors = 3
+        self.last_processed_draw = None
+        self.next_scheduled_run = None
         
         self.initialize_system()
         self.load_service_state()
     
     def initialize_system(self):
-        """Инициализация AI системы с правильной ML интеграцией"""
+        """Инициализация AI системы через адаптер"""
         try:
-            # Импортируем реальные компоненты ML системы
-            from ml.learning.self_learning import SelfLearningSystem
+            self.system = MLSystemAdapter()
             
-            # Инициализируем систему самообучения (без callback, т.к. его нет в API)
-            self.system = SelfLearningSystem()
+            def progress_callback(message):
+                logger.info(f"📢 {message}")
             
-            logger.info("✅ AI система инициализирована с реальной ML интеграцией")
+            self.system.set_progress_callback(progress_callback)
+            
+            logger.info("✅ AI система инициализирована через адаптер")
             return True
             
         except Exception as e:
             logger.error(f"❌ Ошибка инициализации ML системы: {e}")
-            # Fallback на упрощенную систему если основные компоненты недоступны
-            return self.initialize_fallback_system()
-    
-    def initialize_fallback_system(self):
-        """Резервная инициализация системы"""
-        try:
-            logger.info("🔄 Используется резервная инициализация ML системы")
-            
-            # Создаем простую резервную систему
-            self.system = type('FallbackSystem', (), {
-                'is_trained': True,
-                'add_data_and_retrain': self.fallback_retrain,
-                'get_status': self.fallback_get_status,
-                'get_learning_insights': self.fallback_get_insights
-            })()
-            return True
-        except Exception as e:
-            logger.error(f"❌ Резервная инициализация также не удалась: {e}")
-            return False
-    
-    def fallback_get_status(self):
-        """Резервный метод получения статуса"""
-        return {
-            'status': 'fallback', 
-            'model_trained': True,
-            'dataset_size': 0,
-            'fallback_mode': True
-        }
-    
-    def fallback_get_insights(self):
-        """Резервный метод получения аналитики"""
-        return {
-            'status': 'fallback',
-            'recent_accuracy_avg': 0.0,
-            'total_predictions_analyzed': 0
-        }
-    
-    def fallback_retrain(self, combination, retrain_epochs=None):
-        from config.constants import RETRAIN_EPOCHS
-        if retrain_epochs is None:
-            retrain_epochs = RETRAIN_EPOCHS
-        """Резервный метод дообучения"""
-        logger.info(f"🔄 Резервное дообучение на данных: {combination}")
-        try:
-            # Простая валидация группы
-            if not self.validate_group_fallback(combination):
-                logger.error(f"❌ Невалидная группа в резервном режиме: {combination}")
-                return []
-            
-            # Генерация простых прогнозов
-            numbers = [int(x) for x in combination.split()]
-            predictions = []
-            
-            for i in range(4):
-                # Простая логика - немного изменяем исходные числа
-                pred_numbers = [(x + i + 1) % 20 for x in numbers]
-                pred_tuple = tuple(sorted(pred_numbers))
-                score = 0.15 - (i * 0.02)  # Убывающая уверенность
-                predictions.append((pred_tuple, score))
-            
-            logger.info(f"✅ Резервные прогнозы сгенерированы: {len(predictions)}")
-            return predictions
-            
-        except Exception as e:
-            logger.error(f"❌ Ошибка в резервном дообучении: {e}")
-            return []
-    
-    def validate_group_fallback(self, combination: str) -> bool:
-        """Резервная валидация группы чисел"""
-        try:
-            numbers = [int(x) for x in combination.split()]
-            if len(numbers) != 4:
-                return False
-            if any(x < 1 or x > 20 for x in numbers):
-                return False
-            if len(set(numbers)) != 4:
-                return False
-            return True
-        except:
             return False
     
     def load_service_state(self):
@@ -155,6 +85,7 @@ class AutoLearningService:
             if state:
                 self.service_active = state.get('service_active', True)
                 self.consecutive_api_errors = state.get('consecutive_api_errors', 0)
+                self.last_processed_draw = state.get('last_processed_draw')
                 logger.info(f"📦 Состояние сервиса загружено: активен={self.service_active}, ошибок={self.consecutive_api_errors}")
         except Exception as e:
             logger.warning(f"⚠️ Не удалось загрузить состояние сервиса: {e}")
@@ -165,11 +96,51 @@ class AutoLearningService:
             state = {
                 'service_active': self.service_active,
                 'consecutive_api_errors': self.consecutive_api_errors,
+                'last_processed_draw': self.last_processed_draw,
                 'last_update': datetime.now().isoformat()
             }
             self.state_manager.save_state(state)
         except Exception as e:
             logger.error(f"❌ Ошибка сохранения состояния сервиса: {e}")
+    
+    def calculate_next_run_time(self):
+        """Расчет времени следующего запуска с учетом временных слотов"""
+        now = datetime.now()
+        current_minute = now.minute
+        
+        # Временные слоты API
+        api_slots = [14, 29, 44, 59]
+        
+        # Находим следующий слот
+        next_slot = None
+        for slot in api_slots:
+            if current_minute < slot:
+                next_slot = slot
+                break
+        
+        # Если все слоты прошли в этом часе, берем первый слот следующего часа
+        if next_slot is None:
+            next_time = now.replace(hour=now.hour+1, minute=api_slots[0], second=0, microsecond=0)
+        else:
+            next_time = now.replace(minute=next_slot, second=0, microsecond=0)
+        
+        # Расчет интервала до следующего слота
+        time_until_next = (next_time - now).total_seconds() / 60  # в минутах
+        
+        # Корректировка коротких интервалов
+        if time_until_next < 4:
+            time_until_next += 5  # добавляем 5 минут буфера
+        
+        self.next_scheduled_run = now + timedelta(minutes=time_until_next)
+        return time_until_next
+    
+    def is_web_running(self):
+        """Проверка, запущена ли веб-версия"""
+        try:
+            result = subprocess.run(['pgrep', '-f', 'streamlit'], capture_output=True, text=True)
+            return result.returncode == 0
+        except:
+            return False
     
     def call_api_with_retries(self):
         """Вызов API с повторными попытками и обработкой ошибок"""
@@ -228,7 +199,7 @@ class AutoLearningService:
         return None
     
     def process_new_group(self):
-        """Основной метод обработки новой группы с реальной ML интеграцией"""
+        """Основной метод обработки новой группы - ПОЛНАЯ СОВМЕСТИМОСТЬ"""
         if not self.service_active:
             logger.info("⏸️ Сервис остановлен из-за ошибок API. Требуется ручной перезапуск.")
             return False
@@ -255,7 +226,8 @@ class AutoLearningService:
             logger.info(f"🎯 Обработка тиража {processing_draw}: {new_combination}")
             
             # Шаг 3: Проверяем валидность группы
-            if not self.validate_group_fallback(new_combination):
+            from ml.utils.data_utils import validate_group
+            if not validate_group(new_combination):
                 logger.error(f"❌ Невалидная группа: {new_combination}")
                 return False
             
@@ -263,7 +235,7 @@ class AutoLearningService:
             comparison_result = self.compare_with_predictions(new_combination)
             
             # Шаг 5: Добавляем данные и дообучаем модель
-            learning_result = self.add_data_and_retrain(new_combination)
+            learning_result = self.system.add_data_and_retrain(new_combination, retrain_epochs=3)
             
             # Шаг 6: Помечаем как обработанную
             self.api_client.mark_entry_processed(processing_draw)
@@ -280,6 +252,7 @@ class AutoLearningService:
             }
             
             self.save_learning_result(result_data)
+            self.last_processed_draw = processing_draw
             self.save_service_state()
             
             # Шаг 8: Отправляем прогнозы если включено
@@ -309,37 +282,29 @@ class AutoLearningService:
     def compare_with_predictions(self, new_combination: str):
         """Сравнение новой группы с предыдущими прогнозами"""
         try:
-            # Загружаем предыдущие прогнозы
-            predictions_path = os.path.join(PROJECT_ROOT, 'data', 'predictions_state.json')
-            if not os.path.exists(predictions_path):
-                return {'matches_found': 0}
+            from ml.utils.data_utils import load_predictions, compare_groups
             
-            with open(predictions_path, 'r', encoding='utf-8') as f:
-                predictions_data = json.load(f)
-            
-            previous_predictions = predictions_data.get('predictions', [])
+            previous_predictions = load_predictions()
             if not previous_predictions:
+                logger.info("📝 Нет предыдущих прогнозов для сравнения")
                 return {'matches_found': 0}
             
             new_numbers = [int(x) for x in new_combination.strip().split()]
             new_tuple = tuple(new_numbers)
             
             matches = []
-            for pred in previous_predictions[:10]:  # Проверяем топ-10 прогнозов
-                pred_group = pred.get('group')
-                if pred_group and len(pred_group) == 4:
-                    pred_tuple = tuple(pred_group)
-                    comparison = self.compare_groups_fallback(pred_tuple, new_tuple)
-                    if comparison['total_matches'] > 0:
-                        matches.append({
-                            'predicted_group': pred_tuple,
-                            'score': pred.get('confidence', 0),
-                            'matches': comparison
-                        })
+            for pred_group, score in previous_predictions:
+                comparison = compare_groups(pred_group, new_tuple)
+                if comparison['total_matches'] > 0:
+                    matches.append({
+                        'predicted_group': pred_group,
+                        'score': score,
+                        'matches': comparison
+                    })
             
             result = {
                 'matches_found': len(matches),
-                'matches_details': matches[:3]  # Только топ-3 совпадения
+                'matches_details': matches[:3]
             }
             
             if matches:
@@ -354,39 +319,10 @@ class AutoLearningService:
             logger.error(f"❌ Ошибка сравнения с прогнозами: {e}")
             return {'matches_found': 0, 'error': str(e)}
     
-    def compare_groups_fallback(self, group1, group2):
-        """Резервное сравнение групп"""
-        matches = 0
-        for num in group1:
-            if num in group2:
-                matches += 1
-        return {'total_matches': matches}
-    
-    def add_data_and_retrain(self, new_combination: str):
-        """Добавление данных и дообучение модели с реальной ML системой"""
-        try:
-            logger.info("🧠 Добавление данных и дообучение модели...")
-            
-            # Используем реальную систему самообучения
-            from config.constants import RETRAIN_EPOCHS
-            predictions = self.system.add_data_and_retrain(new_combination, retrain_epochs=RETRAIN_EPOCHS)
-            
-            if predictions:
-                logger.info(f"✅ Дообучение завершено. Сгенерировано {len(predictions)} прогнозов")
-                return predictions
-            else:
-                logger.warning("⚠️ Дообучение завершено, но прогнозы не сгенерированы")
-                return []
-                
-        except Exception as e:
-            logger.error(f"❌ Ошибка дообучения: {e}")
-            # Пробуем резервный метод
-            return self.fallback_retrain(new_combination)
-    
     def save_learning_result(self, result_data):
         """Сохранение результата обучения"""
         try:
-            result_path = os.path.join(PROJECT_ROOT, 'data', 'learning_results.json')
+            result_path = os.path.join(PROJECT_ROOT, 'data', 'analytics', 'learning_results.json')
             
             def save_operation(filename, data):
                 all_results = []
@@ -409,27 +345,31 @@ class AutoLearningService:
             logger.error(f"❌ Ошибка сохранения результата обучения: {e}")
     
     def get_service_status(self):
-        """Получение статуса сервиса"""
+        """Получение статуса сервиса - ПОЛНАЯ СОВМЕСТИМОСТЬ"""
+        from ml.utils.data_utils import load_predictions
+        
         status = {
             'timestamp': datetime.now().isoformat(),
             'service_active': self.service_active,
             'system_initialized': self.system is not None,
-            'last_processed_draw': self.state_manager.load_state().get('last_processed_draw'),
+            'last_processed_draw': self.last_processed_draw,
+            'model_trained': self.system.is_trained if self.system else False,
+            'web_running': self.is_web_running(),
             'consecutive_api_errors': self.consecutive_api_errors,
             'max_consecutive_errors': self.max_consecutive_errors,
+            'next_scheduled_run': self.next_scheduled_run.isoformat() if self.next_scheduled_run else None,
             'service_type': 'auto_learning'
         }
         
         if self.system:
             try:
-                if hasattr(self.system, 'get_status'):
-                    system_status = self.system.get_status()
-                else:
-                    # Для SelfLearningSystem используем другой метод
-                    system_status = {"status": "initialized", "type": "SelfLearningSystem"}
-            except Exception as e:
-                system_status = {"status": f"error: {e}", "type": "unknown"}
+                system_status = self.system.get_status()
                 status.update(system_status)
+                
+                # Добавляем прогнозы
+                predictions = load_predictions()
+                if predictions:
+                    status['last_predictions'] = predictions[:4]
                 
                 # Добавляем аналитику самообучения
                 learning_stats = self.system.get_learning_insights()
@@ -464,10 +404,12 @@ class AutoLearningService:
         
         logger.info("🚀 Запуск однократной обработки...")
         
+        # Сразу делаем запрос при запуске
         success = self.process_new_group()
         
+        # Рассчитываем следующее время запуска
         if success:
-            next_interval = self.scheduler.calculate_next_run_time()
+            next_interval = self.calculate_next_run_time()
             logger.info(f"⏰ Следующий запрос через {next_interval:.1f} минут")
         
         return success
@@ -482,7 +424,7 @@ class AutoLearningService:
         logger.info("⏰ Запуск сервиса по расписанию")
         
         # Рассчитываем первый интервал
-        first_interval = self.scheduler.calculate_next_run_time()
+        first_interval = self.calculate_next_run_time()
         logger.info(f"⏰ Первый запрос через {first_interval:.1f} минут")
         
         # Настраиваем расписание

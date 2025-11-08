@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+# [file name]: services/auto_learning/api_client.py
 """
-API Client для получения данных с stoloto.ru
+API Client для получения данных с stoloto.ru - ИСПРАВЛЕННЫЕ ПУТИ
 """
 
 import os
@@ -10,10 +10,14 @@ import time
 from datetime import datetime
 from typing import Dict, Any, Optional
 
+# ✅ ПРАВИЛЬНЫЕ ИМПОРТЫ
+import sys
+sys.path.insert(0, '/opt/dev')
+from config.paths import INFO_FILE, DATA_DIR
+
 class APIClient:
     def __init__(self):
-        self.project_root = '/opt/dev'
-        self.info_path = os.path.join(self.project_root, 'data', 'info.json')
+        self.info_path = INFO_FILE  # ✅ ПРАВИЛЬНЫЙ ПУТЬ
         self.max_retries = 3
         self.retry_delay = 10
     
@@ -174,7 +178,7 @@ class APIClient:
             return None
     
     def _save_info(self, draw: str, combination: str) -> None:
-        """Сохранение данных в info.json"""
+        """Сохранение данных в info.json - ИСПРАВЛЕННЫЕ ПУТИ"""
         try:
             # Загружаем текущие данные
             current_data = {}

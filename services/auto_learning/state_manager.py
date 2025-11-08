@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+# [file name]: services/auto_learning/state_manager.py
 """
-Менеджер состояния сервиса
+Менеджер состояния сервиса - ИСПРАВЛЕННЫЕ ПУТИ
 """
 
 import os
@@ -8,10 +8,14 @@ import json
 from datetime import datetime
 from typing import Dict, Any
 
+# ✅ ПРАВИЛЬНЫЕ ИМПОРТЫ
+import sys
+sys.path.insert(0, '/opt/dev')
+from config.paths import SERVICE_STATE_FILE
+
 class StateManager:
     def __init__(self):
-        self.project_root = '/opt/dev'
-        self.state_path = os.path.join(self.project_root, 'data', 'service_state.json')
+        self.state_path = SERVICE_STATE_FILE  # ✅ ПРАВИЛЬНЫЙ ПУТЬ
     
     def load_state(self) -> Dict[str, Any]:
         """Загрузка состояния сервиса"""

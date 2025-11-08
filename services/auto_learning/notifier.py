@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+# [file name]: services/auto_learning/notifier.py
 """
-Telegram уведомления для автосервиса
+Telegram уведомления для автосервиса - ИСПРАВЛЕННЫЕ ПУТИ
 """
 
 import os
@@ -11,6 +11,11 @@ import logging
 from datetime import datetime
 from typing import Dict, Any, Optional
 
+# ✅ ПРАВИЛЬНЫЕ ИМПОРТЫ
+import sys
+sys.path.insert(0, '/opt/dev')
+from config.paths import TELEGRAM_CONFIG_FILE
+
 logger = logging.getLogger('TelegramNotifier')
 
 class TelegramNotifier:
@@ -18,11 +23,10 @@ class TelegramNotifier:
         self.config = self.load_config()
     
     def load_config(self) -> Dict[str, Any]:
-        """Загрузка конфигурации Telegram"""
+        """Загрузка конфигурации Telegram - ИСПРАВЛЕННЫЙ ПУТЬ"""
         try:
-            config_path = os.path.join('/opt/dev', 'data', 'telegram_config.json')
-            if os.path.exists(config_path):
-                with open(config_path, 'r', encoding='utf-8') as f:
+            if os.path.exists(TELEGRAM_CONFIG_FILE):  # ✅ ПРАВИЛЬНЫЙ ПУТЬ
+                with open(TELEGRAM_CONFIG_FILE, 'r', encoding='utf-8') as f:
                     return json.load(f)
             return {'enabled': False}
         except Exception as e:
