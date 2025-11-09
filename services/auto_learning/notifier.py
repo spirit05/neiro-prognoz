@@ -146,24 +146,69 @@ class TelegramNotifier:
                             self.acknowledge_update(update['update_id'])
         except Exception as e:
             logger.warning(f"⚠️ Ошибка проверки команд Telegram: {e}")
-    
-    def format_status_message(self, status_data: Dict[str, Any]) -> str:
-        """Форматирование сообщения статуса"""
-        message = "🤖 <b>СТАТУС АВТОСЕРВИСА</b>\n\n"
-        
-        # Статус сервиса
-        service_status = "✅ Активен" if status_data.get('service_active') else "🛑 Остановлен"
-        message += f"{service_status}\n"
-        
-        # Модель
-        model_status = "✅ Обучена" if status_data.get('model_trained') else "⚠️ Не обучена"
-        message += f"🎯 Модель: {model_status}\n"
-        
-        # Последний тираж
-        last_draw = status_data.get('last_processed_draw', 'Нет')
-        message += f"🕐 Последний тираж: {last_draw}\n"
-        
-        return message
+
+    def format_status_message(self, status_data):
+        """Форматирование сообщения статуса для Telegram"""
+        try:
+            message = "🤖 <b>СТАТУС СИСТЕМЫ</b>\n\n"
+            
+            # Статус сервиса
+            service_status = "✅ Активен" if status_data.get('service_active') else "🛑 Остановлен"
+            message += f"🔄 Автосервис: {service_status}\n"
+            
+            # Модель
+            model_status = "✅ Обучена" if status_data.get('model_trained') else "⚠️ Не обучена"
+            message += f"🧠 Модель: {model_status}\n"
+            
+            # Данные
+            dataset_size = status_data.get('dataset_size', 0)
+            message += f"📊 Групп в датасете: {dataset_size}\n"
+            
+            # Последний тираж
+            last_draw = status_data.get('last_processed_draw', 'Нет')
+            message += f"🎯 Последний тираж: {last_draw}\n"
+            
+            # Веб-версия
+            web_status = "✅ Запущена" if status_data.get('web_running') else "❌ Не запущена"
+            message += f"🌐 Веб-версия: {web_status}\n\n"
+            
+            # 🔧 ИСПРАВЛЕНИЕ: Правильная обработка learning_stats
+            learning_stats = status_data.get('learning_stats', {})
+            
+            # Если learning_stats это список, берем последний элемент
+            if isinstance(learning_stats, list):
+                if learning_stats:
+                    learning_stats = learning_stats[-1]
+                else:
+                    learning_stats = {}
+            
+            # 🔧 Проверяем что это словарь перед использованием .get()
+            if learning_stats and isinstance(learning_stats, dict) and 'message' not in learning_stats:
+                message += "📈 <b>АНАЛИТИКА САМООБУЧЕНИЯ:</b>\n"
+                message += f"🎯 Средняя точность: {learning_stats.get('recent_accuracy_avg', 0)*100:.1f}%\n"
+                message += f"📊 Проанализировано прогнозов: {learning_stats.get('total_predictions_analyzed', 0)}\n"
+                message += f"🏆 Лучшая точность: {learning_stats.get('best_accuracy', 0)*100:.1f}%\n"
+                message += f"📉 Худшая точность: {learning_stats.get('worst_accuracy', 0)*100:.1f}%\n"
+            
+            # 🔧 Безопасное получение рекомендаций
+            if learning_stats and isinstance(learning_stats, dict) and 'recommendations' in learning_stats:
+                recs = learning_stats['recommendations']
+                if recs and isinstance(recs, list) and recs:
+                    message += f"💡 Рекомендации: {recs[0]}\n"
+            
+            # Прогнозы
+            predictions = status_data.get('last_predictions', [])
+            if predictions:
+                message += "\n🎯 <b>ПОСЛЕДНИЕ ПРОГНОЗЫ:</b>\n"
+                for i, (group, score) in enumerate(predictions[:4], 1):
+                    confidence = "🟢" if score > 0.02 else "🟡" if score > 0.01 else "🔴"
+                    message += f"{i}. {group[0]} {group[1]} {group[2]} {group[3]} ({score:.4f}) {confidence}\n"
+            
+            return message
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка форматирования статуса: {e}")
+            return "❌ Ошибка при формировании статуса системы"
     
     def acknowledge_update(self, update_id: int):
         """Подтверждение обработки команды"""

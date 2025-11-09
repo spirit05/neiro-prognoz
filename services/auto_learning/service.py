@@ -93,16 +93,51 @@ class AutoLearningService:
             return False
     
     def load_service_state(self):
-        """Загрузка состояния сервиса"""
+        """Загрузка состояния сервиса с синхронизацией из info.json"""
         try:
+            # Сначала загружаем из service_state.json
             state = self.state_manager.load_state()
             if state:
                 self.service_active = state.get('service_active', True)
                 self.consecutive_api_errors = state.get('consecutive_api_errors', 0)
-                self.last_processed_draw = state.get('last_processed_draw')
-                logger.info(f"📦 Состояние сервиса загружено: активен={self.service_active}, ошибок={self.consecutive_api_errors}")
+                stored_draw = state.get('last_processed_draw')
+                
+                # 🔧 СИНХРОНИЗАЦИЯ: Получаем актуальный тираж из info.json
+                current_info = self.api_client.get_current_info()
+                history = current_info.get('history', [])
+                
+                if history:
+                    # Находим последний ОБРАБОТАННЫЙ тираж
+                    last_processed = None
+                    for entry in reversed(history):
+                        if entry.get('processed', False):
+                            last_processed = entry.get('draw')
+                            break
+                    
+                    # 🔧 ПРИОРИТЕТ: используем актуальные данные из info.json
+                    if last_processed:
+                        self.last_processed_draw = last_processed
+                        logger.info(f"📊 Синхронизирован last_processed_draw из info.json: {last_processed}")
+                        
+                        # 🔧 ОБНОВЛЯЕМ service_state.json актуальными данными
+                        if stored_draw != last_processed:
+                            logger.info(f"🔄 Обновляем service_state.json: {stored_draw} -> {last_processed}")
+                            self.save_service_state()
+                    elif stored_draw:
+                        self.last_processed_draw = stored_draw
+                        logger.info(f"📊 Используем last_processed_draw из service_state.json: {stored_draw}")
+                    else:
+                        self.last_processed_draw = None
+                else:
+                    self.last_processed_draw = stored_draw
+                
+                logger.info(f"📦 Состояние сервиса загружено: активен={self.service_active}, ошибок={self.consecutive_api_errors}, тираж={self.last_processed_draw}")
+                
         except Exception as e:
             logger.warning(f"⚠️ Не удалось загрузить состояние сервиса: {e}")
+            # Резервный вариант
+            if state:
+                self.last_processed_draw = state.get('last_processed_draw')
     
     def save_service_state(self):
         """Сохранение состояния сервиса"""
@@ -114,9 +149,13 @@ class AutoLearningService:
                 'last_update': datetime.now().isoformat()
             }
             self.state_manager.save_state(state)
+            
+            # 🔧 ДОПОЛНИТЕЛЬНОЕ ЛОГИРОВАНИЕ
+            logger.info(f"💾 Состояние сохранено: тираж={self.last_processed_draw}")
+            
         except Exception as e:
             logger.error(f"❌ Ошибка сохранения состояния сервиса: {e}")
-    
+        
     def calculate_next_run_time(self):
         """Расчет времени следующего запуска с учетом временных слотов"""
         now = datetime.now()
@@ -214,6 +253,81 @@ class AutoLearningService:
                     time.sleep(API_RETRY_DELAY)
         
         return None
+
+    def check_draw_synchronization(self):
+        """Проверка синхронизации тиражей - ЕДИНСТВЕННЫЙ МЕТОД"""
+        try:
+            logger.info("🔍 Проверка синхронизации тиражей...")
+            
+            # Получаем информацию о тиражах из API
+            api_info = self.api_client.get_current_draw_info()
+            if not api_info:
+                logger.error("❌ Не удалось получить информацию о тиражах из API")
+                return False
+            
+            api_current_draw = api_info.get('current_draw')  # Текущий тираж который можно запросить (309381)
+            api_next_draw = api_info.get('next_draw')       # Следующий тираж (еще не доступен) (309382)
+            
+            logger.info(f"📊 API: текущий={api_current_draw}, следующий={api_next_draw}")
+            
+            # Получаем локальные данные
+            local_info = self.api_client.get_current_info()
+            history = local_info.get('history', [])
+            
+            # Находим последний обработанный тираж
+            last_processed_draw = None
+            for entry in reversed(history):
+                if entry.get('processed', False):
+                    last_processed_draw = entry.get('draw')
+                    break
+            
+            if not last_processed_draw:
+                logger.info("📝 Нет обработанных тиражей в истории")
+                last_processed_draw = history[-1].get('draw') if history else None
+            
+            logger.info(f"📊 Локально: последний обработанный={last_processed_draw}")
+            
+            # 🔧 ПРАВИЛЬНАЯ ЛОГИКА: ожидаем следующий = последний_обработанный + 1
+            expected_next_draw = str(int(last_processed_draw) + 1) if last_processed_draw else api_current_draw
+            
+            logger.info(f"📊 Ожидаем следующий: {expected_next_draw}")
+            
+            # 🔧 СРАВНИВАЕМ: ожидаемый следующий должен равняться API текущему
+            if expected_next_draw != api_current_draw:
+                logger.error(f"🚨 РАСХОЖДЕНИЕ ТИРАЖЕЙ! Ожидался {expected_next_draw}, но API показывает {api_current_draw}")
+                logger.error("🔧 Возможные причины: пропущен тираж, ручное изменение данных, ошибка API")
+                return False
+            
+            logger.info("✅ Синхронизация тиражей подтверждена")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка проверки синхронизации: {e}")
+            return False
+
+    def initialize_first_draw(self, next_draw):
+        """Инициализация первого тиража при первом запуске"""
+        try:
+            logger.info(f"🎯 Инициализация первого тиража: {next_draw}")
+            
+            # Создаем базовую структуру info.json
+            info_data = {
+                "current_draw": next_draw,
+                "service_status": "active", 
+                "history": []
+            }
+            
+            # Сохраняем начальное состояние
+            info_path = os.path.join(PROJECT_ROOT, 'data', 'analytics', 'info.json')
+            with open(info_path, 'w', encoding='utf-8') as f:
+                json.dump(info_data, f, ensure_ascii=False, indent=2)
+            
+            logger.info("✅ Первый тираж инициализирован")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка инициализации первого тиража: {e}")
+            return False
     
     def process_new_group(self):
         """Основной метод обработки новой группы - ПОЛНАЯ СОВМЕСТИМОСТЬ"""
@@ -224,6 +338,20 @@ class AutoLearningService:
         logger.info("🔄 Запуск обработки новой группы...")
         
         try:
+            # 🔧 ШАГ 0: ПРОВЕРКА СИНХРОНИЗАЦИИ ПРИ ПЕРВОМ ЗАПУСКЕ
+            if self.last_processed_draw is None:
+                if not self.check_draw_synchronization():
+                    logger.error("🚨 ОШИБКА СИНХРОНИЗАЦИИ ТИРАЖЕЙ! Сервис остановлен.")
+                    self.service_active = False
+                    self.save_service_state()
+                    
+                    # Telegram уведомление о расхождении тиражей
+                    current_info = self.api_client.get_current_info()
+                    current_draw = current_info.get('current_draw', 'unknown')
+                    self.telegram.send_service_stop(current_draw, "Расхождение тиражей при запуске")
+                    
+                    return False
+            
             # Шаг 1: Получаем новую группу через API
             result = self.call_api_with_retries()
             
@@ -241,6 +369,14 @@ class AutoLearningService:
             new_combination = last_unprocessed.get('combination')
             
             logger.info(f"🎯 Обработка тиража {processing_draw}: {new_combination}")
+            
+            # 🔧 ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: тираж должен быть следующим после последнего обработанного
+            if self.last_processed_draw:
+                expected_draw = str(int(self.last_processed_draw) + 1)
+                if processing_draw != expected_draw:
+                    logger.error(f"🚨 НЕОЖИДАННЫЙ ТИРАЖ! Ожидался {expected_draw}, получен {processing_draw}")
+                    logger.error("🔧 Возможна ошибка в последовательности тиражей")
+                    return False
             
             # Шаг 3: Проверяем валидность группы
             from ml.utils.data_utils import validate_group
@@ -295,7 +431,7 @@ class AutoLearningService:
             self.telegram.send_service_stop(current_draw, f"Критическая ошибка: {str(e)}")
             
             return False
-    
+        
     def compare_with_predictions(self, new_combination: str):
         """Сравнение новой группы с предыдущими прогнозами"""
         try:
@@ -450,7 +586,7 @@ class AutoLearningService:
         return success
     
     def start_scheduled_service(self):
-        """Запуск сервиса по расписанию"""
+        """Запуск сервиса по расписанию с НЕМЕДЛЕННЫМ запросом после проверки"""
         if not self.service_active:
             logger.error("🚨 Сервис остановлен из-за ошибок API. Запуск по расписанию отменен.")
             logger.info("💡 Используйте: python3 service.py --restart")
@@ -458,15 +594,39 @@ class AutoLearningService:
         
         logger.info("⏰ Запуск сервиса по расписанию")
         
-        # Рассчитываем первый интервал
+        # 🔧 ШАГ 1: ПРОВЕРКА СИНХРОНИЗАЦИИ
+        logger.info("🔍 ВЫПОЛНЕНИЕ ПРОВЕРКИ СИНХРОНИЗАЦИИ ТИРАЖЕЙ...")
+        if not self.check_draw_synchronization():
+            logger.error("🚨 ОШИБКА СИНХРОНИЗАЦИИ ТИРАЖЕЙ! Сервис остановлен.")
+            self.service_active = False
+            self.save_service_state()
+            
+            # Telegram уведомление
+            current_info = self.api_client.get_current_info()
+            current_draw = current_info.get('current_draw', 'unknown')
+            self.telegram.send_service_stop(current_draw, "Расхождение тиражей при запуске")
+            return
+        
+        logger.info("✅ Проверка синхронизации пройдена")
+        
+        # 🔧 ШАГ 2: НЕМЕДЛЕННЫЙ ЗАПРОС АКТУАЛЬНОГО ТИРАЖА
+        logger.info("🚀 НЕМЕДЛЕННЫЙ ЗАПРОС АКТУАЛЬНОГО ТИРАЖА...")
+        immediate_success = self.process_new_group()
+        
+        if not immediate_success:
+            logger.error("❌ Немедленный запрос не удался!")
+            if not self.service_active:
+                logger.error("🚨 Сервис остановлен из-за ошибки при запуске")
+                return
+        else:
+            logger.info("✅ Немедленный запрос выполнен успешно")
+        
+        # 🔧 ШАГ 3: НАСТРОЙКА РАСПИСАНИЯ (только после немедленного запроса)
         first_interval = self.calculate_next_run_time()
-        logger.info(f"⏰ Первый запрос через {first_interval:.1f} минут")
+        logger.info(f"⏰ Следующий запрос через {first_interval:.1f} минут")
         
         # Настраиваем расписание
         schedule.every(15).minutes.do(self.safe_scheduled_task)
-        
-        # Запускаем сразу при старте
-        self.safe_scheduled_task()
         
         logger.info("✅ Сервис запущен. Ожидание следующего запуска...")
         

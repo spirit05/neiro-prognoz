@@ -21,15 +21,32 @@ class SelfLearningSystem:
         self.learning_data = self._load_learning_data()
     
     def _load_learning_data(self) -> Dict:
-        """Загрузка данных обучения"""
+        """Загрузка данных обучения с безопасной обработкой форматов"""
         if os.path.exists(self.results_file):
             try:
                 with open(self.results_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    data = json.load(f)
+                
+                # 🔧 БЕЗОПАСНОЕ ПРЕОБРАЗОВАНИЕ: если список, оборачиваем в словарь
+                if isinstance(data, list):
+                    print("⚠️  Обнаружен старый формат данных, используем обертку")
+                    return {
+                        'predictions_accuracy': data,
+                        'model_performance': {},
+                        'learning_patterns': {},
+                        'error_patterns': [],
+                        'last_analysis': None,
+                        'legacy_format': True  # Помечаем как старый формат
+                    }
+                elif isinstance(data, dict):
+                    return data
+                else:
+                    print(f"❌ Неизвестный формат данных: {type(data)}")
+                    
             except Exception as e:
                 print(f"⚠️  Ошибка загрузки данных обучения: {e}")
         
-        # Структура по умолчанию
+        # Возвращаем структуру по умолчанию
         return {
             'predictions_accuracy': [],
             'model_performance': {},
@@ -37,7 +54,7 @@ class SelfLearningSystem:
             'error_patterns': [],
             'last_analysis': None
         }
-    
+        
     def analyze_prediction_accuracy(self, actual_group: str) -> Dict:
         """Анализ точности последних предсказаний"""
         try:
@@ -198,25 +215,39 @@ class SelfLearningSystem:
             print(f"❌ Ошибка сохранения данных обучения: {e}")
     
     def get_performance_stats(self) -> Dict:
-        """Получение статистики производительности"""
-        accuracy_data = self.learning_data.get('predictions_accuracy', [])
+        """Получение статистики с безопасным доступом к данным"""
+        try:
+            # 🔧 БЕЗОПАСНЫЙ ДОСТУП: используем get() для словаря
+            if isinstance(self.learning_data, dict):
+                accuracy_data = self.learning_data.get('predictions_accuracy', [])
+            else:
+                # Если это не словарь, используем как список
+                accuracy_data = self.learning_data if isinstance(self.learning_data, list) else []
+            
+            if not accuracy_data:
+                return {'message': 'Нет данных для анализа'}
+            
+            # Фильтруем только валидные данные
+            valid_data = [item for item in accuracy_data if isinstance(item, dict) and 'accuracy_score' in item]
+            
+            if not valid_data:
+                return {'message': 'Недостаточно данных для анализа'}
+            
+            recent_accuracy = [a.get('accuracy_score', 0) for a in valid_data[-20:]]
+            
+            return {
+                'total_predictions_analyzed': len(valid_data),
+                'recent_accuracy_avg': sum(recent_accuracy) / len(recent_accuracy),
+                'best_accuracy': max(recent_accuracy),
+                'worst_accuracy': min(recent_accuracy),
+                'recommendations': self.get_learning_recommendations(),
+                'data_format': 'legacy' if self.learning_data.get('legacy_format') else 'current'
+            }
+            
+        except Exception as e:
+            print(f"❌ Ошибка в get_performance_stats: {e}")
+            return {'message': f'Ошибка анализа: {str(e)}'}
         
-        if not accuracy_data:
-            return {'message': 'Нет данных для анализа'}
-        
-        recent_accuracy = [a.get('accuracy_score', 0) for a in accuracy_data[-20:] if 'accuracy_score' in a]
-        
-        if not recent_accuracy:
-            return {'message': 'Недостаточно данных для анализа'}
-        
-        return {
-            'total_predictions_analyzed': len(accuracy_data),
-            'recent_accuracy_avg': sum(recent_accuracy) / len(recent_accuracy),
-            'best_accuracy': max(recent_accuracy),
-            'worst_accuracy': min(recent_accuracy),
-            'recommendations': self.get_learning_recommendations()
-        }
-    
     def reset_learning_data(self):
         """Сброс данных обучения"""
         self.learning_data = {

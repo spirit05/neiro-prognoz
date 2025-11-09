@@ -1,3 +1,26 @@
+# Быстрая активация venv
+./venv.sh
+
+# Или через символическую ссылку
+ml-en
+
+# Запуск веб-интерфейса
+./run_web.sh
+# или
+ml-web
+
+# Запуск автосервиса
+./run_auto.sh --status
+./run_auto.sh --once
+./run_auto.sh --schedule
+# или
+ml-auto --status
+
+# Запуск Telegram бота
+./run_telegram.sh
+# или
+ml-tg
+
 🎯 ПОРЯДОК ЗАПУСКА ВСЕХ СЕРВИСОВ:
 Терминал 1 - Telegram бот:
 bash
@@ -51,15 +74,17 @@ tail -f /opt/dev/data/logs/ml_system.log
 
 Система полностью функциональна и готова к использованию. Можете тестировать все функции через веб-интерфейс и Telegram бота.
 
-# Базовый мониторинг всех логов
-cd /opt/dev
-python utils/live_monitor.py
+# Останавливаем автосервис
+pkill -f "python.*service.*auto_learning"
 
-# Только ошибки
-python utils/live_monitor.py --only-errors
+# презапускаем автосервис
+nohup python3 services/auto_learning/service.py --restart 
 
-# Только автосервис
-python utils/live_monitor.py --service auto_learning
+# Запускаем с исправленной синхронизацией
+nohup python3 services/auto_learning/service.py --schedule > /opt/dev/data/logs/auto_learning_sync_fixed.log 2>&1 &
 
-# Поиск по ключевому слову
-python utils/live_monitor.py --search "API"
+# Смотрим логи - ДОЛЖНА БЫТЬ СИНХРОНИЗАЦИЯ
+tail -f /opt/dev/data/logs/auto_learning_sync_fixed.log
+
+# Проверяем обновленные данные
+cat /opt/dev/data/analytics/service_state.json | grep "last_processed_draw"

@@ -218,71 +218,50 @@ class APIClient:
             
         except Exception as e:
             print(f"❌ Ошибка сохранения данных: {e}")
-
-    def check_draw_synchronization(self) -> bool:
-        """🔧 ПРОВЕРКА СИНХРОНИЗАЦИИ ТИРАЖЕЙ ПЕРЕД ПЕРВЫМ ЗАПРОСОМ"""
+           
+    def get_current_draw_info(self):
+        """Получение информации о текущем и следующем тираже из API"""
         try:
-            print("🔍 Проверка синхронизации тиражей...")
+            from config.constants import API_GET_LAST_DRAW_URI, API_TIMEOUT
+            import requests
             
-            # Получаем информацию о предстоящих тиражах
-            url = API_GET_LAST_DRAW_URI
-            response = requests.get(url, timeout=10)
-            
-            if response.status_code != 200:
-                print(f"❌ Ошибка при запросе тиражей: {response.status_code}")
-                return False
-            
-            data = response.json()
-            
-            if data.get('requestStatus') != 'success':
-                print(f"❌ API вернуло ошибку: {data.get('errors', 'unknown')}")
-                return False
-            
-            # Ищем игру "dvazhdydva" в списке тиражей
-            draws = data.get('draws', [])
-            dvazhdydva_draw = None
-            
-            for draw_info in draws:
-                if draw_info.get('game') == 'dvazhdydva':
-                    dvazhdydva_draw = draw_info.get('drawNumber')
-                    break
-            
-            if dvazhdydva_draw is None:
-                print("❌ Не найдена игра 'dvazhdydva' в списке тиражей")
-                return False
-            
-            # Получаем текущий тираж из info.json
-            current_info = self.get_current_info()
-            current_draw = current_info.get('current_draw')
-            
-            if not current_draw:
-                print("❌ Не удалось получить текущий тираж из info.json")
-                return False
-            
-            # 🔧 ЛОГИКА СИНХРОНИЗАЦИИ:
-            # - API показывает БУДУЩИЙ тираж (dvazhdydva_draw)
-            # - ПОСЛЕДНИЙ ПРОШЕДШИЙ тираж = dvazhdydva_draw - 1
-            # - Мы ожидаем запросить следующий после current_draw = current_draw + 1
-            api_draw = int(dvazhdydva_draw)
-            last_completed_draw = api_draw - 1  # Последний прошедший тираж
-            expected_next_draw = int(current_draw) + 1  # Что мы хотим запросить
-            
-            print(f"📊 Текущий в info.json: {current_draw}")
-            print(f"📊 Ожидаем запросить: {expected_next_draw}")
-            print(f"📊 API будущий тираж: {api_draw}")
-            print(f"📊 API последний прошедший: {last_completed_draw}")
-            
-            # 🔧 Сравниваем: что мы хотим запросить vs последний прошедший тираж
-            if expected_next_draw != last_completed_draw:
-                print(f"🚨 РАСХОЖДЕНИЕ ТИРАЖЕЙ!")
-                print(f"🚨 Ожидали запросить: {expected_next_draw}")
-                print(f"🚨 Последний прошедший в API: {last_completed_draw}")
-                print("🛑 Возможно пропущен тираж или ошибка в данных")
-                return False
-            
-            print(f"✅ Синхронизация тиражей подтверждена: ожидаем {expected_next_draw}, последний прошедший {last_completed_draw}")
-            return True
-            
+            # Получаем информацию о времени до следующего тиража
+            response = requests.get(API_GET_LAST_DRAW_URI, timeout=API_TIMEOUT)
+            if response.status_code == 200:
+                data = response.json()
+                
+                # 🔧 ИСПРАВЛЕНИЕ: Ищем тираж для игры "dvazhdydva"
+                draws = data.get('draws', [])
+                dvazhdydva_draw = None
+                
+                for draw in draws:
+                    if draw.get('game') == 'dvazhdydva':
+                        dvazhdydva_draw = draw
+                        break
+                
+                if dvazhdydva_draw:
+                    future_draw = dvazhdydva_draw.get('drawNumber')  # 309380 (будущий)
+                    
+                    # 🔧 ИСПРАВЛЕНИЕ: API возвращает БУДУЩИЙ тираж
+                    # Текущий = будущий - 1
+                    # Следующий = будущий (тот что вернул API)
+                    current_draw = str(int(future_draw) - 1) if future_draw else None
+                    next_draw = str(future_draw) if future_draw else None
+                    
+                    return {
+                        'current_draw': current_draw,  # 309379
+                        'next_draw': next_draw,       # 309380
+                        'time_to_next': dvazhdydva_draw.get('remainingSeconds'),
+                        'game': 'dvazhdydva',
+                        'future_draw': future_draw    # для отладки
+                    }
+                else:
+                    logger.error("❌ Не найден тираж для игры 'dvazhdydva' в ответе API")
+                    return None
+            else:
+                logger.error(f"❌ Ошибка API: {response.status_code}")
+                return None
+                
         except Exception as e:
-            print(f"❌ Ошибка при проверке синхронизации тиражей: {e}")
-            return False
+            logger.error(f"❌ Ошибка получения информации о тиражах: {e}")
+            return None
