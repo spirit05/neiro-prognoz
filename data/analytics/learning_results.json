@@ -759,36 +759,54 @@
           "exact_matches": 0
         },
         "accuracy_score": 0.25
+      },
+      {
+        "timestamp": "2025-11-09T10:00:33.829300",
+        "actual_group": "22 2 25 15",
+        "best_prediction": [
+          2,
+          11,
+          23,
+          12
+        ],
+        "matches_count": 1,
+        "comparison_details": {
+          "total_matches": 1,
+          "pair1_matches": 1,
+          "pair2_matches": 0,
+          "exact_matches": 0
+        },
+        "accuracy_score": 0.25
       }
     ],
     "model_performance": {},
     "learning_patterns": {},
-    "error_patterns": [],
-    "last_analysis": "2025-11-09T09:45:26.435583",
+    "error_patterns": [
+      {
+        "timestamp": "2025-11-09T09:45:26.435533",
+        "missed_numbers": [
+          25,
+          18,
+          11
+        ],
+        "false_numbers": [
+          8,
+          2,
+          7
+        ],
+        "accuracy": 0.25
+      }
+    ],
+    "last_analysis": "2025-11-09T10:00:33.829381",
     "legacy_format": true
   },
   {
-    "timestamp": "2025-11-09T09:45:29.654031",
-    "draw": "309384",
-    "combination": "18 25 23 11",
+    "timestamp": "2025-11-09T10:00:34.972135",
+    "draw": "309385",
+    "combination": "22 2 25 15",
     "comparison": {
-      "matches_found": 3,
+      "matches_found": 4,
       "matches_details": [
-        {
-          "predicted_group": [
-            7,
-            8,
-            2,
-            23
-          ],
-          "score": 0.0005,
-          "matches": {
-            "total_matches": 1,
-            "pair1_matches": 0,
-            "pair2_matches": 1,
-            "exact_matches": 0
-          }
-        },
         {
           "predicted_group": [
             2,
@@ -799,23 +817,38 @@
           "score": 0.00030000000000000003,
           "matches": {
             "total_matches": 1,
-            "pair1_matches": 0,
-            "pair2_matches": 1,
-            "exact_matches": 1
+            "pair1_matches": 1,
+            "pair2_matches": 0,
+            "exact_matches": 0
           }
         },
         {
           "predicted_group": [
-            26,
-            4,
-            19,
-            11
+            10,
+            22,
+            3,
+            21
           ],
           "score": 0.00030000000000000003,
           "matches": {
             "total_matches": 1,
-            "pair1_matches": 0,
-            "pair2_matches": 1,
+            "pair1_matches": 1,
+            "pair2_matches": 0,
+            "exact_matches": 0
+          }
+        },
+        {
+          "predicted_group": [
+            9,
+            2,
+            17,
+            20
+          ],
+          "score": 0.00030000000000000003,
+          "matches": {
+            "total_matches": 1,
+            "pair1_matches": 1,
+            "pair2_matches": 0,
             "exact_matches": 1
           }
         }
