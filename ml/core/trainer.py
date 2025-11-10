@@ -89,7 +89,7 @@ class EnhancedTrainer:
         self._report_progress("⚙️ Этап 3: Настройка оптимизатора...")
         
         # Улучшенный optimizer с learning rate scheduling
-        self.optimizer = optim.AdamW(self.model.parameters(), lr=0.001, weight_decay=1e-4)
+        self.optimizer = optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=1e-4)
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=3)
         
         stage3_time = time.time() - stage3_start
@@ -214,7 +214,7 @@ class EnhancedTrainer:
                 # Берем последние группы для контекста
                 recent_groups = groups[-25:] if len(groups) >= 25 else groups
                 
-                # Создаем фичи из последних данных (НОВЫЙ МЕТОД)
+                # Создаем фичи из последних данных
                 context_features = processor.create_prediction_features(recent_groups)
                 
                 if context_features is not None and len(context_features) > 0:
@@ -242,14 +242,26 @@ class EnhancedTrainer:
         except Exception as e:
             self._report_progress(f"❌ Ошибка генерации прогнозов: {e}")
         
-        # 🔄 СБРОС АНАЛИЗА ПОСЛЕ ПОЛНОГО ПЕРЕОБУЧЕНИЯ
+        # 🔄 УМНЫЙ СБРОС АНАЛИЗА: только при полном переобучении (много эпох)
         try:
-            from ml.learning.self_learning import SelfLearningSystem
-            learning_system = SelfLearningSystem()
-            learning_system.reset_learning_data()
-            self._report_progress("✅ Система анализа сброшена после полного переобучения")
+            from config.constants import MAIN_TRAINING_EPOCHS, RETRAIN_EPOCHS
+            
+            # Определяем тип обучения по количеству эпох
+            is_full_training = (
+                epochs >= MAIN_TRAINING_EPOCHS or 
+                (epochs > RETRAIN_EPOCHS * 1.5)
+            )
+            
+            if is_full_training:
+                from ml.learning.self_learning import SelfLearningSystem
+                learning_system = SelfLearningSystem()
+                learning_system.reset_learning_data()
+                self._report_progress("✅ Система анализа сброшена после полного переобучения")
+            else:
+                self._report_progress("📊 Анализ сохранен (дообучение)")
+                
         except Exception as e:
-            self._report_progress(f"⚠️ Не удалось сбросить анализ: {e}")
+            self._report_progress(f"⚠️ Не удалось определить тип обучения: {e}")
         
         total_time = time.time() - total_start_time
         self._report_progress(f"🎉 ВСЕ ЭТАПЫ ЗАВЕРШЕНЫ! Общее время: {total_time:.1f} сек")

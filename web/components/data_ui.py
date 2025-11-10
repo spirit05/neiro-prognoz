@@ -20,6 +20,16 @@ def show_data_ui(system, run_operation_sync):
     except:
         pass
 
+     try:
+        if system and hasattr(system, 'api_client'):
+            last_entry = system.api_client.get_last_entry()
+            if last_entry and 'draw' in last_entry:
+                st.info(f"🎯 **Последний добавленный тираж:** `{last_entry['draw']}`")
+            else:
+                st.info("📝 **Последний тираж:** информация отсутствует")
+    except Exception as e:
+        st.info("📝 **Последний тираж:** не удалось загрузить")
+
     # Создаем две колонки для разделения функционала
     col1, col2 = st.columns(2)
     
