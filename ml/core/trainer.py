@@ -35,7 +35,7 @@ class EnhancedTrainer:
     
     def train(self, groups: List[str], epochs=None, batch_size=None, learning_rate=None) -> List[Tuple[Tuple[int, int, int, int], float]]:
         """Обучение модели с улучшенными параметрами и детальным логированием"""
-        from config.constants import MAIN_TRAINING_EPOCHS, MAIN_BATCH_SIZE, MAIN_LEARNING_RATE
+        from config.constants import MAIN_TRAINING_EPOCHS, MAIN_BATCH_SIZE, MAIN_LEARNING_RATE, HIDDEN_SIZE
         if epochs is None:
             epochs = MAIN_TRAINING_EPOCHS
         if batch_size is None:
@@ -74,7 +74,7 @@ class EnhancedTrainer:
         
         # Всегда создаем новую модель для чистого обучения
         from ml.core.model import EnhancedNumberPredictor
-        self.model = EnhancedNumberPredictor(input_size=features.shape[1], hidden_size=256)
+        self.model = EnhancedNumberPredictor(input_size=features.shape[1], hidden_size=HIDDEN_SIZE)
         self.model.to(self.device)
         
         # Оптимизация памяти для 4 ГБ RAM
@@ -198,33 +198,63 @@ class EnhancedTrainer:
         stage6_time = time.time() - stage6_start
         self._report_progress(f"✅ Этап 6 завершен: {stage6_time:.1f} сек")
         
-        total_time = time.time() - total_start_time
-        self._report_progress(f"🎉 ВСЕ ЭТАПЫ ЗАВЕРШЕНЫ! Общее время: {total_time:.1f} сек")
-        
         # Генерация прогнозов после обучения
         self._report_progress("🔮 Генерация прогнозов после обучения...")
         
-        # Создаем временный predictor для генерации прогнозов
-        from ml.core.predictor import EnhancedPredictor
-        predictor = EnhancedPredictor(self.model_path)
-        if predictor.load_model():
-            # Генерируем прогнозы на основе обучающих данных
-            recent_numbers = []
-            for group_str in groups[-25:]:
-                try:
-                    numbers = [int(x) for x in group_str.strip().split()]
-                    if len(numbers) == 4:
-                        recent_numbers.extend(numbers)
-                except:
-                    continue
-            
-            if len(recent_numbers) >= 50:
-                predictions = predictor.predict_group(recent_numbers, 10)
-                self._report_progress(f"✅ Сгенерировано {len(predictions)} прогнозов")
-                return predictions
+        predictions = []
+        try:
+            # Используем текущую обученную модель для прогнозов
+            if self.model is not None:
+                self.model.eval()
+                
+                # Подготавливаем данные для прогноза на основе последних групп
+                from ml.core.data_processor import DataProcessor
+                processor = DataProcessor(history_size=25)
+                
+                # Берем последние группы для контекста
+                recent_groups = groups[-25:] if len(groups) >= 25 else groups
+                
+                # Создаем фичи из последних данных (НОВЫЙ МЕТОД)
+                context_features = processor.create_prediction_features(recent_groups)
+                
+                if context_features is not None and len(context_features) > 0:
+                    # Генерируем прогнозы
+                    with torch.no_grad():
+                        features_tensor = torch.tensor(context_features, dtype=torch.float32)
+                        outputs = self.model(features_tensor)
+                        
+                        # Конвертируем выходы в прогнозы
+                        for i in range(min(10, len(outputs))):  # до 10 прогнозов
+                            predicted_numbers = []
+                            confidence = 1.0
+                            
+                            for pos in range(4):
+                                probs = torch.softmax(outputs[i, pos, :], dim=0)
+                                predicted_num = torch.argmax(probs).item() + 1
+                                predicted_numbers.append(predicted_num)
+                                confidence *= probs[predicted_num - 1].item()
+                            
+                            predictions.append((tuple(predicted_numbers), confidence))
+                    
+                    self._report_progress(f"✅ Сгенерировано {len(predictions)} прогнозов")
+                else:
+                    self._report_progress("⚠️ Не удалось создать фичи для прогноза")
+        except Exception as e:
+            self._report_progress(f"❌ Ошибка генерации прогнозов: {e}")
         
-        self._report_progress("⚠️ Не удалось сгенерировать прогнозы")
-        return []
+        # 🔄 СБРОС АНАЛИЗА ПОСЛЕ ПОЛНОГО ПЕРЕОБУЧЕНИЯ
+        try:
+            from ml.learning.self_learning import SelfLearningSystem
+            learning_system = SelfLearningSystem()
+            learning_system.reset_learning_data()
+            self._report_progress("✅ Система анализа сброшена после полного переобучения")
+        except Exception as e:
+            self._report_progress(f"⚠️ Не удалось сбросить анализ: {e}")
+        
+        total_time = time.time() - total_start_time
+        self._report_progress(f"🎉 ВСЕ ЭТАПЫ ЗАВЕРШЕНЫ! Общее время: {total_time:.1f} сек")
+        
+        return predictions
     
     def _analyze_model_performance(self, features_tensor: torch.Tensor, targets_tensor: torch.Tensor):
         """Анализ производительности модели с логированием"""

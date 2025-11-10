@@ -25,6 +25,41 @@ class DataProcessor:
                 # Создаем простой экстрактор на месте как fallback
                 self._create_fallback_extractor()
         return self._feature_extractor
+
+    def create_prediction_features(self, recent_groups: List[str]) -> np.ndarray:
+        """Создает фичи для предсказания на основе последних групп"""
+        try:
+            # Извлекаем числа из последних групп
+            recent_numbers = []
+            for group_str in recent_groups:
+                try:
+                    numbers = [int(x) for x in group_str.strip().split()]
+                    if len(numbers) == 4:
+                        recent_numbers.extend(numbers)
+                except:
+                    continue
+            
+            if len(recent_numbers) < self.history_size:
+                logger.warning(f"⚠️ Недостаточно чисел для предсказания: {len(recent_numbers)} < {self.history_size}")
+                return np.array([])
+            
+            # Используем последние history_size чисел для фичей
+            feature_extractor = self._get_feature_extractor()
+            history = recent_numbers[-self.history_size:]
+            
+            # Создаем несколько вариантов фичей для ансамбля
+            features = []
+            for offset in range(0, min(5, len(recent_numbers) - self.history_size)):
+                current_history = recent_numbers[-(self.history_size + offset):-offset] if offset > 0 else history
+                feature_vector = feature_extractor.extract_features(current_history)
+                features.append(feature_vector)
+            
+            logger.info(f"✅ Создано {len(features)} наборов фичей для предсказания")
+            return np.array(features, dtype=np.float32)
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка создания фичей для предсказания: {e}")
+            return np.array([])
     
     def prepare_training_data(self, groups: List[str]) -> Tuple[np.ndarray, np.ndarray]:
         all_numbers = []

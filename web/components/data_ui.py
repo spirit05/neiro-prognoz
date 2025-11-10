@@ -111,10 +111,6 @@ def _process_single_group(system, run_operation_sync, sequence_input):
         
         st.markdown("---")
         
-        # Показываем ожидаемые этапы
-        st.subheader("📋 План операции:")
-        show_operation_progress("add_data", 0, 5)
-        
         # Запускаем операцию СИНХРОННО
         with st.spinner("🔄 Обработка данных..."):
             result = run_operation_sync("add_data", sequence_input=sequence_input)
@@ -189,7 +185,7 @@ def _process_multiple_groups(system, run_operation_sync, groups_input):
             st.error("❌ Неверный номер тиража!")
             return
    
-        st.info("✅ Тираж верный, номер тиража: {last_info_entry}")
+        st.info("✅ Тираж верный")
 
         # Загружаем и обновляем данные
         dataset = load_dataset()
@@ -204,9 +200,7 @@ def _process_multiple_groups(system, run_operation_sync, groups_input):
         new_count = len(dataset)
         save_dataset(dataset)
 
-        st.info("✅ Данные сохранены: {old_count} → {new_count} групп")
-        last_info_entry = system.api_client.get_last_entry().get('draw')
-        st.info("✅ Данные сохранены: {last_info_entry} последний тираж")
+        st.info("✅ Данные сохранены")
         
         # Запускаем операцию СИНХРОННО
         with st.spinner("🔄 Запуск обучения..."):
@@ -218,9 +212,6 @@ def _process_multiple_groups(system, run_operation_sync, groups_input):
         elif hasattr(st.session_state, 'operation_result') and st.session_state.operation_result:
             st.balloons()
             st.success("🎉 Обучение успешно завершено!")
-            
-            # Показываем завершенные этапы
-            show_operation_progress("training", 5, 5, "Обучение завершено!")
             
             # Показываем логи если есть
             if hasattr(st.session_state, 'progress_messages') and st.session_state.progress_messages:
