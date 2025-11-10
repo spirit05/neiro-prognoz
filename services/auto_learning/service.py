@@ -352,30 +352,6 @@ class AutoLearningService:
         except Exception as e:
             logger.error(f"❌ Ошибка проверки синхронизации: {e}")
             return False
-
-    def initialize_first_draw(self, next_draw):
-        """Инициализация первого тиража при первом запуске"""
-        try:
-            logger.info(f"🎯 Инициализация первого тиража: {next_draw}")
-            
-            # Создаем базовую структуру info.json
-            info_data = {
-                "current_draw": next_draw,
-                "service_status": "active", 
-                "history": []
-            }
-            
-            # Сохраняем начальное состояние
-            info_path = os.path.join(PROJECT_ROOT, 'data', 'analytics', 'info.json')
-            with open(info_path, 'w', encoding='utf-8') as f:
-                json.dump(info_data, f, ensure_ascii=False, indent=2)
-            
-            logger.info("✅ Первый тираж инициализирован")
-            return True
-            
-        except Exception as e:
-            logger.error(f"❌ Ошибка инициализации первого тиража: {e}")
-            return False
     
     def process_new_group(self):
         """Основной метод обработки новой группы - ПОЛНАЯ СОВМЕСТИМОСТЬ"""

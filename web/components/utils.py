@@ -129,6 +129,35 @@ def validate_and_format_group_input(group_str: str) -> tuple:
     
     return True, "✅ Формат корректен"
 
+def validate_and_format_groups_input(groups_str: str) -> tuple:
+    """Валидация и форматирование ввода группы"""
+    from ml.utils.data_utils import validate_group
+
+    if not groups_str.strip():
+        return []
+        
+    str_list = groups_str.split('\n')
+    group = []
+
+    for s in str_list:
+        # Разделяем по табуляции и пробелам, затем фильтруем пустые строки
+        parts = [part for part in s.replace('\t', ' ').split(' ') if part]
+            
+        temp_group = {
+            'draw': parts[0],
+            'combination': parts[-1].replace(',', ' ')
+        }
+        
+        if not validate_group(temp_group.get('combination')): 
+            group = []
+            break
+        else:
+            group.append(temp_group)
+
+    reverse_group = group[::-1]
+    
+    return reverse_group
+
 def get_system_status_badges(status: dict) -> List[str]:
     """Получить бейджи статуса системы"""
     badges = []

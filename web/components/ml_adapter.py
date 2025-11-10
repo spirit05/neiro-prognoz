@@ -28,6 +28,7 @@ class MLSystemAdapter:
         self.self_learning = None
         self.ensemble = None
         self.data_processor = None
+        self.api_client = None
         
         self._initialize_new_architecture()
     
@@ -39,6 +40,7 @@ class MLSystemAdapter:
             from ml.core.predictor import EnhancedPredictor
             from ml.learning.self_learning import SelfLearningSystem
             from ml.core.data_processor import DataProcessor
+            from services.autolearning.api_client import APIClient
             
             # Инициализация тренера
             self.trainer = EnhancedTrainer()
@@ -51,6 +53,9 @@ class MLSystemAdapter:
             
             # Инициализация процессора данных
             self.data_processor = DataProcessor()
+
+            # Инициализация API клиента
+            self.api_client = APIClient()
             
             # Попытка загрузить существующую модель
             self._auto_load_model()

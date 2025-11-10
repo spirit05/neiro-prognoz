@@ -34,6 +34,17 @@ class APIClient:
         except Exception as e:
             print(f"❌ Ошибка чтения info.json: {e}")
             return {}
+
+    def get_last_entry(self) -> Optional[Dict[str, Any]]:
+        """Получение последней записи из info.json"""
+        info = self.get_current_info()
+        history = info.get('history', [])
+        
+        if not history:
+            return None
+        else:
+            return history[-1]
+
     
     def get_last_unprocessed_entry(self) -> Optional[Dict[str, Any]]:
         """Поиск последней необработанной записи"""
