@@ -5,6 +5,7 @@
 
 import streamlit as st
 from ml.utils.data_utils import load_dataset, save_dataset, validate_group, compare_groups, load_predictions, save_predictions
+from .utils import show_operation_progress, show_recent_logs
 
 def show_data_ui(system, run_operation_sync):
     """Показать интерфейс работы с данными"""
@@ -73,6 +74,10 @@ def show_data_ui(system, run_operation_sync):
             
             st.markdown("---")
             
+            # Показываем ожидаемые этапы
+            st.subheader("📋 План операции:")
+            show_operation_progress("add_data", 0, 5)
+            
             # Запускаем операцию СИНХРОННО
             with st.spinner("🔄 Обработка данных..."):
                 result = run_operation_sync("add_data", sequence_input=sequence_input)
@@ -83,6 +88,13 @@ def show_data_ui(system, run_operation_sync):
             elif hasattr(st.session_state, 'operation_result') and st.session_state.operation_result:
                 st.balloons()
                 st.success("🎉 Группа добавлена и модель дообучена!")
+                
+                # Показываем завершенные этапы
+                show_operation_progress("add_data", 5, 5, "Обработка завершена!")
+                
+                # Показываем логи если есть
+                if hasattr(st.session_state, 'progress_messages') and st.session_state.progress_messages:
+                    show_recent_logs(st.session_state.progress_messages, max_logs=5)
                 
                 # Сохраняем прогнозы
                 try:

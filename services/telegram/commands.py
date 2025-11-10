@@ -1,6 +1,6 @@
 # [file name]: services/telegram/commands.py
 """
-Обработчики команд Telegram бота - ИСПРАВЛЕННЫЕ ИМПОРТЫ
+Обработчики команд Telegram бота - ИСПРАВЛЕННЫЕ КОМАНДЫ
 """
 
 import json
@@ -31,8 +31,10 @@ class CommandHandler:
             '/help': self.handle_help,
             '/restart': self.handle_restart,
             '/stop': self.handle_stop,
+            '/start_service': self.handle_start_service,
             '/run_once': self.handle_run_once,
             '/service_status': self.handle_service_status,
+            '/debug': self.handle_debug,
         }
     
     def handle_command(self, command: str, chat_id: int) -> str:
@@ -53,16 +55,22 @@ class CommandHandler:
             "/autoprognoz - включить/выключить авто-прогнозы\n"
             "/service_status - статус автосервиса\n"
             "/restart - перезапуск сервиса после ошибок\n"
-            "/run_once - единичный запуск\n"
+            "/start_service - запуск сервиса\n"
             "/stop - остановка сервиса\n"
+            "/run_once - единичный запуск\n"
+            "/debug - отладочная информация\n"
             "/help - помощь"
         )
     
     def handle_status(self, chat_id: int) -> str:
         """Обработчик команды /status"""
-        from .utils import SystemChecker
-        checker = SystemChecker(self.auto_service)
-        return checker.get_system_status()
+        try:
+            from .utils import SystemChecker
+            checker = SystemChecker(self.auto_service)
+            return checker.get_formatted_status()
+        except Exception as e:
+            logger.error(f"❌ Ошибка получения статуса: {e}")
+            return f"❌ Ошибка получения статуса: {e}"
     
     def handle_predictions(self, chat_id: int) -> str:
         """Обработчик команды /predictions"""
@@ -119,8 +127,10 @@ class CommandHandler:
             "/autoprognoz - включить/выключить авто-прогнозы\n"
             "/service_status - детальный статус автосервиса\n"
             "/restart - перезапуск после ошибок API\n"
+            "/start_service - запуск автосервиса\n"
+            "/stop - остановка автосервиса\n"
             "/run_once - запустить одну итерацию\n"
-            "/stop - остановить автосервис\n"
+            "/debug - отладочная информация\n"
             "/help - эта справка"
         )
     
@@ -148,19 +158,35 @@ class CommandHandler:
             self.auto_service.service_active = False
             self.auto_service.save_service_state()
             logger.info(f"🔧 Автосервис остановлен через Telegram командой от {chat_id}")
-            return "🛑 <b>СЕРВИС ОСТАНОВЛЕН</b>\n\nАвтосервис приостановлен. Используйте /restart для возобновления."
+            return "🛑 <b>СЕРВИС ОСТАНОВЛЕН</b>\n\nАвтосервис приостановлен. Используйте /start_service для возобновления."
         except Exception as e:
             logger.error(f"❌ Ошибка остановки сервиса: {e}")
             return f"❌ Ошибка остановки сервиса: {e}"
     
-    def handle_run_once(self, chat_id: int) -> str:
-        """Обработчик команды /run_once"""
+    def handle_start_service(self, chat_id: int) -> str:
+        """Обработчик команды /start_service"""
         if not self.auto_service:
             return "❌ Автосервис не инициализирован"
         
         try:
+            self.auto_service.service_active = True
+            self.auto_service.save_service_state()
+            logger.info(f"🔧 Автосервис запущен через Telegram командой от {chat_id}")
+            return "✅ <b>СЕРВИС ЗАПУЩЕН</b>\n\nАвтосервис активирован и готов к работе."
+        except Exception as e:
+            logger.error(f"❌ Ошибка запуска сервиса: {e}")
+            return f"❌ Ошибка запуска сервиса: {e}"
+  
+    def handle_run_once(self, chat_id: int) -> str:
+        """Обработчик команды /run_once - ОРИГИНАЛЬНАЯ ЛОГИКА"""
+        if not self.auto_service:
+            return "❌ Автосервис не инициализирован"
+        
+        try:
+            # 🔧 ВОЗВРАЩАЕМ ОРИГИНАЛЬНЫЙ ВЫЗОВ
+            print("Run once")
             success = self.auto_service.run_once()
-            
+            print(f'Success - {success}') 
             if success:
                 return "✅ <b>ОБРАБОТКА ЗАВЕРШЕНА</b>\n\nНовые данные получены и обработаны"
             else:
@@ -169,7 +195,7 @@ class CommandHandler:
         except Exception as e:
             logger.error(f"❌ Ошибка при единичном запуске: {e}")
             return f"❌ Ошибка при единичном запуске: {e}"
-    
+        
     def handle_service_status(self, chat_id: int) -> str:
         """Обработчик команды /service_status"""
         if not self.auto_service:
@@ -203,3 +229,33 @@ class CommandHandler:
         except Exception as e:
             logger.error(f"❌ Ошибка получения статуса сервиса: {e}")
             return f"❌ Ошибка получения статуса сервиса: {e}"
+    
+    def handle_debug(self, chat_id: int) -> str:
+        """Обработчик команды /debug"""
+        try:
+            from .utils import SystemChecker
+            checker = SystemChecker(self.auto_service)
+            status = checker.get_system_status()
+            
+            message = "🐛 <b>ОТЛАДОЧНАЯ ИНФОРМАЦИЯ</b>\n\n"
+            message += f"🔧 Автосервис: {'✅ Доступен' if self.auto_service else '❌ Не доступен'}\n"
+            message += f"📊 Статус автосервиса: {status.get('service_active', False)}\n"
+            message += f"🧠 Модель обучена: {status.get('model_trained', False)}\n"
+            message += f"🌐 Веб-интерфейс: {status.get('web_running', False)}\n"
+            message += f"📈 Размер датасета: {status.get('dataset_size', 0)}\n"
+            
+            # Детальная информация об аналитике
+            learning_stats = status.get('learning_stats', {})
+            message += f"\n📊 <b>ДАННЫЕ АНАЛИТИКИ:</b>\n"
+            message += f"Тип: {type(learning_stats).__name__}\n"
+            if isinstance(learning_stats, dict):
+                for key, value in learning_stats.items():
+                    message += f"{key}: {value}\n"
+            else:
+                message += f"Значение: {learning_stats}\n"
+            
+            return message
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка получения отладочной информации: {e}")
+            return f"❌ Ошибка отладки: {e}"

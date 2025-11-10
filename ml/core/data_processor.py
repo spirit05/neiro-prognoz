@@ -27,11 +27,6 @@ class DataProcessor:
         return self._feature_extractor
     
     def prepare_training_data(self, groups: List[str]) -> Tuple[np.ndarray, np.ndarray]:
-        logger.info(f"🔍 DEBUG: Получено {len(groups)} групп")
-        logger.info(f"🔍 DEBUG: Тип groups: {type(groups)}")
-        logger.info(f"🔍 DEBUG: Тип первого элемента: {type(groups[0]) if groups else 'N/A'}")
-        logger.info(f"🔍 DEBUG: Первые 3 группы: {groups[:3] if groups else 'N/A'}")
-        
         all_numbers = []
         valid_groups = 0
         

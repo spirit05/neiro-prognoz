@@ -1,12 +1,12 @@
 # services/telegram/utils.py
 """
-Вспомогательные утилиты для Telegram бота
+Вспомогательные утилиты для Telegram бота - ПОЛНОСТЬЮ ОБНОВЛЕННЫЙ
 """
 
 import logging
 import subprocess
 import socket
-from typing import Dict, Any  # ← ДОБАВЛЯЕМ ИМПОРТ
+from typing import Dict, Any, Optional
 from config.paths import INFO_FILE, SERVICE_STATE_FILE
 from services.auto_learning.service import AutoLearningService
 from ml.learning.self_learning import SelfLearningSystem
@@ -20,7 +20,7 @@ class SystemChecker:
     def __init__(self, auto_service: AutoLearningService = None):
         self.auto_service = auto_service
     
-    def get_system_status(self):
+    def get_system_status(self) -> Dict[str, Any]:
         """Получение статуса системы с обработкой разных форматов данных"""
         try:
             status = {
@@ -29,41 +29,55 @@ class SystemChecker:
                 'dataset_size': 0,
                 'web_running': self.check_web_interface(),
                 'learning_stats': {},
-                'last_predictions': []
+                'last_predictions': [],
+                'last_processed_draw': 'Не обработан'
             }
             
-            # Проверяем автосервис
-            try:
-                from services.auto_learning.service import AutoLearningService
-                auto_service = AutoLearningService()
-                auto_status = auto_service.get_service_status()
-                
-                # 🔧 ИСПРАВЛЕНИЕ: Безопасное обновление статуса
-                if isinstance(auto_status, dict):
-                    status.update(auto_status)
-            except ImportError as e:
-                logger.warning(f"⚠️ Автосервис не доступен: {e}")
+            # 🔧 ИСПРАВЛЕНИЕ: Проверяем автосервис с безопасным обновлением
+            if self.auto_service:
+                try:
+                    auto_status = self.auto_service.get_service_status()
+                    if isinstance(auto_status, dict):
+                        # Безопасное обновление только существующих ключей
+                        for key in ['service_active', 'model_trained', 'dataset_size', 'last_processed_draw', 'consecutive_api_errors']:
+                            if key in auto_status:
+                                status[key] = auto_status[key]
+                except Exception as e:
+                    logger.warning(f"⚠️ Ошибка автосервиса: {e}")
             
-            # Получаем аналитику самообучения
+            # 🔧 ИСПРАВЛЕНИЕ: Правильная обработка аналитики самообучения
             try:
-                from ml.learning.self_learning import SelfLearningSystem
                 learning_system = SelfLearningSystem()
                 learning_stats = learning_system.get_performance_stats()
                 
-                # 🔧 ИСПРАВЛЕНИЕ: Проверяем тип learning_stats
-                if isinstance(learning_stats, list):
-                    if learning_stats:
-                        status['learning_stats'] = learning_stats[-1]  # Берем последнюю запись
+                # Обрабатываем разные форматы данных
+                if isinstance(learning_stats, list) and learning_stats:
+                    # Берем последнюю запись и проверяем ее тип
+                    last_stat = learning_stats[-1]
+                    if isinstance(last_stat, dict):
+                        status['learning_stats'] = last_stat
                     else:
-                        status['learning_stats'] = {'message': 'Нет данных для анализа'}
+                        # Если это не dict, создаем структурированные данные
+                        status['learning_stats'] = {
+                            'recent_data': last_stat,
+                            'total_entries': len(learning_stats),
+                            'message': 'Данные в формате списка'
+                        }
                 elif isinstance(learning_stats, dict):
                     status['learning_stats'] = learning_stats
                 else:
-                    status['learning_stats'] = {'message': 'Неизвестный формат данных'}
+                    status['learning_stats'] = {
+                        'message': 'Нет данных для анализа',
+                        'data_type': str(type(learning_stats)),
+                        'data_sample': str(learning_stats)[:100] if learning_stats else 'Пусто'
+                    }
                     
             except ImportError as e:
                 logger.warning(f"⚠️ Система самообучения не доступна: {e}")
                 status['learning_stats'] = {'message': 'Система самообучения не доступна'}
+            except Exception as e:
+                logger.error(f"❌ Ошибка получения аналитики обучения: {e}")
+                status['learning_stats'] = {'message': f'Ошибка: {str(e)}'}
             
             # Получаем последние прогнозы
             try:
@@ -78,15 +92,68 @@ class SystemChecker:
             
         except Exception as e:
             logger.error(f"❌ Ошибка загрузки аналитики: {e}")
-            return {
-                'service_active': False,
-                'model_trained': False, 
-                'dataset_size': 0,
-                'web_running': False,
-                'learning_stats': {'message': f'Ошибка: {str(e)}'},
-                'last_predictions': []
-            }
+            return self._get_error_status(e)
     
+    def _get_error_status(self, error: Exception) -> Dict[str, Any]:
+        """Статус при ошибке"""
+        return {
+            'service_active': False,
+            'model_trained': False, 
+            'dataset_size': 0,
+            'web_running': False,
+            'learning_stats': {'message': f'Ошибка системы: {str(error)}'},
+            'last_predictions': [],
+            'error': True
+        }
+    
+    def get_formatted_status(self) -> str:
+        """Форматированный статус для Telegram"""
+        status = self.get_system_status()
+        
+        # Эмодзи для статусов
+        service_emoji = "🟢" if status.get('service_active') else "🔴"
+        model_emoji = "✅" if status.get('model_trained') else "❌" 
+        web_emoji = "🌐" if status.get('web_running') else "🔴"
+        
+        message = f"{service_emoji} <b>СТАТУС СИСТЕМЫ</b>\n\n"
+        message += f"{service_emoji} Автосервис: {'АКТИВЕН' if status['service_active'] else 'ОСТАНОВЛЕН'}\n"
+        message += f"{model_emoji} Модель: {'ОБУЧЕНА' if status['model_trained'] else 'НЕ ОБУЧЕНА'}\n"
+        message += f"📊 Размер датасета: {status.get('dataset_size', 0)} групп\n"
+        message += f"{web_emoji} Веб-интерфейс: {'ЗАПУЩЕН' if status['web_running'] else 'НЕ ЗАПУЩЕН'}\n"
+        
+        # Добавляем информацию о последнем тираже если есть
+        last_draw = status.get('last_processed_draw')
+        if last_draw and last_draw != 'Не обработан':
+            message += f"🎯 Последний тираж: {last_draw}\n"
+        
+        # Добавляем аналитику самообучения если есть
+        learning_stats = status.get('learning_stats', {})
+        if learning_stats:
+            if 'message' not in learning_stats:
+                message += f"\n📈 <b>АНАЛИТИКА ОБУЧЕНИЯ</b>\n"
+                # Пробуем разные возможные ключи для точности
+                accuracy = (learning_stats.get('recent_accuracy_avg') or 
+                          learning_stats.get('accuracy') or 
+                          learning_stats.get('avg_accuracy'))
+                if accuracy:
+                    message += f"🎯 Средняя точность: {float(accuracy)*100:.1f}%\n"
+                
+                total_pred = (learning_stats.get('total_predictions_analyzed') or 
+                            learning_stats.get('predictions_analyzed') or 
+                            learning_stats.get('total_analyzed'))
+                if total_pred:
+                    message += f"📊 Проанализировано: {total_pred} прогнозов\n"
+                
+                # Показываем другие доступные метрики
+                for key, value in learning_stats.items():
+                    if key not in ['recent_accuracy_avg', 'total_predictions_analyzed', 'accuracy', 'avg_accuracy', 'predictions_analyzed']:
+                        if isinstance(value, (int, float)) and key != 'total_entries':
+                            message += f"📈 {key}: {value}\n"
+            else:
+                message += f"\n📊 Аналитика: {learning_stats['message']}\n"
+        
+        return message
+
     def is_auto_service_running(self) -> bool:
         """Проверка, запущен ли автосервис"""
         try:
@@ -97,7 +164,7 @@ class SystemChecker:
             logger.error(f"❌ Ошибка проверки автосервиса: {e}")
             return False
     
-    def is_web_running(self) -> bool:
+    def check_web_interface(self) -> bool:
         """Проверка, запущена ли веб-версия"""
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

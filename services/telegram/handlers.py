@@ -1,3 +1,4 @@
+# services/telegram/handlers.py
 """
 Обработчики сообщений Telegram бота
 """

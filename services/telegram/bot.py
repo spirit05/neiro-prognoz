@@ -1,38 +1,27 @@
 # [file name]: services/telegram/bot.py
 """
-Telegram Polling Bot - ОСНОВНОЙ ФАЙЛ БОТА
+Telegram Polling Bot - ПОЛНОСТЬЮ ОБНОВЛЕННЫЙ
 """
 import sys
 sys.path.insert(0, '/opt/dev')
 import os
-import time  # ← ДОБАВИТЬ ЭТОТ ИМПОРТ
+import time
 
-# ТЕПЕРЬ импортируем все остальное
 from config.logging_config import get_telegram_bot_logger
 from services.telegram.config import TelegramConfig
 from services.telegram.security import SecurityManager
 from services.telegram.commands import CommandHandler
 from services.telegram.handlers import MessageHandler
-from services.telegram.utils import SystemChecker
+from services.telegram.utils import SystemChecker, MessageSender
 
-# ⚡ ДОБАВЛЯЕМ НЕДОСТАЮЩИЕ ИМПОРТЫ
+# ⚡ КОРРЕКТНАЯ ИНИЦИАЛИЗАЦИЯ АВТОСЕРВИСА
 try:
     from services.auto_learning.service import AutoLearningService
+    AUTO_SERVICE_AVAILABLE = True
 except ImportError as e:
     print(f"⚠️ AutoLearningService не доступен: {e}")
     AutoLearningService = None
-
-try:
-    from services.telegram.utils import MessageSender
-except ImportError as e:
-    print(f"⚠️ MessageSender не доступен: {e}")
-    # Создаем заглушку
-    class MessageSender:
-        def __init__(self, bot, config):
-            self.bot = bot
-            self.config = config
-        def send_message(self, chat_id, text, **kwargs):
-            print(f"📨 MessageSender заглушка: {text[:50]}...")
+    AUTO_SERVICE_AVAILABLE = False
 
 logger = get_telegram_bot_logger()
 
@@ -53,10 +42,22 @@ class TelegramPollingBot:
         self.security_manager = SecurityManager()
         self.command_handler = CommandHandler(self.auto_service)
         self.message_handler = MessageHandler(self.command_handler, self.security_manager)
-        self.message_sender = MessageSender(self.config_manager.get_bot_token())
+        
+        # 🔧 ИСПРАВЛЕНИЕ: Правильная инициализация MessageSender
+        bot_token = self.config_manager.get_bot_token()
+        if bot_token:
+            self.message_sender = MessageSender(bot_token)
+            logger.info("✅ MessageSender инициализирован")
+        else:
+            logger.error("❌ Bot token не найден, MessageSender не инициализирован")
+            self.message_sender = None
     
     def init_auto_service(self):
         """Инициализация автосервиса для интеграции"""
+        if not AUTO_SERVICE_AVAILABLE:
+            logger.warning("⚠️ AutoLearningService недоступен для Telegram бота")
+            return
+            
         try:
             self.auto_service = AutoLearningService()
             logger.info("✅ Автосервис инициализирован для Telegram бота")
@@ -94,6 +95,9 @@ class TelegramPollingBot:
                     return updates
             else:
                 logger.error(f"❌ Ошибка API Telegram: {response.status_code}")
+                if response.status_code == 409:
+                    logger.warning("⚠️ Конфликт offset, сбрасываем...")
+                    self.last_update_id = 0
             return []
             
         except Exception as e:
@@ -117,7 +121,7 @@ class TelegramPollingBot:
             response = self.message_handler.process_message(message)
             
             # Отправка ответа
-            if response:
+            if response and self.message_sender:
                 self.send_message(chat_id, response)
             
         except Exception as e:
@@ -125,13 +129,16 @@ class TelegramPollingBot:
             # Пытаемся отправить сообщение об ошибке
             try:
                 chat_id = message.get('chat', {}).get('id')
-                if chat_id:
+                if chat_id and self.message_sender:
                     self.send_message(chat_id, f"❌ Ошибка обработки команды: {e}")
             except:
                 pass
     
     def send_message(self, chat_id, text, parse_mode='HTML'):
         """Отправка сообщения через модуль отправки"""
+        if not self.message_sender:
+            logger.error("❌ MessageSender не инициализирован")
+            return False
         return self.message_sender.send_message(chat_id, text, parse_mode)
     
     def start_polling(self):
@@ -151,7 +158,7 @@ class TelegramPollingBot:
         try:
             # Тестовое сообщение при запуске
             chat_id = self.config_manager.get_chat_id()
-            if chat_id:
+            if chat_id and self.message_sender:
                 self.send_message(
                     chat_id, 
                     "🤖 <b>Telegram бот запущен!</b>\n\n"
@@ -195,7 +202,7 @@ class TelegramPollingBot:
         """Отправка сообщения о shutdown"""
         try:
             chat_id = self.config_manager.get_chat_id()
-            if chat_id:
+            if chat_id and self.message_sender:
                 self.message_sender.send_message(
                     chat_id,
                     "🛑 <b>Telegram бот остановлен</b>\n\n"
@@ -209,7 +216,7 @@ class TelegramPollingBot:
         """Отправка сообщения об ошибке"""
         try:
             chat_id = self.config_manager.get_chat_id()
-            if chat_id:
+            if chat_id and self.message_sender:
                 self.message_sender.send_message(
                     chat_id,
                     f"🚨 <b>КРИТИЧЕСКАЯ ОШИБКА</b>\n\n"
@@ -227,6 +234,7 @@ class TelegramPollingBot:
             'bot_token_set': bool(self.config_manager.get_bot_token()),
             'chat_id_set': bool(self.config_manager.get_chat_id()),
             'auto_service_available': self.auto_service is not None,
+            'message_sender_available': self.message_sender is not None,
             'last_update_id': self.last_update_id,
             'config_valid': self.config_manager.validate_config()
         }

@@ -11,6 +11,8 @@ from .data_ui import show_data_ui
 from .status_ui import show_status_ui
 from .utils import (
     show_progress_messages,
+    show_operation_progress,
+    show_recent_logs,
     format_confidence_score,
     create_prediction_display,
     validate_and_format_group_input,
@@ -34,6 +36,8 @@ __all__ = [
     'show_data_ui',
     'show_status_ui',
     'show_progress_messages',
+    'show_operation_progress',
+    'show_recent_logs',
     'format_confidence_score',
     'create_prediction_display',
     'validate_and_format_group_input',

@@ -4,7 +4,7 @@
 """
 
 import logging
-from typing import Dict  # ← ДОБАВЛЯЕМ ИМПОРТ
+from typing import Dict
 from config.paths import TELEGRAM_CONFIG_FILE
 import json
 
@@ -16,7 +16,7 @@ class SecurityManager:
     def __init__(self):
         self.config = self._load_config()
     
-    def _load_config(self) -> Dict:  # ← ТЕПЕРЬ Dict ОПРЕДЕЛЕН
+    def _load_config(self) -> Dict:
         """Загрузка конфигурации"""
         try:
             with open(TELEGRAM_CONFIG_FILE, 'r', encoding='utf-8') as f:

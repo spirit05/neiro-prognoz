@@ -91,7 +91,55 @@ class AutoLearningService:
             logger.error(f"❌ Ошибка инициализации ML системы: {e}")
             # 🔧 СТРОГОЕ СОБЛЮДЕНИЕ NO-FALLBACK POLICY
             return False
-    
+
+    def run_single_iteration(self) -> bool:
+        """
+        Выполнение одной итерации обработки данных
+        Не изменяет состояние сервиса (service_active)
+        """
+        try:
+            logger.info("🔄 Запуск одной итерации обработки...")
+            
+            # Выполняем основную логику одной итерации
+            success = self._process_single_iteration()
+            
+            if success:
+                logger.info("✅ Одна итерация успешно выполнена")
+                return True
+            else:
+                logger.error("❌ Ошибка выполнения одной итерации")
+                return False
+                
+        except Exception as e:
+            logger.error(f"❌ Исключение при выполнении одной итерации: {e}")
+            return False
+
+    def _process_single_iteration(self) -> bool:
+        """
+        Внутренний метод обработки одной итерации
+        """
+        try:
+            # Получаем данные
+            data_success = self._fetch_new_data()
+            if not data_success:
+                return False
+            
+            # Обучаем модель если нужно
+            training_success = self._train_if_needed()
+            if not training_success:
+                return False
+            
+            # Генерируем прогнозы
+            prediction_success = self._generate_predictions()
+            if not prediction_success:
+                return False
+                
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка в процессе итерации: {e}")
+            return False
+        
     def load_service_state(self):
         """Загрузка состояния сервиса с синхронизацией из info.json"""
         try:
@@ -570,19 +618,17 @@ class AutoLearningService:
     def run_once(self):
         """Однократный запуск обработки"""
         if not self.service_active:
-            logger.warning("⏸️ Сервис остановлен. Используйте --force для принудительного запуска.")
-            return False
-        
-        logger.info("🚀 Запуск однократной обработки...")
-        
+            logger.info("🔄 Ручной star once сервиса...")
+            self.service_active = True
+            self.consecutive_api_errors = 0
+                    
         # Сразу делаем запрос при запуске
         success = self.process_new_group()
-        
-        # Рассчитываем следующее время запуска
-        if success:
-            next_interval = self.calculate_next_run_time()
-            logger.info(f"⏰ Следующий запрос через {next_interval:.1f} минут")
-        
+
+        if self.service_active:
+            logger.info("🔄 Ручной stop сервиса...")
+            self.service_active = False
+            
         return success
     
     def start_scheduled_service(self):

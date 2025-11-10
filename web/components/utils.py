@@ -6,6 +6,7 @@
 import streamlit as st
 from datetime import datetime
 from typing import List
+import time
 
 def show_progress_messages(messages: List[str], height: int = 200):
     """Показать сообщения прогресса"""
@@ -17,6 +18,76 @@ def show_progress_messages(messages: List[str], height: int = 200):
             height=height,
             key="progress_display"
         )
+
+def show_operation_progress(operation_type: str, current_step: int, total_steps: int, current_message: str = ""):
+    """Показать прогресс операции с этапами"""
+    
+    steps_info = {
+        "training": [
+            "📊 Загрузка данных...",
+            "🧠 Обучение нейросети...", 
+            "🏗️ Создание ансамблевой системы...",
+            "🔮 Генерация прогнозов...",
+            "💾 Сохранение модели..."
+        ],
+        "add_data": [
+            "📝 Валидация данных...",
+            "🔍 Сравнение с прогнозами...",
+            "🔄 Дообучение модели...",
+            "🔮 Генерация новых прогнозов...",
+            "💾 Сохранение результатов..."
+        ],
+        "prediction": [
+            "📊 Анализ истории...",
+            "🧠 Применение модели...",
+            "🏗️ Ансамблевое предсказание...", 
+            "📈 Расчет уверенности...",
+            "💾 Сохранение прогнозов..."
+        ]
+    }
+    
+    steps = steps_info.get(operation_type, [f"Шаг {i+1}" for i in range(total_steps)])
+    
+    # Прогресс-бар
+    progress = current_step / total_steps
+    st.progress(progress)
+    
+    # Текущий этап
+    if current_step < total_steps:
+        st.info(f"**{steps[current_step]}** {current_message}")
+    
+    # Предыдущие завершенные этапы
+    for i in range(current_step):
+        st.success(f"✅ {steps[i]}")
+    
+    # Предстоящие этапы
+    for i in range(current_step + 1, total_steps):
+        st.text(f"⏳ {steps[i]}")
+
+def show_recent_logs(messages: List[str], max_logs: int = 3):
+    """Показать последние логи в компактном формате"""
+    if messages:
+        recent_logs = messages[-max_logs:]
+        
+        st.markdown("""
+        <div style='
+            background: #f8f9fa; 
+            border: 1px solid #e9ecef; 
+            border-radius: 8px; 
+            padding: 1rem; 
+            margin: 1rem 0;
+            font-family: monospace;
+            font-size: 0.9rem;
+        '>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("**📊 Последние действия:**")
+        
+        for log in recent_logs:
+            clean_log = log.split(' - ')[-1] if ' - ' in log else log
+            st.markdown(f"• {clean_log}")
+        
+        st.markdown("</div>", unsafe_allow_html=True)
 
 def format_confidence_score(score: float) -> tuple:
     """Форматирование оценки уверенности"""

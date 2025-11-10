@@ -5,6 +5,7 @@
 
 import streamlit as st
 from ml.utils.data_utils import save_predictions
+from .utils import show_operation_progress, show_recent_logs
 
 def show_training_ui(system, run_operation_sync):
     """Показать интерфейс обучения"""
@@ -27,12 +28,16 @@ def show_training_ui(system, run_operation_sync):
         Не закрывайте страницу во время обучения!
         """)
     
-    # Кнопка обучения
+    # Показываем этапы операции ДО запуска
     if st.button("🚀 Начать полное обучение", type="primary"):
         if not system:
             st.error("❌ Система не инициализирована")
             return
-            
+        
+        # Показываем ожидаемые этапы
+        st.subheader("📋 План операции:")
+        show_operation_progress("training", 0, 5)
+        
         # Запускаем операцию СИНХРОННО
         with st.spinner("🔄 Запуск обучения..."):
             result = run_operation_sync("training")
@@ -43,6 +48,13 @@ def show_training_ui(system, run_operation_sync):
         elif hasattr(st.session_state, 'operation_result') and st.session_state.operation_result:
             st.balloons()
             st.success("🎉 Обучение успешно завершено!")
+            
+            # Показываем завершенные этапы
+            show_operation_progress("training", 5, 5, "Обучение завершено!")
+            
+            # Показываем логи если есть
+            if hasattr(st.session_state, 'progress_messages') and st.session_state.progress_messages:
+                show_recent_logs(st.session_state.progress_messages, max_logs=5)
             
             st.subheader("🎯 Первые прогнозы после обучения")
             for i, (group, score) in enumerate(st.session_state.operation_result[:4], 1):
