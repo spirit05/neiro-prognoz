@@ -102,20 +102,52 @@ class TelegramNotifier:
         
         self.send_message(message, retry_critical=True)
     
-    def send_predictions(self, predictions: list, draw: str):
+    def send_predictions(self, predictions: list, draw: str, actual_group: str = None, comparison_result: dict = None):
         """Отправка прогнозов после дообучения"""
         if not self.config.get('notifications', {}).get('predictions', False):
             return
-        
-        message = f"🔮 <b>НОВЫЕ ПРОГНОЗЫ</b>\n"
-        message += f"📦 После тиража: {draw}\n"
-        message += f"🕐 Время: {datetime.now().strftime('%H:%M:%S')}\n\n"
-        
-        for i, (group, score) in enumerate(predictions[:4], 1):
-            confidence = "🟢" if score > 0.02 else "🟡" if score > 0.01 else "🔴"
-            message += f"{i}. {group[0]} {group[1]} {group[2]} {group[3]} ({score:.4f}) {confidence}\n"
-        
-        self.send_message(message)
+
+        try:
+            message = f"🔮 <b>НОВЫЕ ПРОГНОЗЫ</b>\n\n"
+            message += f"📦 Тираж: {draw}\n"
+            if actual_group:
+                message += f"📥 Добавлена группа: {actual_group}\n"
+            message += f"🕐 Время: {datetime.now().strftime('%H:%M:%S')}\n\n"
+            
+            # ❌ comparison_result теперь передается как параметр
+            if comparison_result and comparison_result.get('matches_found', 0) > 0:
+                matches_count = comparison_result['matches_found']
+                matches_details = comparison_result.get('matches_details', [])
+                
+                message += f"🔍 <b>Найдено совпадений с {matches_count} предсказаниями:</b>\n\n"
+                
+                for i, match in enumerate(matches_details[:3], 1):
+                    pred_group = match['predicted_group']
+                    matches_info = match['matches']
+                    total_matches = matches_info['total_matches']
+                    
+                    message += f"<b>{i}. Прогноз:</b> {pred_group[0]} {pred_group[1]} {pred_group[2]} {pred_group[3]}\n"
+                    message += f"   - Совпадения по парам: <b>{total_matches}/4</b>\n"
+                    
+                    if matches_info.get('exact_matches', 0) > 0:
+                        message += f"   - Точных совпадений: {matches_info['exact_matches']}\n"
+                    
+                    message += f"   - Уверенность прогноза: {match['score']:.4f}\n\n"
+            else:
+                message += "📝 <b>Совпадений с предыдущими прогнозами нет</b>\n\n"
+            
+            # Новые прогнозы
+            message += "<b>🎯 ОБНОВЛЕННЫЕ ПРОГНОЗЫ:</b>\n"
+            for i, (group, score) in enumerate(predictions[:4], 1):
+                confidence = "🟢 ВЫСОКАЯ" if score > 0.02 else "🟡 СРЕДНЯЯ" if score > 0.01 else "🔴 НИЗКАЯ"
+                message += f"<b>{i}.</b> {group[0]} {group[1]} {group[2]} {group[3]}\n"
+                message += f"   Уверенность: <code>{score:.4f}</code> {confidence}\n\n"
+            
+            self.send_message(message)
+            logger.info(f"📤 Детальные прогнозы отправлены в Telegram")
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка отправки детальных прогнозов: {e}")
     
     def process_status_command(self, status_data: Dict[str, Any]):
         """Обработка команды /status"""

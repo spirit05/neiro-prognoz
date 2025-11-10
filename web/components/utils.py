@@ -5,7 +5,7 @@
 
 import streamlit as st
 from datetime import datetime
-from typing import List
+from typing import List, Dict, Optional, Tuple
 import time
 
 def show_progress_messages(messages: List[str], height: int = 200):
@@ -129,7 +129,7 @@ def validate_and_format_group_input(group_str: str) -> tuple:
     
     return True, "✅ Формат корректен"
 
-def validate_and_format_groups_input(groups_str: str) -> tuple:
+def validate_and_format_groups_input(groups_str: str) -> List[Dict[str, str]]:
     """Валидация и форматирование ввода группы"""
     from ml.utils.data_utils import validate_group
 

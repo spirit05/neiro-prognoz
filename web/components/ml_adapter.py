@@ -40,7 +40,7 @@ class MLSystemAdapter:
             from ml.core.predictor import EnhancedPredictor
             from ml.learning.self_learning import SelfLearningSystem
             from ml.core.data_processor import DataProcessor
-            from services.autolearning.api_client import APIClient
+            from services.auto_learning.api_client import APIClient
             
             # Инициализация тренера
             self.trainer = EnhancedTrainer()
@@ -57,6 +57,9 @@ class MLSystemAdapter:
             # Инициализация API клиента
             self.api_client = APIClient()
             
+            if not self.api_client:
+                logger.info("api client not fioun")
+
             # Попытка загрузить существующую модель
             self._auto_load_model()
             

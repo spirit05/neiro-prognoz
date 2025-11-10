@@ -91,54 +91,6 @@ class AutoLearningService:
             logger.error(f"❌ Ошибка инициализации ML системы: {e}")
             # 🔧 СТРОГОЕ СОБЛЮДЕНИЕ NO-FALLBACK POLICY
             return False
-
-    def run_single_iteration(self) -> bool:
-        """
-        Выполнение одной итерации обработки данных
-        Не изменяет состояние сервиса (service_active)
-        """
-        try:
-            logger.info("🔄 Запуск одной итерации обработки...")
-            
-            # Выполняем основную логику одной итерации
-            success = self._process_single_iteration()
-            
-            if success:
-                logger.info("✅ Одна итерация успешно выполнена")
-                return True
-            else:
-                logger.error("❌ Ошибка выполнения одной итерации")
-                return False
-                
-        except Exception as e:
-            logger.error(f"❌ Исключение при выполнении одной итерации: {e}")
-            return False
-
-    def _process_single_iteration(self) -> bool:
-        """
-        Внутренний метод обработки одной итерации
-        """
-        try:
-            # Получаем данные
-            data_success = self._fetch_new_data()
-            if not data_success:
-                return False
-            
-            # Обучаем модель если нужно
-            training_success = self._train_if_needed()
-            if not training_success:
-                return False
-            
-            # Генерируем прогнозы
-            prediction_success = self._generate_predictions()
-            if not prediction_success:
-                return False
-                
-            return True
-            
-        except Exception as e:
-            logger.error(f"❌ Ошибка в процессе итерации: {e}")
-            return False
         
     def load_service_state(self):
         """Загрузка состояния сервиса с синхронизацией из info.json"""
@@ -434,8 +386,13 @@ class AutoLearningService:
             
             # Шаг 8: Отправляем прогнозы если включено
             if learning_result:
-                self.telegram.send_predictions(learning_result, processing_draw)
-            
+                self.telegram.send_predictions(
+                    learning_result, 
+                    processing_draw, 
+                    new_combination,
+                    comparison_result
+                )
+                        
             logger.info(f"✅ Обработка завершена! Новых прогнозов: {len(learning_result) if learning_result else 0}")
             
             return True

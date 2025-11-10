@@ -5,7 +5,7 @@
 
 import streamlit as st
 from ml.utils.data_utils import load_dataset, save_dataset, validate_group, compare_groups, load_predictions, save_predictions
-from .utils import show_operation_progress, show_recent_logs, validate_and_format_group_input
+from .utils import show_operation_progress, show_recent_logs, validate_and_format_groups_input
 
 def show_data_ui(system, run_operation_sync):
     """Показать интерфейс работы с данными"""
@@ -82,6 +82,10 @@ def _process_single_group(system, run_operation_sync, sequence_input):
         if not validate_group(sequence_input):
             st.error("❌ Неверный формат! Должно быть 4 числа 1-26 через пробел")
             return
+
+        last_info_entry = system.api_client.get_last_entry().get('draw')
+        next_info_entry = int(last_info_entry) + 1
+        system.api_client._save_info(next_info_entry, sequence_input)
         
         # Сравнение с предыдущими прогнозами
         sequence_numbers = [int(x) for x in sequence_input.strip().split()]
@@ -135,7 +139,12 @@ def _process_single_group(system, run_operation_sync, sequence_input):
                 st.info("💾 Новые прогнозы сохранены в кэш")
             except Exception as e:
                 st.warning(f"⚠️ Не удалось сохранить прогнозы: {e}")
-            
+
+            if hasattr(st.session_state, 'operation_result') and st.session_state.operation_result:
+                # Анализ точности
+                learning_system = SelfLearningSystem()
+                analysis_result = learning_system.analyze_prediction_accuracy(sequence_input)            
+
             # Показываем новые прогнозы
             st.subheader("🎯 Обновленные прогнозы")
             for i, (group, score) in enumerate(st.session_state.operation_result[:4], 1):
@@ -156,29 +165,39 @@ def _process_multiple_groups(system, run_operation_sync, groups_input):
         
     if not groups_input:
         st.error("❌ Введите группы")
-        return
+        return        
         
     try:
-        group_list = validate_and_format_group_input(sequence_input_groups)
+        group_list = validate_and_format_groups_input(groups_input)
         if not group_list:
             st.error("❌ Неверный формат! Должно быть 4 числа 1-26 через пробел")
             return
         
-        last_info_entry = system.api_client.get_last_info_entry().get('draw')
+        last_entry = system.api_client.get_last_entry()
+        if not last_entry:  # Если None или пустой словарь
+            st.error("❌ Нет данных о последнем тираже!")
+            return
+            
+        last_info_entry = int(last_entry.get('draw')) + 1 
+        if not last_info_entry:  # Если draw нет или пустой
+            st.error("❌ Не удалось получить номер последнего тиража!")
+            return
 
-        if last_info_entry != group_list[0].get('draw'):
+        group_info_entry = int(group_list[0].get('draw'))
+
+        if last_info_entry != group_info_entry:
             st.error("❌ Неверный номер тиража!")
             return
-        
-        st.info("✅ Тираж врерный, номер тиража: {last_info_entry}")
+   
+        st.info("✅ Тираж верный, номер тиража: {last_info_entry}")
 
         # Загружаем и обновляем данные
         dataset = load_dataset()
         old_count = len(dataset)
 
         for group in group_list:
-            combination = group_list.get('combination')
-            draw = group_list.get('draw')
+            combination = group.get('combination')
+            draw = group.get('draw')
             dataset.append(combination)
             system.api_client._save_info(draw, combination)
 
@@ -186,7 +205,7 @@ def _process_multiple_groups(system, run_operation_sync, groups_input):
         save_dataset(dataset)
 
         st.info("✅ Данные сохранены: {old_count} → {new_count} групп")
-        last_info_entry = system.api_client.get_last_info_entry().get('draw')
+        last_info_entry = system.api_client.get_last_entry().get('draw')
         st.info("✅ Данные сохранены: {last_info_entry} последний тираж")
         
         # Запускаем операцию СИНХРОННО
