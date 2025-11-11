@@ -139,7 +139,12 @@ class MLSystemAdapter:
                 # Даже если не переобучаем, делаем прогноз на основе обновленного ансамбля
                 self._report_progress("🔮 Делаем прогноз на основе обновленного ансамбля...")
                 predictions = self._make_ensemble_prediction()
+
+                if predictions:
+                    from ml.utils.data_utils import save_predictions
+                    self._report_progress(f"💾 Сохранено {len(predictions)} прогнозов")
             
+            save_predictions(predictions)
             return predictions
             
         except Exception as e:

@@ -1,7 +1,342 @@
 {
-  "predictions_accuracy": [],
+  "predictions_accuracy": [
+    {
+      "timestamp": "2025-11-11T23:43:50.017559",
+      "actual_group": "8 13 26 10",
+      "best_prediction": [
+        24,
+        8,
+        20,
+        6
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 0
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-11T23:45:45.948455",
+      "actual_group": "18 7 13 10",
+      "best_prediction": [
+        3,
+        7,
+        24,
+        15
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-11T23:46:39.647799",
+      "actual_group": "2 22 14 9",
+      "best_prediction": [
+        2,
+        3,
+        23,
+        25
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-11T23:47:24.355123",
+      "actual_group": "5 7 5 14",
+      "best_prediction": [
+        11,
+        16,
+        25,
+        14
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 0,
+        "pair2_matches": 1,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-11T23:48:09.738082",
+      "actual_group": "3 18 11 26",
+      "best_prediction": [
+        3,
+        24,
+        22,
+        26
+      ],
+      "matches_count": 2,
+      "comparison_details": {
+        "total_matches": 2,
+        "pair1_matches": 1,
+        "pair2_matches": 1,
+        "exact_matches": 2
+      },
+      "accuracy_score": 0.5
+    },
+    {
+      "timestamp": "2025-11-11T23:48:53.246516",
+      "actual_group": "26 10 21 4",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-11T23:49:42.078586",
+      "actual_group": "25 24 9 19",
+      "best_prediction": [
+        25,
+        26,
+        12,
+        23
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-11T23:50:07.270258",
+      "actual_group": "25 24 9 19",
+      "best_prediction": [
+        7,
+        20,
+        1,
+        19
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 0,
+        "pair2_matches": 1,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-12T00:44:55.013090",
+      "actual_group": "3 19 17 7",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-12T00:45:54.424914",
+      "actual_group": "19 3 3 21",
+      "best_prediction": null,
+      "matches_count": 0,
+      "comparison_details": null,
+      "accuracy_score": 0.0
+    },
+    {
+      "timestamp": "2025-11-12T00:46:51.179677",
+      "actual_group": "6 20 24 19",
+      "best_prediction": [
+        18,
+        20,
+        22,
+        10
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-12T00:47:18.645737",
+      "actual_group": "6 20 24 19",
+      "best_prediction": [
+        7,
+        14,
+        19,
+        13
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 0,
+        "pair2_matches": 1,
+        "exact_matches": 0
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-12T01:01:35.193180",
+      "actual_group": "1 9 7 4",
+      "best_prediction": [
+        4,
+        2,
+        20,
+        7
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 0,
+        "pair2_matches": 1,
+        "exact_matches": 0
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-12T01:02:01.065296",
+      "actual_group": "1 9 7 4",
+      "best_prediction": [
+        9,
+        23,
+        3,
+        4
+      ],
+      "matches_count": 2,
+      "comparison_details": {
+        "total_matches": 2,
+        "pair1_matches": 1,
+        "pair2_matches": 1,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.5
+    },
+    {
+      "timestamp": "2025-11-12T01:02:56.988018",
+      "actual_group": "3 25 4 9",
+      "best_prediction": [
+        11,
+        1,
+        12,
+        9
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 0,
+        "pair2_matches": 1,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-12T01:03:41.063983",
+      "actual_group": "3 25 4 9",
+      "draw": "309637",
+      "service_type": "auto_learning",
+      "learning_success": true,
+      "new_predictions_count": 4,
+      "matches_count": 2,
+      "accuracy_score": 0.5
+    },
+    {
+      "timestamp": "2025-11-12T01:14:41.238568",
+      "actual_group": "24 10 24 23",
+      "best_prediction": [
+        16,
+        10,
+        26,
+        12
+      ],
+      "matches_count": 1,
+      "comparison_details": {
+        "total_matches": 1,
+        "pair1_matches": 1,
+        "pair2_matches": 0,
+        "exact_matches": 1
+      },
+      "accuracy_score": 0.25
+    },
+    {
+      "timestamp": "2025-11-12T01:15:27.236425",
+      "actual_group": "24 10 24 23",
+      "draw": "309638",
+      "service_type": "auto_learning",
+      "learning_success": true,
+      "new_predictions_count": 4,
+      "matches_count": 1,
+      "accuracy_score": 0.25
+    }
+  ],
   "model_performance": {},
   "learning_patterns": {},
-  "error_patterns": [],
-  "last_analysis": "2025-11-11T22:45:26.877401"
+  "error_patterns": [
+    {
+      "timestamp": "2025-11-11T23:43:50.017559",
+      "missed_numbers": [
+        26,
+        10,
+        13
+      ],
+      "false_numbers": [
+        24,
+        20,
+        6
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-11T23:45:45.948455",
+      "missed_numbers": [
+        18,
+        10,
+        13
+      ],
+      "false_numbers": [
+        24,
+        3,
+        15
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-11T23:46:39.647799",
+      "missed_numbers": [
+        9,
+        22,
+        14
+      ],
+      "false_numbers": [
+        25,
+        3,
+        23
+      ],
+      "accuracy": 0.25
+    },
+    {
+      "timestamp": "2025-11-11T23:47:24.355123",
+      "missed_numbers": [
+        5,
+        7
+      ],
+      "false_numbers": [
+        16,
+        25,
+        11
+      ],
+      "accuracy": 0.25
+    }
+  ],
+  "last_analysis": "2025-11-12T01:15:55.187217"
 }

@@ -209,7 +209,7 @@ class MLSystemAdapter:
         dataset = load_dataset()
         old_count = len(dataset)
         
-        dataset.append(sequence_input)
+        dataset.append(str(sequence_input))
         save_dataset(dataset)
         
         new_count = len(dataset)

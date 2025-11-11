@@ -351,76 +351,40 @@ class EnhancedPredictor:
             'recent_numbers': recent,
             'temporal_patterns': temporal_patterns
         }
-    
-    
+
     def _generate_model_based_candidates(self, probabilities: torch.Tensor, count: int, pattern_analysis: dict):
-        """Генерация кандидатов на основе модели с учетом паттернов"""
-        
-        # 🔍 ДИАГНОСТИКА: что приходит в probabilities
-        print(f"🔍 ДИАГНОСТИКА probabilities shape: {probabilities.shape}")
-        print(f"🔍 ДИАГНОСТИКА probabilities stats: min={probabilities.min():.6f}, max={probabilities.max():.6f}, mean={probabilities.mean():.6f}")
-        
-        # 🔧 ИСПРАВЛЕНИЕ: Улучшенный отбор чисел с проверкой разнообразия
+        """ПРОСТАЯ генерация кандидатов на основе модели"""
         candidates = []
+        import random
         
-        # Берем топ чисел для каждой позиции с динамическим количеством
+        # 🔧 УПРОЩЕНИЕ: Берем топ-1 число для каждой позиции
         top_numbers = []
         for pos in range(4):
             probs = probabilities[pos]
-            
-            # 🔧 ИСПРАВЛЕНИЕ: Динамическое количество топ чисел в зависимости от разнообразия
-            diversity = torch.std(probs).item()
-            k = max(5, min(10, int(10 * diversity * 10)))  # От 5 до 10 чисел
-            
-            top_probs, top_indices = torch.topk(probs, k)
-            
-            # 🔍 ДИАГНОСТИКА топ чисел
-            print(f"🔍 Позиция {pos} топ-{k}: {[(idx.item()+1, prob.item()) for idx, prob in zip(top_indices, top_probs)]}")
-            
-            top_numbers.append([
-                (idx.item() + 1, prob.item()) for idx, prob in zip(top_indices, top_probs)
-            ])
-                
-        # 🔧 ИСПРАВЛЕНИЕ: Умная генерация комбинаций с ограничением
-        generated = 0
-        max_combinations = count * 20  # Ограничение для предотвращения взрыва комбинаций
+            top_prob, top_idx = torch.max(probs, dim=0)
+            top_numbers.append(top_idx.item() + 1)
         
-        for i, (n1, p1) in enumerate(top_numbers[0][:5]):  # Ограничиваем первые позиции
-            for j, (n2, p2) in enumerate(top_numbers[1][:5]):
-                if n1 == n2:
-                    continue
-                for k, (n3, p3) in enumerate(top_numbers[2][:5]):
-                    if n3 in [n1, n2]:
-                        continue
-                    for l, (n4, p4) in enumerate(top_numbers[3][:5]):
-                        if n4 in [n1, n2, n3]:
-                            continue
-                        
-                        group = (n1, n2, n3, n4)
-                        
-                        # Корректируем score на основе паттернов
-                        base_score = p1 * p2 * p3 * p4
-                        pattern_score = self._calculate_enhanced_pattern_score(group, pattern_analysis)
-                        adjusted_score = base_score * pattern_score
-                        
-                        # 🔧 ИСПРАВЛЕНИЕ: Более мягкое усиление
-                        if adjusted_score > 0.0001:
-                            adjusted_score *= 1.5
-                        
-                        candidates.append((group, adjusted_score))
-                        generated += 1
-                        
-                        if generated >= max_combinations:
-                            break
-                    if generated >= max_combinations:
+        # 🔧 ИСПРАВЛЕНИЕ: Создаем вариации вокруг топ чисел
+        base_group = tuple(top_numbers)
+        
+        # Добавляем базовую группу
+        candidates.append((base_group, 0.01))
+        
+        # Создаем вариации
+        for _ in range(count - 1):
+            variant = list(base_group)
+            # Меняем 1-2 случайные позиции
+            positions_to_change = random.sample(range(4), random.randint(1, 2))
+            for pos in positions_to_change:
+                while True:
+                    new_num = random.randint(1, 26)
+                    if new_num not in variant:
+                        variant[pos] = new_num
                         break
-                if generated >= max_combinations:
-                    break
-            if generated >= max_combinations:
-                break
+            candidates.append((tuple(variant), 0.005))
         
         return candidates
-    
+        
     def _calculate_enhanced_pattern_score(self, group: Tuple[int, int, int, int], pattern_analysis: dict) -> float:
         """Расчет усиленного pattern score с новыми факторами"""
         score = 1.0

@@ -304,38 +304,31 @@ class AutoLearningService:
         except Exception as e:
             logger.error(f"❌ Ошибка проверки синхронизации: {e}")
             return False
-    
+
     def process_new_group(self):
-        """Основной метод обработки новой группы - ПОЛНАЯ СОВМЕСТИМОСТЬ"""
+        """Основной метод обработки новой группы - ПОЛНАЯ ИНТЕГРАЦИЯ С ML СИСТЕМОЙ"""
         if not self.service_active:
             logger.info("⏸️ Сервис остановлен из-за ошибок API. Требуется ручной перезапуск.")
             return False
         
-        logger.info("🔄 Запуск обработки новой группы...")
+        logger.info("🔄 Запуск ПОЛНОЙ обработки новой группы...")
         
         try:
-            # 🔧 ШАГ 0: ПРОВЕРКА СИНХРОНИЗАЦИИ ПРИ ПЕРВОМ ЗАПУСКЕ
+            # 🔍 ШАГ 0: ПРОВЕРКА СИНХРОНИЗАЦИИ ПРИ ПЕРВОМ ЗАПУСКЕ
             if self.last_processed_draw is None:
                 if not self.check_draw_synchronization():
                     logger.error("🚨 ОШИБКА СИНХРОНИЗАЦИИ ТИРАЖЕЙ! Сервис остановлен.")
                     self.service_active = False
                     self.save_service_state()
-                    
-                    # Telegram уведомление о расхождении тиражей
-                    current_info = self.api_client.get_current_info()
-                    current_draw = current_info.get('current_draw', 'unknown')
-                    self.telegram.send_service_stop(current_draw, "Расхождение тиражей при запуске")
-                    
                     return False
             
-            # Шаг 1: Получаем новую группу через API
+            # 📡 ШАГ 1: Получаем новую группу через API
             result = self.call_api_with_retries()
             
             if not result:
-                # API недоступно - сервис уже остановлен в call_api_with_retries
                 return False
             
-            # Шаг 2: Находим последнюю необработанную запись
+            # 🔎 ШАГ 2: Находим последнюю необработанную запись
             last_unprocessed = self.api_client.get_last_unprocessed_entry()
             if not last_unprocessed:
                 logger.info("📝 Нет необработанных записей")
@@ -346,30 +339,36 @@ class AutoLearningService:
             
             logger.info(f"🎯 Обработка тиража {processing_draw}: {new_combination}")
             
-            # 🔧 ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: тираж должен быть следующим после последнего обработанного
+            # 🔧 ШАГ 3: Проверяем что тираж следующий по порядку
             if self.last_processed_draw:
                 expected_draw = str(int(self.last_processed_draw) + 1)
                 if processing_draw != expected_draw:
                     logger.error(f"🚨 НЕОЖИДАННЫЙ ТИРАЖ! Ожидался {expected_draw}, получен {processing_draw}")
-                    logger.error("🔧 Возможна ошибка в последовательности тиражей")
                     return False
             
-            # Шаг 3: Проверяем валидность группы
+            # ✅ ШАГ 4: Проверяем валидность группы
             from ml.utils.data_utils import validate_group
             if not validate_group(new_combination):
                 logger.error(f"❌ Невалидная группа: {new_combination}")
                 return False
             
-            # Шаг 4: Сравниваем с предыдущими прогнозами
-            comparison_result = self.compare_with_predictions(new_combination)
+            # 🔄 ШАГ 5: КРИТИЧЕСКИЙ - Интеграция с ML системой
+            logger.info("🔗 ИНТЕГРАЦИЯ С ML СИСТЕМОЙ...")
             
-            # Шаг 5: Добавляем данные и дообучаем модель
+            # 🔧 ИСПРАВЛЕНИЕ: Вызываем add_data_and_retrain для полного цикла
             learning_result = self.system.add_data_and_retrain(new_combination, retrain_epochs=RETRAIN_EPOCHS)
             
-            # Шаг 6: Помечаем как обработанную
+            if not learning_result:
+                logger.error("❌ Ошибка в add_data_and_retrain - данные не обработаны")
+                return False
+            
+            # 📊 ШАГ 6: Сравниваем с предыдущими прогнозами
+            comparison_result = self.compare_with_predictions(new_combination)
+            
+            # 🏷️ ШАГ 7: Помечаем как обработанную
             self.api_client.mark_entry_processed(processing_draw)
             
-            # Шаг 7: Сохраняем результат
+            # 💾 ШАГ 8: Сохраняем результат обучения
             result_data = {
                 'timestamp': datetime.now().isoformat(),
                 'draw': processing_draw,
@@ -384,7 +383,7 @@ class AutoLearningService:
             self.last_processed_draw = processing_draw
             self.save_service_state()
             
-            # Шаг 8: Отправляем прогнозы если включено
+            # 📨 ШАГ 9: Отправляем прогнозы если включено
             if learning_result:
                 self.telegram.send_predictions(
                     learning_result, 
@@ -392,11 +391,11 @@ class AutoLearningService:
                     new_combination,
                     comparison_result
                 )
-                        
-            logger.info(f"✅ Обработка завершена! Новых прогнозов: {len(learning_result) if learning_result else 0}")
+            
+            logger.info(f"✅ ПОЛНАЯ обработка завершена! Новых прогнозов: {len(learning_result)}")
             
             return True
-            
+                
         except Exception as e:
             logger.error(f"❌ Критическая ошибка обработки новой группы: {e}")
             
@@ -412,7 +411,7 @@ class AutoLearningService:
             self.telegram.send_service_stop(current_draw, f"Критическая ошибка: {str(e)}")
             
             return False
-        
+            
     def compare_with_predictions(self, new_combination: str):
         """Сравнение новой группы с предыдущими прогнозами"""
         try:
