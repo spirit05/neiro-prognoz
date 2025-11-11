@@ -1,6 +1,7 @@
 # [file name]: ml/core/predictor.py
 """
 УСИЛЕННОЕ предсказание групп чисел с ансамблевыми методами - МОДУЛЬНАЯ АРХИТЕКТУРА
+ИСПРАВЛЕННАЯ ВЕРСИЯ: устранена проблема одинаковых прогнозов
 """
 
 import torch
@@ -140,9 +141,59 @@ class EnhancedPredictor:
             print(f"🔍 Выходы модели stats: min={outputs.min():.6f}, max={outputs.max():.6f}")
             print(f"🔍 Probabilities stats: min={probabilities.min():.6f}, max={probabilities.max():.6f}")
             
+            # 🔧 ИСПРАВЛЕНИЕ: Проверка на одинаковые вероятности
+            diversity_score = self._calculate_probability_diversity(probabilities[0])
+            print(f"🔍 Diversity score: {diversity_score:.6f}")
+            
+            if diversity_score < 0.01:  # Слишком низкое разнообразие
+                logger.warning("⚠️  Низкое разнообразие вероятностей, используем резервные методы")
+                return self._generate_fallback_candidates(number_history, top_k)
+            
             # Генерация кандидатов
             candidates = self._generate_enhanced_candidates(probabilities[0], top_k, number_history)
             return candidates
+    
+    def _calculate_probability_diversity(self, probabilities: torch.Tensor) -> float:
+        """Расчет метрики разнообразия вероятностей"""
+        diversity = 0.0
+        for pos in range(4):
+            pos_probs = probabilities[pos]
+            # Энтропия как мера разнообразия
+            entropy = -torch.sum(pos_probs * torch.log(pos_probs + 1e-8))
+            diversity += entropy.item()
+        return diversity / 4.0
+    
+    def _generate_fallback_candidates(self, history: List[int], top_k: int) -> List[Tuple[Tuple[int, int, int, int], float]]:
+        """Резервная генерация кандидатов при проблемах с моделью"""
+        logger.warning("🔄 Используем резервные методы генерации кандидатов")
+        candidates = []
+        
+        # Используем частотные кандидаты
+        try:
+            frequency_candidates = self._generate_frequency_based_candidates(history, top_k * 3)
+            candidates.extend(frequency_candidates)
+        except Exception as e:
+            logger.warning(f"⚠️  Ошибка частотной генерации: {e}")
+        
+        # Используем паттернные кандидаты
+        pattern_analysis = self._deep_pattern_analysis(history)
+        pattern_candidates = self._generate_intelligent_patterns(history, top_k * 2, pattern_analysis)
+        candidates.extend(pattern_candidates)
+        
+        # Сортируем и фильтруем
+        candidates.sort(key=lambda x: x[1], reverse=True)
+        
+        # Убираем дубликаты
+        unique_candidates = []
+        seen = set()
+        for group, score in candidates:
+            if group not in seen:
+                seen.add(group)
+                unique_candidates.append((group, score))
+            if len(unique_candidates) >= top_k * 2:
+                break
+        
+        return unique_candidates[:top_k]
         
     def _generate_enhanced_candidates(self, probabilities: torch.Tensor, top_k: int, history: List[int]) -> List[Tuple[Tuple[int, int, int, int], float]]:
         """УСИЛЕННАЯ генерация кандидатных групп с улучшенной логикой"""
@@ -152,10 +203,14 @@ class EnhancedPredictor:
         # Глубокий анализ истории
         pattern_analysis = self._deep_pattern_analysis(history)
         
-        # Генерация на основе модели
-        model_candidates = self._generate_model_based_candidates(probabilities, 20, pattern_analysis)
-        logger.debug(f"🔍 Модельные кандидаты: {len(model_candidates)}")
-        candidates.extend(model_candidates)
+        # 🔧 ИСПРАВЛЕНИЕ: Проверка валидности вероятностей перед использованием
+        if self._are_probabilities_valid(probabilities):
+            # Генерация на основе модели
+            model_candidates = self._generate_model_based_candidates(probabilities, 20, pattern_analysis)
+            logger.debug(f"🔍 Модельные кандидаты: {len(model_candidates)}")
+            candidates.extend(model_candidates)
+        else:
+            logger.warning("⚠️  Пропускаем модельные кандидаты из-за невалидных вероятностей")
         
         # Генерация на основе паттернов
         pattern_candidates = self._generate_intelligent_patterns(history, 15, pattern_analysis)
@@ -187,6 +242,20 @@ class EnhancedPredictor:
         
         return filtered_candidates[:top_k]
     
+    def _are_probabilities_valid(self, probabilities: torch.Tensor) -> bool:
+        """Проверка валидности вероятностей"""
+        for pos in range(4):
+            pos_probs = probabilities[pos]
+            # Проверяем что вероятности не одинаковые
+            if torch.std(pos_probs) < 1e-6:
+                logger.warning(f"⚠️  Позиция {pos}: все вероятности одинаковые")
+                return False
+            # Проверяем что есть значимые вероятности
+            if torch.max(pos_probs) < 0.1:  # Слишком низкая максимальная вероятность
+                logger.warning(f"⚠️  Позиция {pos}: слишком низкая максимальная вероятность")
+                return False
+        return True
+    
     def _generate_frequency_based_candidates(self, history: List[int], count: int) -> List[tuple]:
         """Генерация кандидатов на основе частотного анализа"""
         try:
@@ -203,14 +272,22 @@ class EnhancedPredictor:
             candidates = []
             import random
             
-            # Генерация групп с высокими вероятностными scores
-            for _ in range(count * 5):
-                group = (
-                    random.randint(1, 26),
-                    random.randint(1, 26),
-                    random.randint(1, 26), 
-                    random.randint(1, 26)
-                )
+            # 🔧 ИСПРАВЛЕНИЕ: Улучшенная генерация с учетом истории
+            recent_numbers = history[-20:] if len(history) >= 20 else history
+            
+            for _ in range(count * 3):
+                # Используем комбинацию случайных чисел и чисел из истории
+                base_numbers = []
+                if recent_numbers and random.random() > 0.3:
+                    base_numbers = random.sample(recent_numbers, min(2, len(recent_numbers)))
+                
+                # Добираем до 4 чисел
+                while len(base_numbers) < 4:
+                    new_num = random.randint(1, 26)
+                    if new_num not in base_numbers:
+                        base_numbers.append(new_num)
+                
+                group = tuple(base_numbers[:4])
                 
                 # Проверяем валидность
                 if group[0] != group[1] and group[2] != group[3]:
@@ -283,40 +360,39 @@ class EnhancedPredictor:
         print(f"🔍 ДИАГНОСТИКА probabilities shape: {probabilities.shape}")
         print(f"🔍 ДИАГНОСТИКА probabilities stats: min={probabilities.min():.6f}, max={probabilities.max():.6f}, mean={probabilities.mean():.6f}")
         
-        # Проверяем, не одинаковые ли вероятности во всех позициях
-        for pos in range(4):
-            pos_probs = probabilities[pos]
-            unique_probs = torch.unique(pos_probs)
-            print(f"🔍 Позиция {pos}: уникальных значений = {len(unique_probs)}")
-            if len(unique_probs) < 5:  # Слишком мало уникальных значений
-                print(f"🚨 Позиция {pos}: ВСЕ ВЕРОЯТНОСТИ ОДИНАКОВЫЕ ИЛИ ПОЧТИ ОДИНАКОВЫЕ!")
-                print(f"   Top-5 значений: {unique_probs[:5]}")
-        
+        # 🔧 ИСПРАВЛЕНИЕ: Улучшенный отбор чисел с проверкой разнообразия
         candidates = []
         
-        # Берем топ-7 чисел для каждой позиции
+        # Берем топ чисел для каждой позиции с динамическим количеством
         top_numbers = []
         for pos in range(4):
             probs = probabilities[pos]
-            top_probs, top_indices = torch.topk(probs, 7)
+            
+            # 🔧 ИСПРАВЛЕНИЕ: Динамическое количество топ чисел в зависимости от разнообразия
+            diversity = torch.std(probs).item()
+            k = max(5, min(10, int(10 * diversity * 10)))  # От 5 до 10 чисел
+            
+            top_probs, top_indices = torch.topk(probs, k)
             
             # 🔍 ДИАГНОСТИКА топ чисел
-            print(f"🔍 Позиция {pos} топ-7: {[(idx.item()+1, prob.item()) for idx, prob in zip(top_indices, top_probs)]}")
+            print(f"🔍 Позиция {pos} топ-{k}: {[(idx.item()+1, prob.item()) for idx, prob in zip(top_indices, top_probs)]}")
             
             top_numbers.append([
                 (idx.item() + 1, prob.item()) for idx, prob in zip(top_indices, top_probs)
             ])
                 
-        # Генерируем комбинации с приоритетом для "холодных" чисел
+        # 🔧 ИСПРАВЛЕНИЕ: Умная генерация комбинаций с ограничением
         generated = 0
-        for i, (n1, p1) in enumerate(top_numbers[0]):
-            for j, (n2, p2) in enumerate(top_numbers[1]):
+        max_combinations = count * 20  # Ограничение для предотвращения взрыва комбинаций
+        
+        for i, (n1, p1) in enumerate(top_numbers[0][:5]):  # Ограничиваем первые позиции
+            for j, (n2, p2) in enumerate(top_numbers[1][:5]):
                 if n1 == n2:
                     continue
-                for k, (n3, p3) in enumerate(top_numbers[2]):
+                for k, (n3, p3) in enumerate(top_numbers[2][:5]):
                     if n3 in [n1, n2]:
                         continue
-                    for l, (n4, p4) in enumerate(top_numbers[3]):
+                    for l, (n4, p4) in enumerate(top_numbers[3][:5]):
                         if n4 in [n1, n2, n3]:
                             continue
                         
@@ -327,15 +403,21 @@ class EnhancedPredictor:
                         pattern_score = self._calculate_enhanced_pattern_score(group, pattern_analysis)
                         adjusted_score = base_score * pattern_score
                         
-                        # Усиливаем хорошие предсказания
+                        # 🔧 ИСПРАВЛЕНИЕ: Более мягкое усиление
                         if adjusted_score > 0.0001:
-                            adjusted_score *= 2
+                            adjusted_score *= 1.5
                         
                         candidates.append((group, adjusted_score))
                         generated += 1
                         
-                        if generated >= count * 10:
-                            return candidates
+                        if generated >= max_combinations:
+                            break
+                    if generated >= max_combinations:
+                        break
+                if generated >= max_combinations:
+                    break
+            if generated >= max_combinations:
+                break
         
         return candidates
     
@@ -346,29 +428,28 @@ class EnhancedPredictor:
         cold_numbers = pattern_analysis.get('cold_numbers', [])
         temporal_patterns = pattern_analysis.get('temporal_patterns', {})
         
-        # Бонус за холодные числа
+        # 🔧 ИСПРАВЛЕНИЕ: Более сбалансированные бонусы/штрафы
         cold_count = sum(1 for num in group if num in cold_numbers)
-        score *= (1 + cold_count * 0.3)
+        score *= (1 + cold_count * 0.2)  # Уменьшил бонус
         
-        # Штраф за слишком много горячих чисел
         hot_count = sum(1 for num in group if num in hot_numbers)
         if hot_count >= 3:
-            score *= 0.7
+            score *= 0.8  # Уменьшил штраф
         
         # Бонус за сбалансированность
         even_count = sum(1 for num in group if num % 2 == 0)
         if even_count == 2:
-            score *= 1.2
+            score *= 1.1  # Уменьшил бонус
         
         # Бонус за разнообразие диапазонов
         low_count = sum(1 for num in group if num <= 13)
         high_count = sum(1 for num in group if num > 13)
         if low_count == 2 and high_count == 2:
-            score *= 1.3
+            score *= 1.2
         
         # Бонус за уникальность всех чисел
         if len(set(group)) == 4:
-            score *= 1.2
+            score *= 1.1  # Уменьшил бонус
         
         # Учет временных паттернов
         autocorr = temporal_patterns.get('autocorrelation', {})
@@ -377,10 +458,11 @@ class EnhancedPredictor:
             if avg_autocorr > 0.3:
                 # При высокой автокорреляции предпочитаем группы с числами из истории
                 history_overlap = sum(1 for num in group if num in pattern_analysis.get('recent_numbers', []))
-                score *= (1 + history_overlap * 0.2)
+                score *= (1 + history_overlap * 0.1)  # Уменьшил бонус
         
         return score
     
+    # Остальные методы остаются без изменений...
     def _generate_intelligent_patterns(self, history: List[int], count: int, pattern_analysis: dict) -> List[Tuple[Tuple[int, int, int, int], float]]:
         """Генерация интеллектуальных паттернов с улучшениями"""
         candidates = []

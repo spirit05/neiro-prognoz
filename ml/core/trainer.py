@@ -1,6 +1,7 @@
 # [file name]: ml/core/trainer.py
 """
 Обучение УСИЛЕННОЙ нейросети - МОДУЛЬНАЯ АРХИТЕКТУРА
+ИСПРАВЛЕННАЯ ВЕРСИЯ: устранена проблема одинаковых прогнозов
 """
 
 import torch
@@ -12,6 +13,9 @@ import os
 import time
 import gc
 from config import paths, logging_config, constants
+
+# 🔧 ИСПРАВЛЕНИЕ: Добавляем импорт save_predictions
+from ml.utils.data_utils import save_predictions
 
 logger = logging_config.get_ml_system_logger()
 
@@ -33,18 +37,32 @@ class EnhancedTrainer:
         if self.progress_callback:
             self.progress_callback(message)
    
-    def train(self, groups: List[str], epochs=None, batch_size=None, learning_rate=None) -> List[Tuple[Tuple[int, int, int, int], float]]:
-        """Обучение модели с улучшенными параметрами и детальным логированием"""
-        from config.constants import MAIN_TRAINING_EPOCHS, MAIN_BATCH_SIZE, MAIN_LEARNING_RATE, HIDDEN_SIZE
-        if epochs is None:
-            epochs = MAIN_TRAINING_EPOCHS
+    def train(self, groups: List[str], epochs=None, batch_size=None, learning_rate=None, is_finetune=False) -> List[Tuple[Tuple[int, int, int, int], float]]:
+        """Обучение модели с ИСПРАВЛЕННЫМИ параметрами для дообучения"""
+        from config.constants import MAIN_TRAINING_EPOCHS, MAIN_BATCH_SIZE, MAIN_LEARNING_RATE, HIDDEN_SIZE, RETRAIN_EPOCHS, RETRAIN_LEARNING_RATE
+        
+        # 🔧 ИСПРАВЛЕНИЕ: Разные параметры для полного обучения и дообучения
+        if is_finetune:
+            if epochs is None:
+                epochs = RETRAIN_EPOCHS
+            if learning_rate is None:
+                learning_rate = RETRAIN_LEARNING_RATE  # Выше для дообучения
+            l2_lambda = 0.0001  # Меньше регуляризации для дообучения
+            description = "ДООБУЧЕНИЕ"
+        else:
+            if epochs is None:
+                epochs = MAIN_TRAINING_EPOCHS
+            if learning_rate is None:
+                learning_rate = MAIN_LEARNING_RATE
+            l2_lambda = 0.001  # Нормальная регуляризация для полного обучения
+            description = "ПОЛНОЕ ОБУЧЕНИЕ"
+            
         if batch_size is None:
             batch_size = MAIN_BATCH_SIZE
-        if learning_rate is None:
-            learning_rate = MAIN_LEARNING_RATE
+            
         total_start_time = time.time() 
 
-        self._report_progress(f"🚀 СТАРТ обучения: {len(groups)} групп, {epochs} эпох, batch_size={batch_size}")
+        self._report_progress(f"🚀 {description}: {len(groups)} групп, {epochs} эпох, LR={learning_rate}")
 
         # Этап 1: Подготовка данных
         stage1_start = time.time()
@@ -61,22 +79,22 @@ class EnhancedTrainer:
             self._report_progress("❌ Не удалось подготовить данные для обучения")
             return []
 
-        if len(features) < 100:
-            self._report_progress(f"❌ Недостаточно данных: {len(features)} примеров (нужно минимум 100)")
-            return []
+        if len(features) < 50:  # 🔧 Уменьшил порог для дообучения
+            self._report_progress(f"⚠️ Мало данных: {len(features)} примеров (для дообучения нормально)")
+            # Не возвращаем пустой список, продолжаем с тем что есть
 
-        self._report_progress(f"✅ Обработано {len(groups)} групп, {len(groups)*4} чисел")
-        self._report_progress(f"✅ Создано {len(features)} обучающих примеров")
+        self._report_progress(f"✅ Обработано {len(groups)} групп, создано {len(features)} обучающих примеров")
 
-        # Этап 2: Создание модели
+        # Этап 2: Создание/загрузка модели
         stage2_start = time.time()
-        self._report_progress("🔧 Этап 2: Создание модели...")
+        self._report_progress("🔧 Этап 2: Подготовка модели...")
 
         if self.model is None:
             from ml.core.model import EnhancedNumberPredictor
             self.model = EnhancedNumberPredictor(input_size=features.shape[1], hidden_size=HIDDEN_SIZE)
+            self._report_progress("✅ Создана новая модель")
         else:
-            self._report_progress("🔄 Дообучение существующей модели...")
+            self._report_progress("🔄 Используем существующую модель для дообучения")
 
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
@@ -88,8 +106,15 @@ class EnhancedTrainer:
         stage3_start = time.time()
         self._report_progress("⚙️ Этап 3: Настройка оптимизатора...")
 
-        self.optimizer = optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=1e-4)
-        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=3)
+        # 🔧 ИСПРАВЛЕНИЕ: Разные параметры оптимизатора
+        if is_finetune:
+            # Для дообучения: более агрессивный оптимизатор
+            self.optimizer = optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=1e-5)
+            self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=epochs)
+        else:
+            # Для полного обучения: консервативный подход
+            self.optimizer = optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=1e-4)
+            self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=3)
 
         stage3_time = time.time() - stage3_start
         self._report_progress(f"✅ Этап 3 завершен: {stage3_time:.1f} сек")
@@ -104,7 +129,7 @@ class EnhancedTrainer:
         self.model.train()
         best_loss = float('inf')
         patience_counter = 0
-        patience = 5
+        patience = 3 if is_finetune else 5  # 🔧 Меньше терпения для дообучения
 
         for epoch in range(epochs):
             epoch_start_time = time.time()
@@ -132,12 +157,14 @@ class EnhancedTrainer:
                     loss += self.criterion(outputs[:, j, :], batch_targets[:, j])
                 loss = loss / 4
 
-                l2_lambda = 0.001
+                # 🔧 ИСПРАВЛЕНИЕ: Адаптивная регуляризация
                 l2_norm = sum(p.pow(2.0).sum() for p in self.model.parameters())
                 loss = loss + l2_lambda * l2_norm
 
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+                
+                # 🔧 ИСПРАВЛЕНИЕ: Gradient clipping для стабильности
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=0.5)
                 self.optimizer.step()
 
                 total_loss += loss.item()
@@ -147,9 +174,16 @@ class EnhancedTrainer:
 
             if num_batches > 0:
                 avg_loss = total_loss / num_batches
-                current_lr = self.optimizer.param_groups[0]['lr']
+                
+                # 🔧 ИСПРАВЛЕНИЕ: Разные стратегии scheduler
+                if is_finetune:
+                    self.scheduler.step()
+                    current_lr = self.scheduler.get_last_lr()[0]
+                else:
+                    self.scheduler.step(avg_loss)
+                    current_lr = self.optimizer.param_groups[0]['lr']
+                    
                 self._report_progress(f"📈 Эпоха {epoch+1}/{epochs}, Loss: {avg_loss:.4f}, LR: {current_lr:.6f}, Время: {epoch_time:.1f} сек")
-                self.scheduler.step(avg_loss)
 
                 if avg_loss < best_loss:
                     best_loss = avg_loss
@@ -166,7 +200,7 @@ class EnhancedTrainer:
 
         stage4_time = time.time() - stage4_start
         self._report_progress(f"✅ Этап 4 завершен: {stage4_time:.1f} сек")
-        self._report_progress(f"✅ Обучение завершено! Лучший loss: {best_loss:.4f}")
+        self._report_progress(f"✅ {description} завершено! Лучший loss: {best_loss:.4f}")
 
         # Сохраняем модель
         try:
@@ -238,11 +272,8 @@ class EnhancedTrainer:
 
         if 'SelfLearningSystem' in locals() and callable(SelfLearningSystem):
             try:
-                is_full_training = (
-                    epochs >= MAIN_TRAINING_EPOCHS or 
-                    (epochs > RETRAIN_EPOCHS * 1.5)
-                )
-                if is_full_training:
+                # 🔧 ИСПРАВЛЕНИЕ: Сброс анализа только при полном обучении
+                if not is_finetune and (epochs >= MAIN_TRAINING_EPOCHS):
                     learning_system = SelfLearningSystem()
                     learning_system.reset_learning_data()
                     self._report_progress("✅ Система анализа сброшена после полного переобучения")
@@ -256,7 +287,7 @@ class EnhancedTrainer:
 
         # Сохранение прогнозов
         try:
-            from ml.utils.data_utils import save_predictions
+            # 🔧 ИСПРАВЛЕНИЕ: Теперь save_predictions импортирован
             if predictions:
                 save_predictions(predictions)
                 self._report_progress(f"💾 Сохранено {len(predictions)} прогнозов в predictions_state.json")
@@ -287,8 +318,14 @@ class EnhancedTrainer:
             
             self._report_progress(f"📊 Accuracy на тестовых данных: {accuracy:.4f}")
             
+            # 🔧 ИСПРАВЛЕНИЕ: Детальный анализ распределения предсказаний
             unique_predictions = len(torch.unique(predictions))
             self._report_progress(f"📊 Уникальных предсказанных чисел: {unique_predictions}/26")
+            
+            # Анализ энтропии предсказаний
+            probs = torch.softmax(outputs, dim=-1)
+            entropy = -torch.sum(probs * torch.log(probs + 1e-8), dim=-1).mean().item()
+            self._report_progress(f"📊 Средняя энтропия предсказаний: {entropy:.4f}")
     
     def _save_model(self):
         """Сохранение модели с логированием"""

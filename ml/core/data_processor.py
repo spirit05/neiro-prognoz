@@ -66,17 +66,14 @@ class DataProcessor:
         valid_groups = 0
         
         for i, group_str in enumerate(groups):  # Проверим только первые 10
-            logger.info(f"🔍 DEBUG Группа {i}: '{group_str}' (тип: {type(group_str)})")
             if not isinstance(group_str, str):
                 logger.warning(f"🔴 Группа {i} не строка: {type(group_str)}")
                 continue
             try:
                 numbers = [int(x) for x in group_str.strip().split()]
-                logger.info(f"🔍 DEBUG Группа {i} числа: {numbers}")
                 if len(numbers) == 4 and all(1 <= x <= 26 for x in numbers):
                     all_numbers.extend(numbers)
                     valid_groups += 1
-                    logger.info(f"✅ Группа {i} валидна")
                 else:
                     logger.warning(f"🟡 Группа {i} невалидна: {numbers}")
             except Exception as e:

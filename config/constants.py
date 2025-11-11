@@ -1,5 +1,6 @@
 """
 Константы проекта для модульной архитектуры
+ИСПРАВЛЕННАЯ ВЕРСИЯ: добавлены параметры для дообучения
 """
 
 from datetime import timedelta
@@ -24,17 +25,17 @@ MAIN_BATCH_SIZE = 64
 HIDDEN_SIZE = 256
 MAIN_LEARNING_RATE = 0.001
 
-# Дообучение (автосервис)  
-RETRAIN_EPOCHS = 3
-RETRAIN_BATCH_SIZE = 16
-RETRAIN_LEARNING_RATE = 0.0005
+# 🔧 ИСПРАВЛЕНИЕ: Параметры для дообучения
+RETRAIN_EPOCHS = 5  # Увеличил с 3 до 5
+RETRAIN_BATCH_SIZE = 32
+RETRAIN_LEARNING_RATE = 0.002  # Выше learning rate для дообучения
 
 # Параметры ансамбля
 ENSEMBLE_TOP_K = 4
 ENSEMBLE_MIN_CONFIDENCE = 0.01
 
 # Параметры самообучения
-SELF_LEARNING_RETRAIN_EPOCHS = 2
+SELF_LEARNING_RETRAIN_EPOCHS = 3
 SELF_LEARNING_ANALYSIS_WINDOW = 50
 # === КОНЕЦ ДОБАВЛЕННЫХ ПАРАМЕТРОВ ===
 

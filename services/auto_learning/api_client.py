@@ -214,7 +214,7 @@ class APIClient:
                 'draw': draw,
                 'combination': combination,
                 'timestamp': datetime.now().isoformat(),
-                'processed': False,
+                'processed': True,
                 'service_type': 'api_request'
             }
             

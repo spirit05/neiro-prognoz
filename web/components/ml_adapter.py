@@ -13,6 +13,9 @@ sys.path.insert(0, '/opt/dev')
 
 from config import paths, constants, logging_config
 
+# 🔧 ИСПРАВЛЕНИЕ: Добавляем импорт save_predictions
+from ml.utils.data_utils import save_predictions
+
 logger = logging_config.get_ml_system_logger()
 
 class MLSystemAdapter:
@@ -135,6 +138,7 @@ class MLSystemAdapter:
             
             if predictions:
                 self.is_trained = True
+                # 🔧 ИСПРАВЛЕНИЕ: Теперь save_predictions импортирован
                 save_predictions(predictions)
                 self._report_progress(f"✅ Обучение завершено! Сгенерировано {len(predictions)} прогнозов")
             else:
@@ -245,6 +249,7 @@ class MLSystemAdapter:
             predictions = self.predict()
         
         if predictions:
+            # 🔧 ИСПРАВЛЕНИЕ: Теперь save_predictions импортирован
             save_predictions(predictions)
             self._report_progress(f"💾 Прогнозы сохранены в predictions_state.json ({len(predictions)} записей)")
         else:
@@ -290,4 +295,3 @@ class MLSystemAdapter:
 def create_ml_system():
     """Создание ML системы (замена SimpleNeuralSystem)"""
     return MLSystemAdapter()
-

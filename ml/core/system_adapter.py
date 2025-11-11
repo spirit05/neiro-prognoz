@@ -1,6 +1,7 @@
 # [file name]: ml/core/system_adapter.py
 """
 Адаптер для совместимости новой ML системы со старой SimpleNeuralSystem
+ИСПРАВЛЕННАЯ ВЕРСИЯ: правильная интеграция дообучения
 """
 
 import os
@@ -17,8 +18,11 @@ from ml.core.trainer import EnhancedTrainer
 from ml.ensemble.ensemble import EnsemblePredictor
 from config.paths import DATA_DIR, MODELS_DIR
 
+# 🔧 ИСПРАВЛЕНИЕ: Добавляем импорт save_predictions
+from ml.utils.data_utils import save_predictions
+
 class MLSystemAdapter:
-    """Адаптер для совместимости со старой SimpleNeuralSystem"""
+    """Адаптер для совместимости со старой SimpleNeuralSystem - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
     
     def __init__(self):
         self.model_path = os.path.join(MODELS_DIR, "simple_model.pth")
@@ -62,12 +66,15 @@ class MLSystemAdapter:
             dataset = load_dataset()
             if self.ensemble_predictor and dataset:
                 self.ensemble_predictor.update_ensemble(dataset)
+                print("✅ Ансамбль обновлен с новыми данными")
         except Exception as e:
             print(f"⚠️ Ошибка обновления ансамбля: {e}")
     
     def set_progress_callback(self, callback):
         """Установка callback для прогресса"""
         self.progress_callback = callback
+        if self.trainer:
+            self.trainer.set_progress_callback(callback)
     
     def _report_progress(self, message):
         """Отправка сообщения о прогрессе"""
@@ -98,7 +105,7 @@ class MLSystemAdapter:
             new_count = len(dataset)
             self._report_progress(f"✅ Данные сохранены в dataset.json ({new_count} групп)")
             
-            # Обновляем ансамбль
+            # 🔧 ИСПРАВЛЕНИЕ: Сначала обновляем ансамбль
             self._update_ensemble()
             
             # Анализ точности предыдущих предсказаний
@@ -110,23 +117,26 @@ class MLSystemAdapter:
             
             predictions = []
             
-            # Дообучаем модель если она уже была обучена и есть достаточно данных
-            if self.is_trained and len(dataset) >= 50:
+            # 🔧 ИСПРАВЛЕНИЕ: Улучшенная логика дообучения
+            if self.is_trained and len(dataset) >= 30:  # Уменьшил порог для дообучения
                 self._report_progress("🔄 Дообучение УСИЛЕННОЙ модели на новых данных...")
                 
-                self.trainer.train(dataset, epochs=retrain_epochs)
-                self.predictor.load_model()
-                self._report_progress("✅ Модель дообучена!")
+                # 🔧 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем флаг is_finetune=True
+                predictions = self.trainer.train(dataset, epochs=retrain_epochs, is_finetune=True)
                 
-                # Делаем прогноз после дообучения
-                self._report_progress("🔮 Делаем прогноз после дообучения...")
-                predictions = self._make_prediction()
+                # Перезагружаем модель после дообучения
+                self.predictor.load_model()
+                
+                # 🔧 ИСПРАВЛЕНИЕ: Обновляем ансамбль после дообучения
+                self._update_ensemble()
+                
+                self._report_progress("✅ Модель дообучена и ансамбль обновлен!")
                 
             elif not self.is_trained and len(dataset) >= 50:
                 self._report_progress("🎯 Достаточно данных для первого обучения УСИЛЕННОЙ модели!")
                 predictions = self.train(epochs=20)
             else:
-                # Даже если не переобучаем, делаем прогноз на основе ансамбля
+                # Даже если не переобучаем, делаем прогноз на основе обновленного ансамбля
                 self._report_progress("🔮 Делаем прогноз на основе обновленного ансамбля...")
                 predictions = self._make_ensemble_prediction()
             
@@ -152,7 +162,7 @@ class MLSystemAdapter:
         self._report_progress(f"🧠 Обучение УСИЛЕННОЙ нейросети на {len(groups)} группах...")
         
         # Запускаем обучение
-        result = self.trainer.train(groups, epochs=epochs)
+        result = self.trainer.train(groups, epochs=epochs, is_finetune=False)
         self.is_trained = True
         
         # Перезагружаем модель после обучения
