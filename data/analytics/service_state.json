@@ -1,6 +1,6 @@
 {
-  "service_active": true,
+  "service_active": false,
   "consecutive_api_errors": 0,
-  "last_processed_draw": "309320",
-  "last_update": "2025-11-10T07:01:57.119386"
+  "last_processed_draw": "309554",
+  "last_update": "2025-11-11T07:13:41.709957"
 }

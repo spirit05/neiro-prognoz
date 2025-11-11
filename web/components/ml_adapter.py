@@ -135,9 +135,7 @@ class MLSystemAdapter:
             
             if predictions:
                 self.is_trained = True
-                # Перезагружаем модель после обучения
-                if self.predictor and hasattr(self.predictor, 'load_model'):
-                    self.predictor.load_model()
+                save_predictions(predictions)
                 self._report_progress(f"✅ Обучение завершено! Сгенерировано {len(predictions)} прогнозов")
             else:
                 self._report_progress("⚠️ Обучение завершено, но прогнозы не сгенерированы")
@@ -231,11 +229,12 @@ class MLSystemAdapter:
                 predictions = self.trainer.train(dataset, epochs=retrain_epochs)
                 
                 if predictions:
-                    if self.predictor and hasattr(self.predictor, 'load_model'):
-                        self.predictor.load_model()
-                    self._report_progress("✅ Модель дообучена!")
+                    self._report_progress("✅ Модель дообучена! Используем свежие прогнозы")
+                    return predictions
                 else:
-                    self._report_progress("⚠️ Дообучение завершено, но прогнозы не сгенерированы")
+                    predictions = self.predict()
+                    self._report_progress("✅ Модель дообучена и перезагружена")
+                    return predictions
                     
         elif not self.is_trained and len(dataset) >= constants.MIN_DATASET_SIZE:
             self._report_progress("🎯 Достаточно данных для первого обучения!")
@@ -245,6 +244,12 @@ class MLSystemAdapter:
             self._report_progress("🔮 Делаем прогноз на обновленных данных...")
             predictions = self.predict()
         
+        if predictions:
+            save_predictions(predictions)
+            self._report_progress(f"💾 Прогнозы сохранены в predictions_state.json ({len(predictions)} записей)")
+        else:
+            self._report_progress("⚠️ Прогнозы не сохранены: список пуст")
+
         return predictions
     
     def get_status(self) -> dict:

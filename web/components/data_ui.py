@@ -6,6 +6,7 @@
 import streamlit as st
 from ml.utils.data_utils import load_dataset, save_dataset, validate_group, compare_groups, load_predictions, save_predictions
 from .utils import show_operation_progress, show_recent_logs, validate_and_format_groups_input
+from ml.learning.self_learning import SelfLearningSystem
 
 def show_data_ui(system, run_operation_sync):
     """Показать интерфейс работы с данными"""
@@ -20,7 +21,7 @@ def show_data_ui(system, run_operation_sync):
     except:
         pass
 
-     try:
+    try:
         if system and hasattr(system, 'api_client'):
             last_entry = system.api_client.get_last_entry()
             if last_entry and 'draw' in last_entry:

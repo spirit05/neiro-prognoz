@@ -130,15 +130,20 @@ class EnhancedPredictor:
         feature_extractor = self._get_feature_extractor()
         features = feature_extractor.extract_features(number_history)
         features_tensor = torch.tensor(features, dtype=torch.float32).unsqueeze(0)
-        
+            
         with torch.no_grad():
             outputs = self.model(features_tensor)
             probabilities = torch.softmax(outputs, dim=-1)
             
+            # 🔍 ДИАГНОСТИКА выходов модели
+            print(f"🔍 Выходы модели shape: {outputs.shape}")
+            print(f"🔍 Выходы модели stats: min={outputs.min():.6f}, max={outputs.max():.6f}")
+            print(f"🔍 Probabilities stats: min={probabilities.min():.6f}, max={probabilities.max():.6f}")
+            
             # Генерация кандидатов
             candidates = self._generate_enhanced_candidates(probabilities[0], top_k, number_history)
             return candidates
-    
+        
     def _generate_enhanced_candidates(self, probabilities: torch.Tensor, top_k: int, history: List[int]) -> List[Tuple[Tuple[int, int, int, int], float]]:
         """УСИЛЕННАЯ генерация кандидатных групп с улучшенной логикой"""
         logger.debug(f"🔍 Начало генерации кандидатов, top_k={top_k}")
@@ -270,8 +275,23 @@ class EnhancedPredictor:
             'temporal_patterns': temporal_patterns
         }
     
-    def _generate_model_based_candidates(self, probabilities: torch.Tensor, count: int, pattern_analysis: dict) -> List[Tuple[Tuple[int, int, int, int], float]]:
+    
+    def _generate_model_based_candidates(self, probabilities: torch.Tensor, count: int, pattern_analysis: dict):
         """Генерация кандидатов на основе модели с учетом паттернов"""
+        
+        # 🔍 ДИАГНОСТИКА: что приходит в probabilities
+        print(f"🔍 ДИАГНОСТИКА probabilities shape: {probabilities.shape}")
+        print(f"🔍 ДИАГНОСТИКА probabilities stats: min={probabilities.min():.6f}, max={probabilities.max():.6f}, mean={probabilities.mean():.6f}")
+        
+        # Проверяем, не одинаковые ли вероятности во всех позициях
+        for pos in range(4):
+            pos_probs = probabilities[pos]
+            unique_probs = torch.unique(pos_probs)
+            print(f"🔍 Позиция {pos}: уникальных значений = {len(unique_probs)}")
+            if len(unique_probs) < 5:  # Слишком мало уникальных значений
+                print(f"🚨 Позиция {pos}: ВСЕ ВЕРОЯТНОСТИ ОДИНАКОВЫЕ ИЛИ ПОЧТИ ОДИНАКОВЫЕ!")
+                print(f"   Top-5 значений: {unique_probs[:5]}")
+        
         candidates = []
         
         # Берем топ-7 чисел для каждой позиции
@@ -279,10 +299,14 @@ class EnhancedPredictor:
         for pos in range(4):
             probs = probabilities[pos]
             top_probs, top_indices = torch.topk(probs, 7)
+            
+            # 🔍 ДИАГНОСТИКА топ чисел
+            print(f"🔍 Позиция {pos} топ-7: {[(idx.item()+1, prob.item()) for idx, prob in zip(top_indices, top_probs)]}")
+            
             top_numbers.append([
                 (idx.item() + 1, prob.item()) for idx, prob in zip(top_indices, top_probs)
             ])
-        
+                
         # Генерируем комбинации с приоритетом для "холодных" чисел
         generated = 0
         for i, (n1, p1) in enumerate(top_numbers[0]):

@@ -32,7 +32,7 @@ class EnhancedTrainer:
         logger.info(message)
         if self.progress_callback:
             self.progress_callback(message)
-    
+   
     def train(self, groups: List[str], epochs=None, batch_size=None, learning_rate=None) -> List[Tuple[Tuple[int, int, int, int], float]]:
         """Обучение модели с улучшенными параметрами и детальным логированием"""
         from config.constants import MAIN_TRAINING_EPOCHS, MAIN_BATCH_SIZE, MAIN_LEARNING_RATE, HIDDEN_SIZE
@@ -43,122 +43,114 @@ class EnhancedTrainer:
         if learning_rate is None:
             learning_rate = MAIN_LEARNING_RATE
         total_start_time = time.time() 
-        
+
         self._report_progress(f"🚀 СТАРТ обучения: {len(groups)} групп, {epochs} эпох, batch_size={batch_size}")
-        
+
         # Этап 1: Подготовка данных
         stage1_start = time.time()
         self._report_progress("📊 Этап 1: Подготовка данных...")
-        
+
         from ml.core.data_processor import DataProcessor
         processor = DataProcessor(history_size=25)
         features, targets = processor.prepare_training_data(groups)
-        
+
         stage1_time = time.time() - stage1_start
         self._report_progress(f"✅ Этап 1 завершен: {stage1_time:.1f} сек")
-        
+
         if len(features) == 0:
             self._report_progress("❌ Не удалось подготовить данные для обучения")
             return []
-        
+
         if len(features) < 100:
             self._report_progress(f"❌ Недостаточно данных: {len(features)} примеров (нужно минимум 100)")
             return []
-        
+
         self._report_progress(f"✅ Обработано {len(groups)} групп, {len(groups)*4} чисел")
         self._report_progress(f"✅ Создано {len(features)} обучающих примеров")
-        
+
         # Этап 2: Создание модели
         stage2_start = time.time()
         self._report_progress("🔧 Этап 2: Создание модели...")
-        
-        # Всегда создаем новую модель для чистого обучения
-        from ml.core.model import EnhancedNumberPredictor
-        self.model = EnhancedNumberPredictor(input_size=features.shape[1], hidden_size=HIDDEN_SIZE)
-        self.model.to(self.device)
-        
-        # Оптимизация памяти для 4 ГБ RAM
+
+        if self.model is None:
+            from ml.core.model import EnhancedNumberPredictor
+            self.model = EnhancedNumberPredictor(input_size=features.shape[1], hidden_size=HIDDEN_SIZE)
+        else:
+            self._report_progress("🔄 Дообучение существующей модели...")
+
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
-        
+
         stage2_time = time.time() - stage2_start
         self._report_progress(f"✅ Этап 2 завершен: {stage2_time:.1f} сек")
-        
+
         # Этап 3: Настройка оптимизатора
         stage3_start = time.time()
         self._report_progress("⚙️ Этап 3: Настройка оптимизатора...")
-        
-        # Улучшенный optimizer с learning rate scheduling
+
         self.optimizer = optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=1e-4)
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=3)
-        
+
         stage3_time = time.time() - stage3_start
         self._report_progress(f"✅ Этап 3 завершен: {stage3_time:.1f} сек")
-        
-        # Используем CPU тензоры
+
         features_tensor = torch.tensor(features, dtype=torch.float32)
         targets_tensor = torch.tensor(targets, dtype=torch.long) - 1
-        
+
         # Этап 4: Обучение модели
         stage4_start = time.time()
         self._report_progress("🧠 Этап 4: Обучение модели...")
-        
+
         self.model.train()
         best_loss = float('inf')
         patience_counter = 0
         patience = 5
-        
+
         for epoch in range(epochs):
             epoch_start_time = time.time()
-            
-            # Перемешиваем данные каждый эпох
             indices = torch.randperm(len(features))
             features_shuffled = features_tensor[indices]
             targets_shuffled = targets_tensor[indices]
-            
+
             total_loss = 0
             num_batches = 0
-            
+
             for i in range(0, len(features), batch_size):
                 batch_start = i
                 batch_end = min(i + batch_size, len(features))
-                
                 if batch_end - batch_start < 2:
                     continue
-                    
+
                 batch_features = features_shuffled[batch_start:batch_end]
                 batch_targets = targets_shuffled[batch_start:batch_end]
-                
+
                 self.optimizer.zero_grad()
                 outputs = self.model(batch_features)
-                
+
                 loss = 0
                 for j in range(4):
                     loss += self.criterion(outputs[:, j, :], batch_targets[:, j])
                 loss = loss / 4
-                
-                # L2 регуляризация
+
                 l2_lambda = 0.001
                 l2_norm = sum(p.pow(2.0).sum() for p in self.model.parameters())
                 loss = loss + l2_lambda * l2_norm
-                
+
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                 self.optimizer.step()
-                
+
                 total_loss += loss.item()
                 num_batches += 1
-            
+
             epoch_time = time.time() - epoch_start_time
-            
+
             if num_batches > 0:
                 avg_loss = total_loss / num_batches
                 current_lr = self.optimizer.param_groups[0]['lr']
-                
                 self._report_progress(f"📈 Эпоха {epoch+1}/{epochs}, Loss: {avg_loss:.4f}, LR: {current_lr:.6f}, Время: {epoch_time:.1f} сек")
-                
                 self.scheduler.step(avg_loss)
-                
+
                 if avg_loss < best_loss:
                     best_loss = avg_loss
                     self._save_model()
@@ -171,103 +163,110 @@ class EnhancedTrainer:
                         break
             else:
                 self._report_progress(f"⚠️  Эпоха {epoch+1}/{epochs}: нет валидных батчей")
-        
+
         stage4_time = time.time() - stage4_start
         self._report_progress(f"✅ Этап 4 завершен: {stage4_time:.1f} сек")
         self._report_progress(f"✅ Обучение завершено! Лучший loss: {best_loss:.4f}")
-        
+
+        # Сохраняем модель
+        try:
+            torch.save({
+                'model_state_dict': self.model.state_dict(),
+                'model_config': {
+                    'input_size': self.model.input_size,
+                    'hidden_size': self.model.hidden_size
+                }
+            }, self.model_path)
+            self._report_progress("💾 Модель успешно сохранена в файл")
+        except Exception as e:
+            self._report_progress(f"❌ Ошибка сохранения модели: {e}")
+
         # Этап 5: Анализ производительности
         stage5_start = time.time()
         self._report_progress("📊 Этап 5: Анализ производительности...")
-        
         self._analyze_model_performance(features_tensor, targets_tensor)
-        
         stage5_time = time.time() - stage5_start
         self._report_progress(f"✅ Этап 5 завершен: {stage5_time:.1f} сек")
-        
+
         # Этап 6: Очистка памяти
         stage6_start = time.time()
         self._report_progress("🧹 Этап 6: Очистка памяти...")
-        
-        # Очистка памяти
         del features_tensor, targets_tensor, features_shuffled, targets_shuffled
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-        
         stage6_time = time.time() - stage6_start
         self._report_progress(f"✅ Этап 6 завершен: {stage6_time:.1f} сек")
-        
+
         # Генерация прогнозов после обучения
-        self._report_progress("🔮 Генерация прогнозов после обучения...")
-        
         predictions = []
         try:
-            # Используем текущую обученную модель для прогнозов
             if self.model is not None:
                 self.model.eval()
-                
-                # Подготавливаем данные для прогноза на основе последних групп
                 from ml.core.data_processor import DataProcessor
                 processor = DataProcessor(history_size=25)
-                
-                # Берем последние группы для контекста
                 recent_groups = groups[-25:] if len(groups) >= 25 else groups
-                
-                # Создаем фичи из последних данных
+
                 context_features = processor.create_prediction_features(recent_groups)
-                
+
                 if context_features is not None and len(context_features) > 0:
-                    # Генерируем прогнозы
                     with torch.no_grad():
                         features_tensor = torch.tensor(context_features, dtype=torch.float32)
                         outputs = self.model(features_tensor)
-                        
-                        # Конвертируем выходы в прогнозы
-                        for i in range(min(10, len(outputs))):  # до 10 прогнозов
+
+                        for i in range(min(10, len(outputs))):
                             predicted_numbers = []
                             confidence = 1.0
-                            
                             for pos in range(4):
                                 probs = torch.softmax(outputs[i, pos, :], dim=0)
                                 predicted_num = torch.argmax(probs).item() + 1
                                 predicted_numbers.append(predicted_num)
                                 confidence *= probs[predicted_num - 1].item()
-                            
                             predictions.append((tuple(predicted_numbers), confidence))
-                    
-                    self._report_progress(f"✅ Сгенерировано {len(predictions)} прогнозов")
-                else:
-                    self._report_progress("⚠️ Не удалось создать фичи для прогноза")
         except Exception as e:
             self._report_progress(f"❌ Ошибка генерации прогнозов: {e}")
-        
-        # 🔄 УМНЫЙ СБРОС АНАЛИЗА: только при полном переобучении (много эпох)
+
+        self._report_progress(f"✅ Сгенерировано {len(predictions)} прогнозов")
+
+        # Система анализа после обучения
         try:
             from config.constants import MAIN_TRAINING_EPOCHS, RETRAIN_EPOCHS
-            
-            # Определяем тип обучения по количеству эпох
-            is_full_training = (
-                epochs >= MAIN_TRAINING_EPOCHS or 
-                (epochs > RETRAIN_EPOCHS * 1.5)
-            )
-            
-            if is_full_training:
-                from ml.learning.self_learning import SelfLearningSystem
-                learning_system = SelfLearningSystem()
-                learning_system.reset_learning_data()
-                self._report_progress("✅ Система анализа сброшена после полного переобучения")
-            else:
-                self._report_progress("📊 Анализ сохранен (дообучение)")
-                
-        except Exception as e:
-            self._report_progress(f"⚠️ Не удалось определить тип обучения: {e}")
-        
+            from ml.learning.self_learning import SelfLearningSystem
+        except ImportError as e:
+            self._report_progress(f"⚠️ Не удалось импортировать SelfLearningSystem: {e}")
+            SelfLearningSystem = None
+
+        if 'SelfLearningSystem' in locals() and callable(SelfLearningSystem):
+            try:
+                is_full_training = (
+                    epochs >= MAIN_TRAINING_EPOCHS or 
+                    (epochs > RETRAIN_EPOCHS * 1.5)
+                )
+                if is_full_training:
+                    learning_system = SelfLearningSystem()
+                    learning_system.reset_learning_data()
+                    self._report_progress("✅ Система анализа сброшена после полного переобучения")
+                else:
+                    self._report_progress("📊 Анализ сохранен (дообучение)")
+            except Exception as e:
+                self._report_progress(f"⚠️ Ошибка при сбросе анализа: {e}")
+
         total_time = time.time() - total_start_time
         self._report_progress(f"🎉 ВСЕ ЭТАПЫ ЗАВЕРШЕНЫ! Общее время: {total_time:.1f} сек")
-        
+
+        # Сохранение прогнозов
+        try:
+            from ml.utils.data_utils import save_predictions
+            if predictions:
+                save_predictions(predictions)
+                self._report_progress(f"💾 Сохранено {len(predictions)} прогнозов в predictions_state.json")
+            else:
+                self._report_progress("⚠️ Прогнозы не сохранены: список пуст")
+        except Exception as e:
+            self._report_progress(f"❌ Ошибка сохранения прогнозов: {e}")
+
         return predictions
-    
+        
     def _analyze_model_performance(self, features_tensor: torch.Tensor, targets_tensor: torch.Tensor):
         """Анализ производительности модели с логированием"""
         self._report_progress("🔍 Запуск анализа производительности модели...")
