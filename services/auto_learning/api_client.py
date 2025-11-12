@@ -15,7 +15,7 @@ from typing import Dict, Any, Optional
 import sys
 sys.path.insert(0, '/opt/dev')
 from config.paths import INFO_FILE, DATA_DIR
-from config.constants import MAX_API_RETRIES, API_RETRY_DELAY, API_GET_GROUP_URI, API_GET_LAST_DRAW_URI
+from config.constants import MAX_API_RETRIES, API_RETRY_DELAY, API_GET_GROUP_URI, API_GET_LAST_DRAW_URI, 
 
 class APIClient:
     def __init__(self):
@@ -192,9 +192,12 @@ class APIClient:
             print(f"❌ Неожиданная ошибка вызова API: {e}")
             return None
     
-    def _save_info(self, draw: str, combination: str) -> None:
+    def _save_info(self, draw: str, combination: str, manual_add: bool) -> None:
         """Сохранение данных в info.json - ИСПРАВЛЕННЫЕ ПУТИ"""
         try:
+            # Помечаем запись как необработанную для корректной работы автосервиса processed: False
+            processed = False
+
             # Загружаем текущие данные
             current_data = {}
             if os.path.exists(self.info_path):
@@ -210,13 +213,17 @@ class APIClient:
                 if entry.get('draw') == draw:
                     print(f"❌ Дубликат тиража: {draw}")
                     return
+
+            # Если запуск в ручном режиме помечаем запись как обработанную processed: True 
+            if manual_add:
+                processed = True
             
             # Добавляем новую запись
             new_entry = {
                 'draw': draw,
                 'combination': combination,
                 'timestamp': datetime.now().isoformat(),
-                'processed': False,
+                'processed': processed,
                 'service_type': 'api_request'
             }
             

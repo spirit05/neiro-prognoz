@@ -7,6 +7,7 @@ import streamlit as st
 from ml.utils.data_utils import load_dataset, save_dataset, validate_group, compare_groups, load_predictions, save_predictions
 from .utils import show_operation_progress, show_recent_logs, validate_and_format_groups_input
 from ml.learning.self_learning import SelfLearningSystem
+from config.constants import MANUAL_ADD_DATA
 
 def show_data_ui(system, run_operation_sync):
     """Показать интерфейс работы с данными"""
@@ -96,7 +97,7 @@ def _process_single_group(system, run_operation_sync, sequence_input):
 
         last_info_entry = system.api_client.get_last_entry().get('draw')
         next_info_entry = int(last_info_entry) + 1
-        system.api_client._save_info(next_info_entry, sequence_input)
+        system.api_client._save_info(next_info_entry, sequence_input, MANUAL_ADD_DATA)
         
         # Сравнение с предыдущими прогнозами
         sequence_numbers = [int(x) for x in sequence_input.strip().split()]
@@ -206,7 +207,7 @@ def _process_multiple_groups(system, run_operation_sync, groups_input):
             combination = group.get('combination')
             draw = group.get('draw')
             dataset.append(combination)
-            system.api_client._save_info(draw, combination)
+            system.api_client._save_info(draw, combination, MANUAL_ADD_DATA)
 
         new_count = len(dataset)
         save_dataset(dataset)

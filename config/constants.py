@@ -29,6 +29,7 @@ MAIN_LEARNING_RATE = 0.001
 RETRAIN_EPOCHS = 5  # Увеличил с 3 до 5
 RETRAIN_BATCH_SIZE = 32
 RETRAIN_LEARNING_RATE = 0.002  # Выше learning rate для дообучения
+MANUAL_ADD_DATA = True  # 🔧 Добавил флаг для ручного добавления данных
 
 # Параметры ансамбля
 ENSEMBLE_TOP_K = 4

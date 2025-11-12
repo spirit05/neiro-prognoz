@@ -65,7 +65,7 @@ class AutoLearningService:
         self.max_consecutive_errors = MAX_CONSECUTIVE_ERRORS
         self.last_processed_draw = None
         self.next_scheduled_run = None
-        self.is_once_run = false
+        self.is_once_run = False
         
         self.initialize_system()
         self.load_service_state()
