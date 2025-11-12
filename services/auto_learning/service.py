@@ -382,16 +382,19 @@ class AutoLearningService:
             self.save_learning_result(result_data)
             self.last_processed_draw = processing_draw
             self.save_service_state()
-            
-            # 📨 ШАГ 9: Отправляем прогнозы если включено
+          
+            # 📨 ШАГ 9: Сохраняем прогнозы и тправляем если включено
             if learning_result:
+                from ml.utils.data_utils import save_predictions
+                save_predictions(learning_result)
+                logger.info(f"💾 Явно сохранено {len(learning_result)} прогнозов в service.py")
                 self.telegram.send_predictions(
                     learning_result, 
                     processing_draw, 
                     new_combination,
                     comparison_result
                 )
-            
+                        
             logger.info(f"✅ ПОЛНАЯ обработка завершена! Новых прогнозов: {len(learning_result)}")
             
             return True

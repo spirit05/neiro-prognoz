@@ -143,8 +143,13 @@ class MLSystemAdapter:
                 if predictions:
                     from ml.utils.data_utils import save_predictions
                     self._report_progress(f"💾 Сохранено {len(predictions)} прогнозов")
-            
-            save_predictions(predictions)
+
+            if predictions:
+                save_predictions(predictions)
+                self._report_progress(f"💾 Сохранено {len(predictions)} прогнозов")
+            else:
+                self._report_progress("⚠️ Прогнозы не сгенерированы, файл не обновляется")
+                        
             return predictions
             
         except Exception as e:
