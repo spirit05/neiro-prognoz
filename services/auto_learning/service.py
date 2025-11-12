@@ -159,37 +159,81 @@ class AutoLearningService:
         
     def calculate_next_run_time(self):
         """Расчет времени следующего запуска с учетом временных слотов"""
+
+        # Получаем текущее время 
         now = datetime.now()
         current_minute = now.minute
         
         # 🔧 ИСПОЛЬЗУЕМ КОНСТАНТЫ ИЗ config.constants
-        from config.constants import SCHEDULE_MINUTES, BUFFER_MINUTES
+        from config.constants import SCHEDULE_MINUTES, BUFFER_MINUTES, CRITICAL_INTERVAL_MINUTES
         
-        # Временные слоты API из констант
-        api_slots = SCHEDULE_MINUTES
-        
-        # Находим следующий слот
-        next_slot = None
-        for slot in api_slots:
-            if current_minute < slot:
-                next_slot = slot
+        # Находим следующий временной слот
+        next_minute = None
+        for minute in SCHEDULE_MINUTES:
+            if current_minute < minute:
+                next_minute = minute
                 break
         
         # Если все слоты прошли в этом часе, берем первый слот следующего часа
-        if next_slot is None:
-            next_time = now.replace(hour=now.hour+1, minute=api_slots[0], second=0, microsecond=0)
+        if next_minute is None:
+            next_time = now.replace(hour=now.hour+1, minute=SCHEDULE_MINUTES[0], second=0, microsecond=0)
+            time_until_next = (next_time - now).total_seconds() / 60
         else:
-            next_time = now.replace(minute=next_slot, second=0, microsecond=0)
+            next_time = now.replace(minute=next_minute, second=0, microsecond=0)
+            time_until_next = (next_time - now).total_seconds() / 60
         
-        # Расчет интервала до следующего слота
-        time_until_next = (next_time - now).total_seconds() / 60  # в минутах
+        # 🔧 ПРИМЕНЯЕМ ЛОГИКУ БУФЕРА И КРИТИЧЕСКИХ ИНТЕРВАЛОВ
+        if time_until_next <= 2:
+            # КРИТИЧЕСКАЯ ОШИБКА - слишком близко к временному слоту
+            logger.error(f"🚨 Критический интервал: {time_until_next:.1f} минут до слота {next_minute}")
+            logger.error("🛑 Останавливаем сервис - требуется ручная корректировка времени запуска")
+            self.service_active = False
+            self.save_service_state()
+            
+            # Отправляем уведомление в Telegram
+            self.telegram.send_critical_error(
+                self.last_processed_draw or 'unknown',
+                f"Критический интервал: {time_until_next:.1f} минут. Не попали во временной слот."
+            )
+            return 0
+
+        elif time_until_next <= 7:
+            # 🔧 ИСПОЛЬЗУЕМ БУФЕР 7 МИНУТ
+            buffer_time = 7
+            logger.info(f"⏰ Ближайший слот через {time_until_next:.1f} мин - используем буфер {buffer_time} мин")
+            self.next_scheduled_run = now + timedelta(minutes=buffer_time)
+            return buffer_time
+
+        else:
+            # Нормальный интервал - используем расчетное время
+            logger.info(f"⏰ Следующий запрос в {next_time.strftime('%H:%M')} (через {time_until_next:.1f} минут)")
+            self.next_scheduled_run = next_time
+            return 
+            
+    def setup_fixed_schedule(self):
+        """🎯 НАСТРОЙКА АДАПТИВНОГО РАСПИСАНИЯ С БУФЕРОМ"""
+        # Очищаем существующее расписание
+        schedule.clear()
         
-        # 🔧 Корректировка коротких интервалов из констант
-        if time_until_next < BUFFER_MINUTES:
-            time_until_next += BUFFER_MINUTES
+        # 🔧 ПЕРВЫЙ ЗАПУСК - НЕМЕДЛЕННО
+        logger.info("🚀 Немедленный запуск первого запроса...")
+        self.safe_scheduled_task()
         
-        self.next_scheduled_run = now + timedelta(minutes=time_until_next)
-        return time_until_next
+        # 🔧 РАСЧЕТ СЛЕДУЮЩЕГО ЗАПУСКА С УЧЕТОМ БУФЕРА
+        next_interval = self.calculate_next_run_time()
+        
+        if next_interval > 0 and self.service_active:
+            # Планируем следующий запуск через расчетный интервал
+            schedule.every(next_interval).minutes.do(self.safe_scheduled_task)
+            logger.info(f"⏰ Следующий запрос через {next_interval:.1f} минут")
+            
+            # После корректировки переходим на стандартное расписание
+            for minute in SCHEDULE_MINUTES:
+                schedule.every().hour.at(f":{minute:02d}").do(self.safe_scheduled_task)
+            
+            logger.info(f"✅ Адаптивное расписание настроено. Слоты: {SCHEDULE_MINUTES}")
+        else:
+            logger.error("❌ Не удалось настроить расписание - сервис остановлен")
     
     def is_web_running(self):
         """Проверка, запущена ли веб-версия"""
@@ -259,7 +303,7 @@ class AutoLearningService:
         """Проверка синхронизации тиражей - ЕДИНСТВЕННЫЙ МЕТОД"""
         if self.is_once_run:
             return True
-            
+
         try:
             logger.info("🔍 Проверка синхронизации тиражей...")
             
@@ -595,6 +639,17 @@ class AutoLearningService:
             return
         
         logger.info("✅ Проверка синхронизации пройдена")
+
+        # 🔧 РАСЧЕТ ПЕРВОГО ИНТЕРВАЛА С БУФЕРОМ
+        next_interval = self.calculate_next_run_time()
+
+        if next_interval == 0:  # Сервис остановлен из-за критического интервала
+            return
+        
+        logger.info(f"⏰ Первый запрос через {next_interval:.1f} минут")
+
+        # 🔧 НАСТРОЙКА АДАПТИВНОГО РАСПИСАНИЯ
+        schedule.clear()
         
         # 🔧 ШАГ 2: НЕМЕДЛЕННЫЙ ЗАПРОС АКТУАЛЬНОГО ТИРАЖА
         logger.info("🚀 НЕМЕДЛЕННЫЙ ЗАПРОС АКТУАЛЬНОГО ТИРАЖА...")
@@ -608,15 +663,16 @@ class AutoLearningService:
         else:
             logger.info("✅ Немедленный запрос выполнен успешно")
         
-        # 🔧 ШАГ 3: НАСТРОЙКА РАСПИСАНИЯ (только после немедленного запроса)
-        first_interval = self.calculate_next_run_time()
-        logger.info(f"⏰ Следующий запрос через {first_interval:.1f} минут")
-        
-        # Настраиваем расписание
-        schedule.every(15).minutes.do(self.safe_scheduled_task)
-        
+        # 🔧 ШАГ 3: ВТОРОЙ ЗАПРОС - ЧЕРЕЗ РАСЧЕТНЫЙ ИНТЕРВАЛ (С БУФЕРОМ)
+        if next_interval > 0:
+            schedule.every(next_interval).minutes.do(self._setup_fixed_schedule_and_run)
+            logger.info(f"⏰ Второй запрос через {next_interval:.1f} минут")
+        else:
+            # Если расчетный интервал 0, сразу переходим к фиксированному расписанию
+            self._setup_fixed_schedule_and_run()
+
         logger.info("✅ Сервис запущен. Ожидание следующего запуска...")
-        
+
         try:
             while True:
                 # Проверяем команды Telegram
