@@ -15,7 +15,7 @@ from typing import Dict, Any, Optional
 import sys
 sys.path.insert(0, '/opt/dev')
 from config.paths import INFO_FILE, DATA_DIR
-from config.constants import MAX_API_RETRIES, API_RETRY_DELAY, API_GET_GROUP_URI, API_GET_LAST_DRAW_URI, 
+from config.constants import MAX_API_RETRIES, API_RETRY_DELAY, API_GET_GROUP_URI, API_GET_LAST_DRAW_URI
 
 class APIClient:
     def __init__(self):
