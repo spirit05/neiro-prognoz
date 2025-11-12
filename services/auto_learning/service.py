@@ -65,6 +65,7 @@ class AutoLearningService:
         self.max_consecutive_errors = MAX_CONSECUTIVE_ERRORS
         self.last_processed_draw = None
         self.next_scheduled_run = None
+        self.is_once_run = false
         
         self.initialize_system()
         self.load_service_state()
@@ -256,6 +257,9 @@ class AutoLearningService:
 
     def check_draw_synchronization(self):
         """Проверка синхронизации тиражей - ЕДИНСТВЕННЫЙ МЕТОД"""
+        if self.is_once_run:
+            return True
+            
         try:
             logger.info("🔍 Проверка синхронизации тиражей...")
             
@@ -556,6 +560,7 @@ class AutoLearningService:
             logger.info("🔄 Ручной star once сервиса...")
             self.service_active = True
             self.consecutive_api_errors = 0
+            self.is_once_run = True
                     
         # Сразу делаем запрос при запуске
         success = self.process_new_group()
@@ -563,6 +568,7 @@ class AutoLearningService:
         if self.service_active:
             logger.info("🔄 Ручной stop сервиса...")
             self.service_active = False
+            self.is_once_run = False
             
         return success
     

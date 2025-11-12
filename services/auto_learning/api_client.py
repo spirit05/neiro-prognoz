@@ -90,6 +90,7 @@ class APIClient:
                 if result:
                     return result
                 else:
+                    print(f"⚠️ Нет данных от API - {result}")
                     print(f"⚠️ Ошибка API (попытка {attempt + 1})")
                     if attempt < self.max_retries - 1:
                         time.sleep(self.retry_delay)
@@ -114,6 +115,7 @@ class APIClient:
             except (ValueError, TypeError):
                 next_draw = 1
             
+            print(f"🔄 Текущий тираж {current_draw}. Получение данных для тиража {next_draw}...")
             url = API_GET_GROUP_URI + str(next_draw)
             
             # Выполнение запроса через curl
