@@ -90,8 +90,7 @@ class APIClient:
                 if result:
                     return result
                 else:
-                    print(f"⚠️ Нет данных от API - {result}")
-                    print(f"⚠️ Ошибка API (попытка {attempt + 1})")
+                    print(f"⚠️ Ошибка API (попытка {attempt + 1}, api_client)")
                     if attempt < self.max_retries - 1:
                         time.sleep(self.retry_delay)
                         
@@ -192,7 +191,7 @@ class APIClient:
             print(f"❌ Неожиданная ошибка вызова API: {e}")
             return None
     
-    def _save_info(self, draw: str, combination: str, manual_add: bool) -> None:
+    def _save_info(self, draw: str, combination: str, manual_add: bool = False) -> None:
         """Сохранение данных в info.json - ИСПРАВЛЕННЫЕ ПУТИ"""
         try:
             # Помечаем запись как необработанную для корректной работы автосервиса processed: False
