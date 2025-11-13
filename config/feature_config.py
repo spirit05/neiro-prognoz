@@ -5,6 +5,9 @@ from pathlib import Path
 class FeatureConfig(BaseSettings):
     """Конфигурация фич"""
     
+    class Config:
+        env_file = ".env"
+    
     @classmethod
     def from_yaml(cls, config_path: str = "config/feature_config.yaml"):
         """Загрузка конфигурации из YAML"""

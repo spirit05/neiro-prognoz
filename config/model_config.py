@@ -8,6 +8,9 @@ class ModelConfig(BaseSettings):
     model_name: str = "neiro-prognoz-v2"
     version: str = "1.0.0"
     
+    class Config:
+        env_file = ".env"
+    
     @classmethod
     def from_yaml(cls, config_path: str = "config/model_config.yaml"):
         """Загрузка конфигурации из YAML"""

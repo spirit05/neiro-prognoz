@@ -25,8 +25,4 @@ ENV PYTHONPATH=/app
 ENV ENVIRONMENT=production
 
 # Запуск приложения
-CMD ["python", "-c", "
-from app.main import ModelApplication
-app = ModelApplication()
-app.run()
-"]
+CMD ["python", "-c", "from app.main import ModelApplication; app = ModelApplication(); app.run()"]
