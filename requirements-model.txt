@@ -1,29 +1,29 @@
 # Основные зависимости
-torch==2.0.1
-numpy==1.24.3
-pandas==2.0.3
-scikit-learn==1.3.0
-scipy==1.11.1
+torch>=2.0.0
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+scipy>=1.11.0
 
 # Веб-фреймворк и API
-fastapi==0.100.1
-uvicorn==0.23.2
-pydantic==2.4.2
+fastapi>=0.100.0
+uvicorn>=0.23.0
+pydantic>=2.4.0
 
 # Мониторинг и логирование
-prometheus-client==0.17.1
-structlog==23.1.0
+prometheus-client>=0.17.0
+structlog>=23.1.0
 
 # Утилиты
-python-dotenv==1.0.0
-pyyaml==6.0
-click==8.1.7
+python-dotenv>=1.0.0
+pyyaml>=6.0
+click>=8.1.0
 
 # Тестирование
-pytest==7.4.0
-pytest-asyncio==0.21.1
-httpx==0.24.1
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+httpx>=0.24.0
 
 # Оптимизация
-numba==0.57.1
-joblib==1.3.2
+numba>=0.57.0
+joblib>=1.3.0
