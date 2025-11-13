@@ -1,0 +1,47 @@
+# Конфигурация новой архитектуры модели
+model:
+  name: "neiro-prognoz-v2"
+  version: "1.0.0"
+  framework: "pytorch"
+  
+training:
+  batch_size: 32
+  learning_rate: 0.001
+  epochs: 100
+  early_stopping_patience: 10
+  
+architecture:
+  hidden_layers: [128, 64, 32]
+  activation: "relu"
+  dropout: 0.2
+  optimizer: "adam"
+  
+data:
+  preprocessing:
+    normalize: true
+    feature_scaling: "standard"
+    handle_missing: "interpolate"
+  validation:
+    split_ratio: 0.2
+    cross_validation_folds: 5
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  debug: false
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "/app/logs/model.log"
+
+monitoring:
+  metrics:
+    - "accuracy"
+    - "precision" 
+    - "recall"
+    - "f1_score"
+  prometheus_enabled: true
+  health_check_interval: 60
+

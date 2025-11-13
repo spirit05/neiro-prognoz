@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  neiro-model:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.model
+    container_name: neiro-prognoz-model
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - MODEL_ENV=production
+    volumes:
+      - model_data:/app/data
+      - model_logs:/app/logs
+      - model_models:/app/models
+    ports:
+      - "8001:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  model_data:
+  model_logs:
+  model_models:

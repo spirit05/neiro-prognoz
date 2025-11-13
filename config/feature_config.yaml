@@ -1,0 +1,34 @@
+# Конфигурация фичей для новой модели
+feature_groups:
+  technical_indicators:
+    - "sma_20"
+    - "sma_50"
+    - "rsi_14"
+    - "macd"
+    - "bollinger_upper"
+    - "bollinger_lower"
+    
+  price_features:
+    - "open"
+    - "high" 
+    - "low"
+    - "close"
+    - "volume"
+    - "price_change"
+    - "volume_change"
+    
+  derived_features:
+    - "volatility"
+    - "momentum"
+    - "trend_strength"
+    - "support_resistance"
+
+feature_engineering:
+  lookback_window: 30
+  rolling_windows: [5, 10, 20]
+  lag_features: [1, 2, 3, 5, 7]
+  
+feature_selection:
+  method: "mutual_info"
+  top_k_features: 50
+  correlation_threshold: 0.85
