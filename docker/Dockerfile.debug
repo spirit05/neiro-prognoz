@@ -1,0 +1,25 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Копируем только requirements сначала
+COPY requirements-model.txt .
+
+# Проверяем что файл скопировался
+RUN ls -la requirements-model.txt && \
+    cat requirements-model.txt && \
+    echo "✅ Requirements file found"
+
+# Устанавливаем зависимости
+RUN pip install --no-cache-dir -r requirements-model.txt
+
+# Копируем минимальный набор файлов для теста
+COPY ml/ ml/
+COPY tests/ tests/
+COPY config/ config/
+
+# Проверяем импорты
+RUN python -c "from ml.core.types import ModelType; print('✅ Basic imports work')"
+
+# Запускаем тесты
+CMD ["python", "-m", "pytest", "tests/test_stage1_core.py", "-v"]

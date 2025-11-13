@@ -17,12 +17,15 @@ RUN pip install --no-cache-dir -r requirements-model.txt
 # Копирование исходного кода
 COPY . .
 
-# Создание директорий
+# Создание директорий для данных и логирования
 RUN mkdir -p /app/data /app/logs /app/models
 
 # Переменные окружения
 ENV PYTHONPATH=/app
 ENV ENVIRONMENT=production
 
-# Запуск приложения
-CMD ["python", "-c", "from app.main import ModelApplication; app = ModelApplication(); app.run()"]
+# Проверяем что файлы на месте
+RUN ls -la tests/ && echo "✅ Файлы tests проверены"
+
+# Запуск тестов
+CMD ["python", "-m", "pytest", "tests/", "-v", "--disable-warnings"]
