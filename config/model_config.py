@@ -1,8 +1,8 @@
 import yaml
-from pydantic import BaseSettings
+from pydantic import BaseModel
 from pathlib import Path
 
-class ModelConfig(BaseSettings):
+class ModelConfig(BaseModel):
     """Конфигурация модели"""
     
     model_name: str = "neiro-prognoz-v2"

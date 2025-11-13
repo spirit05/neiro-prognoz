@@ -1,8 +1,8 @@
 import yaml
-from pydantic import BaseSettings
+from pydantic import BaseModel
 from pathlib import Path
 
-class FeatureConfig(BaseSettings):
+class FeatureConfig(BaseModel):
     """Конфигурация фич"""
     
     class Config:

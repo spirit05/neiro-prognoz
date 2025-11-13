@@ -9,6 +9,7 @@ scipy>=1.11.0
 fastapi>=0.100.0
 uvicorn>=0.23.0
 pydantic>=2.4.0
+pydantic-settings>=2.0.0
 
 # Мониторинг и логирование
 prometheus-client>=0.17.0
