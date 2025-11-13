@@ -8,21 +8,21 @@ RUN apt-get update && apt-get install -y \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Копирование зависимостей (теперь файл в той же папке)
+# Копирование зависимостей
 COPY requirements-model.txt .
 
 # Установка Python зависимостей
 RUN pip install --no-cache-dir -r requirements-model.txt
 
-# Копирование исходного кода из корня проекта
+# Копирование исходного кода
 COPY . .
 
-# Создание директорий для данных и логирования
+# Создание директорий
 RUN mkdir -p /app/data /app/logs /app/models
 
 # Переменные окружения
 ENV PYTHONPATH=/app
 ENV ENVIRONMENT=production
 
-# Запуск тестов для CI
-CMD ["python", "-m", "pytest", "tests/", "-v"]
+# Запуск приложения
+CMD ["python", "-c", "from app.main import ModelApplication; app = ModelApplication(); app.run()"]
