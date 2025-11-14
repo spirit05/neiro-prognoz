@@ -61,7 +61,7 @@ class TrainingResult(BaseModel):
     status: ModelStatus
     training_loss: List[float] = Field(default_factory=list)
     validation_loss: List[float] = Field(default_factory=list)
-    metrics: Dict[str, float] = Field(default_factory=dict)
+    metrics: Dict[str, Any] = Field(default_factory=dict)
     training_time: float = 0.0
     best_epoch: int = 0
 
@@ -76,8 +76,8 @@ class PredictionRequest(BaseModel):
 
 class PredictionResponse(BaseModel):
     """Ответ с предсказаниями"""
-    predictions: Union[List[float], List[int], List[str]]
-    probabilities: Optional[List[List[float]]] = None
+    predictions: List[Any]
+    probabilities: Optional[List[Any]] = None
     model_id: str
     inference_time: float
     timestamp: datetime = Field(default_factory=datetime.now)
