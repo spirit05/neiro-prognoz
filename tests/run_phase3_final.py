@@ -1,6 +1,6 @@
 # [file name]: tests/run_phase3_final.py
 """
-Финальный запуск всех тестов этапа 3
+Финальный запуск всех тестов этапа 3 - ИСПРАВЛЕННАЯ ВЕРСИЯ ДЛЯ CI
 """
 
 import subprocess
@@ -13,7 +13,7 @@ def run_phase3_tests():
         "tests/test_feature_engineers_basic.py",
         "tests/test_architecture_integrity.py", 
         "tests/test_orchestrator_integration.py",
-        "tests/test_dataprocessor_compatibility.py"  # Новый тест совместимости
+        "tests/test_future_compatibility.py"  # ЗАМЕНА: вместо test_dataprocessor_compatibility.py
     ]
     
     print("🚀 ЗАПУСК ТЕСТОВ ЭТАПА 3: МИГРАЦИЯ FEATURE ENGINEERS")
@@ -76,7 +76,7 @@ def run_phase3_tests():
         print("   ✅ Реализован AbstractFeatureEngineer интерфейс")
         print("   ✅ Мигрирован FeatureExtractor → StatisticalEngineer")
         print("   ✅ Мигрирован AdvancedPatternAnalyzer → AdvancedEngineer")
-        print("   ✅ Все тесты этапа 3 пройдены")
+        print("   ✅ Все тесты этапа 3 пройдены (CI compatible)")
         return True
     else:
         print("\n⚠️ Требуется доработка перед завершением этапа 3")
