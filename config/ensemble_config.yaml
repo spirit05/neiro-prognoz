@@ -1,0 +1,39 @@
+# /opt/model/config/ensemble_config.yaml
+# Конфигурация ансамблевой системы - ЧИСТАЯ АРХИТЕКТУРА
+ensemble:
+  model_id: "number_prediction_ensemble"
+  combiners:
+    weighted:
+      class: "ml.ensemble.combiners.weighted_combiner.WeightedCombiner"
+      params:
+        weights:
+          statistical: 0.35
+          pattern_based: 0.25
+          frequency: 0.20
+          neural: 0.20
+
+  predictors:
+    statistical:
+      class: "ml.ensemble.predictors.statistical.StatisticalPredictor"
+      params:
+        model_id: "statistical_predictor"
+        max_history_length: 100
+
+    pattern_based:
+      class: "ml.ensemble.predictors.pattern_based.PatternBasedPredictor" 
+      params:
+        model_id: "pattern_predictor"
+
+    frequency:
+      class: "ml.ensemble.predictors.frequency.FrequencyPredictor"
+      params:
+        model_id: "frequency_predictor"
+
+training:
+  strategy: "basic"
+  batch_size: 32
+  validation_split: 0.2
+
+prediction:
+  top_k: 15
+  min_history_length: 20

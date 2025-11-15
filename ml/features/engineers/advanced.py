@@ -1,6 +1,6 @@
-# [file name]: ml/features/engineers/advanced.py
+# /opt/model/ml/features/engineers/advanced.py
 """
-Продвинутый feature engineer - миграция из AdvancedPatternAnalyzer
+Продвинутый feature engineer - ПОЛНАЯ ФУНКЦИОНАЛЬНОСТЬ
 """
 
 import numpy as np
@@ -9,11 +9,19 @@ from typing import List, Dict
 from ..base import AbstractFeatureEngineer
 
 class AdvancedEngineer(AbstractFeatureEngineer):
-    """Продвинутый feature engineer для анализа временных рядов"""
+    """Продвинутый feature engineer для анализа временных рядов - ПОЛНАЯ ФУНКЦИОНАЛЬНОСТЬ"""
     
     def __init__(self, history_size: int = 20):
         super().__init__(history_size)
         self._feature_names = self._generate_feature_names()
+    
+    def analyze_time_series(self, history: List[int]) -> Dict:
+        """Глубокий анализ временных рядов - ПОЛНАЯ ФУНКЦИОНАЛЬНОСТЬ"""
+        if len(history) < 10:
+            return {}
+        
+        ts = np.array(history)
+        return self._analyze_time_series(ts)
     
     def extract_features(self, number_history: List[int]) -> np.ndarray:
         """Извлечение продвинутых features для анализа паттернов"""
@@ -68,12 +76,12 @@ class AdvancedEngineer(AbstractFeatureEngineer):
         return np.array(features, dtype=np.float32)
     
     def _analyze_time_series(self, ts: np.ndarray) -> Dict[str, float]:
-        """Анализ временных рядов"""
+        """Анализ временных рядов - ПОЛНАЯ ФУНКЦИОНАЛЬНОСТЬ"""
         result = {}
         
         # Автокорреляция
         autocorr = {}
-        for lag in [1, 2, 3]:
+        for lag in [1, 2, 3, 5, 7]:
             if len(ts) > lag:
                 try:
                     corr = np.corrcoef(ts[:-lag], ts[lag:])[0,1]
@@ -81,6 +89,15 @@ class AdvancedEngineer(AbstractFeatureEngineer):
                         autocorr[f"autocorr_lag_{lag}"] = corr
                 except:
                     autocorr[f"autocorr_lag_{lag}"] = 0.0
+        
+        # Сезонность (периодичность)
+        try:
+            fft = np.fft.fft(ts)
+            frequencies = np.fft.fftfreq(len(ts))
+            dominant_idx = np.argmax(np.abs(fft[1:])) + 1
+            dominant_freq = frequencies[dominant_idx] if dominant_idx < len(frequencies) else 0
+        except:
+            dominant_freq = 0
         
         # Тренды
         x = np.arange(len(ts))
@@ -91,10 +108,11 @@ class AdvancedEngineer(AbstractFeatureEngineer):
         
         result.update({
             'autocorrelation': autocorr,
+            'dominant_frequency': dominant_freq,
             'linear_trend': linear_trend,
             'volatility': np.std(ts) if len(ts) > 1 else 0,
             'hurst_exponent': self._calculate_hurst_safe(ts),
-            'mean_reversion': self._check_mean_reversion(ts),
+            'mean_reversion': self._check_mean_reversion(ts)
         })
         
         return result
