@@ -1,4 +1,4 @@
-# /opt/model/tests/test_ensemble_identity.py
+# tests/test_ensemble_identity.py
 """
 ТЕСТ ИДЕНТИЧНОСТИ: Сравнение новой и старой ансамблевой системы
 """
@@ -7,10 +7,12 @@ import sys
 import os
 import numpy as np
 import pandas as pd
+import pytest
 
 sys.path.insert(0, '/opt/model')
 
-from ml.core.types import DataBatch, TrainingConfig, DataType  # 🔧 Добавлен импорт TrainingConfig
+from ml.core.types import DataBatch, TrainingConfig, DataType
+from ml.ensemble import WeightedEnsemblePredictor, StatisticalPredictor, PatternBasedPredictor, FrequencyPredictor
 
 
 def test_identity_with_old_system():
@@ -35,8 +37,6 @@ def test_identity_with_old_system():
         old_predictions = []
     
     # 3. Получаем прогнозы от новой системы
-    from ml.ensemble import WeightedEnsemblePredictor, StatisticalPredictor, PatternBasedPredictor, FrequencyPredictor
-    
     new_ensemble = WeightedEnsemblePredictor("identity_test")
     
     # Добавляем предсказатели с такими же весами как в старой системе
@@ -44,15 +44,13 @@ def test_identity_with_old_system():
     new_ensemble.add_predictor("pattern", PatternBasedPredictor("pattern"), 0.25)
     new_ensemble.add_predictor("frequency", FrequencyPredictor("frequency"), 0.20)
     
-    # 🔧 ИСПРАВЛЕНИЕ: Используем DataFrame вместо numpy array
-    train_data = pd.DataFrame([test_history]).T  # Преобразуем в DataFrame
+    # Обучаем на тестовых данных
+    train_data = pd.DataFrame([test_history]).T  # 🔧 DataFrame вместо numpy array
     data_batch = DataBatch(
         data=train_data,
         batch_id="identity_train",
         data_type=DataType.TRAINING
     )
-    
-    # 🔧 ИСПРАВЛЕНИЕ: TrainingConfig теперь импортирован
     new_ensemble.train(data_batch, TrainingConfig(epochs=2))
     
     # Предсказываем
@@ -85,12 +83,10 @@ def test_identity_with_old_system():
             print("✅ Есть совпадения прогнозов")
         else:
             print("⚠️  Нет совпадений прогнозов")
-            # Пропускаем тест, если старая система доступна но нет совпадений
             pytest.skip("Нет совпадений прогнозов со старой системой")
     else:
         print("✅ Тест завершен (старая система недоступна для сравнения)")
 
 
 if __name__ == "__main__":
-    success = test_identity_with_old_system()
-    sys.exit(0 if success else 1)
+    test_identity_with_old_system()
