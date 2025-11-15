@@ -91,14 +91,19 @@ def test_ensemble_simple():
                         len(pattern_response.predictions) + 
                         len(frequency_response.predictions))
     
-    if total_predictions > 0:
-        print(f"🎉 ТЕСТ ПРОЙДЕН! Всего прогнозов: {total_predictions}")
-        return True
-    else:
-        print("❌ ТЕСТ ПРОВАЛЕН! Ни один предсказатель не сгенерировал прогнозы")
-        return False
+    # 🔧 ИСПРАВЛЕНИЕ: используем assert вместо return
+    assert total_predictions > 0, "Ни один предсказатель не сгенерировал прогнозы"
+    print(f"🎉 ТЕСТ ПРОЙДЕН! Всего прогнозов: {total_predictions}")
 
 
 if __name__ == "__main__":
-    success = test_ensemble_simple()
-    sys.exit(0 if success else 1)
+    try:
+        test_ensemble_simple()
+        print("\n🎉 ТЕСТ УСПЕШНО ЗАВЕРШЕН!")
+        sys.exit(0)
+    except Exception as e:
+        print(f"\n❌ ТЕСТ ПРОВАЛЕН: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+

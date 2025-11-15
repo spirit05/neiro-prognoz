@@ -311,6 +311,7 @@ class FrequencyPredictor(AbstractBaseModel):
         self.position_frequencies = {0: {}, 1: {}, 2: {}, 3: {}}
         self.total_groups = 0
 
+
     def save(self, path: Path) -> None:
         """Сохранение частотных данных"""
         config = {
@@ -320,7 +321,6 @@ class FrequencyPredictor(AbstractBaseModel):
             'number_frequencies': self.number_frequencies,
             'pair_frequencies': {str(k): v for k, v in self.pair_frequencies.items()},
             'position_frequencies': {str(k): v for k, v in self.position_frequencies.items()},
-            'metadata': self.metadata.model_dump(),
             'is_trained': self._is_trained
         }
         
@@ -349,7 +349,6 @@ class FrequencyPredictor(AbstractBaseModel):
         self.pair_frequencies = {}
         for k, v in pair_frequencies.items():
             try:
-                # Преобразуем строку обратно в кортеж
                 pair_tuple = tuple(map(int, k.strip('()').split(',')))
                 self.pair_frequencies[pair_tuple] = v
             except:

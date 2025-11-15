@@ -75,12 +75,11 @@ def quick_test():
     print("✅ Консистентность проверена")
     
     print("\n🎉 ВСЕ ТЕСТЫ ПРОЙДЕНЫ УСПЕШНО!")
-    return True
+
 
 if __name__ == "__main__":
     try:
-        success = quick_test()
-        sys.exit(0 if success else 1)
+        quick_test()
     except Exception as e:
         print(f"❌ ТЕСТ ПРОВАЛЕН: {e}")
         import traceback

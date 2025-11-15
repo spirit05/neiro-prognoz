@@ -109,14 +109,19 @@ class AbstractEnsemblePredictor(AbstractBaseModel, ABC):
             
         finally:
             self._prediction_lock = False
-
+          
     def save(self, path: Path) -> None:
         """Сохранение ансамбля и всех компонентов"""
+        # Преобразуем метаданные в сериализуемый формат
+        metadata_dict = self.metadata.model_dump()
+        if 'created_at' in metadata_dict and metadata_dict['created_at'] is not None:
+            metadata_dict['created_at'] = metadata_dict['created_at'].isoformat()
+
         ensemble_config = {
             'model_id': self.model_id,
             'model_type': self.model_type.value,
             'weights': self.weights,
-            'metadata': self.metadata.model_dump(),
+            'metadata': metadata_dict,
             'components': list(self.component_predictors.keys())
         }
         
@@ -132,7 +137,7 @@ class AbstractEnsemblePredictor(AbstractBaseModel, ABC):
             predictor.save(predictor_path)
         
         self.logger.info(f"💾 Ансамбль сохранен: {path}")
-
+   
     def load(self, path: Path) -> None:
         """Загрузка ансамбля и всех компонентов"""
         config_path = path / f"{self.model_id}_ensemble_config.json"

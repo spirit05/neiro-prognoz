@@ -228,7 +228,6 @@ class PatternBasedPredictor(AbstractBaseModel):
         config = {
             'model_id': self.model_id,
             'model_type': self.model_type.value,
-            'metadata': self.metadata.model_dump(),
             'is_trained': self._is_trained
         }
         

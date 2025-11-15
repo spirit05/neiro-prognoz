@@ -167,20 +167,28 @@ def test_all_modules_can_be_imported():
         except ImportError as e:
             assert False, f"Failed to import {module_name}: {e}"
 
-
 def test_config_files_exist():
     """Тест наличия конфигурационных файлов"""
+    # 🔧 ИСПРАВЛЕНИЕ: Используем правильные пути относительно корня проекта
+    project_root = Path(__file__).parent.parent  # /opt/model
+    
     config_files = [
         'config/model_config.yaml',
         'config/feature_config.yaml',
         'config/model_config.py',
         'config/feature_config.py'
     ]
-    
-    for config_file in config_files:
-        full_path = os.path.join('/opt/model', config_file)
-        assert os.path.exists(full_path), f"Config file does not exist: {config_file}"
 
+    missing_files = []
+    for config_file in config_files:
+        full_path = project_root / config_file
+        if not full_path.exists():
+            missing_files.append(config_file)
+    
+    if missing_files:
+        pytest.fail(f"Конфигурационные файлы отсутствуют: {missing_files}")
+    else:
+        assert True, "Все конфигурационные файлы присутствуют"
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
