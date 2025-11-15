@@ -205,7 +205,6 @@ class StatisticalPredictor(AbstractBaseModel):
             volatility = np.std(data)
             self.logger.info(f"📈 Анализ данных: волатильность={volatility:.2f}")
 
-
     def save(self, path: Path) -> None:
         """Сохранение модели"""
         config = {
@@ -213,6 +212,7 @@ class StatisticalPredictor(AbstractBaseModel):
             'model_type': self.model_type.value,
             'max_history_length': self._max_history_length,
             'is_trained': self._is_trained
+            # 🔧 Убраны метаданные чтобы избежать проблем с datetime
         }
         
         import json

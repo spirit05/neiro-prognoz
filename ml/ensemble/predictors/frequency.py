@@ -311,7 +311,6 @@ class FrequencyPredictor(AbstractBaseModel):
         self.position_frequencies = {0: {}, 1: {}, 2: {}, 3: {}}
         self.total_groups = 0
 
-
     def save(self, path: Path) -> None:
         """Сохранение частотных данных"""
         config = {
@@ -322,6 +321,7 @@ class FrequencyPredictor(AbstractBaseModel):
             'pair_frequencies': {str(k): v for k, v in self.pair_frequencies.items()},
             'position_frequencies': {str(k): v for k, v in self.position_frequencies.items()},
             'is_trained': self._is_trained
+            # 🔧 Убраны метаданные
         }
         
         import json
@@ -329,7 +329,7 @@ class FrequencyPredictor(AbstractBaseModel):
             json.dump(config, f, indent=2, ensure_ascii=False)
         
         self.logger.info(f"💾 FrequencyPredictor сохранен: {path}")
-
+       
     def load(self, path: Path) -> None:
         """Загрузка частотных данных"""
         config_path = path / "config.json"

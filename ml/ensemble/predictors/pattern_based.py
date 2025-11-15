@@ -229,6 +229,7 @@ class PatternBasedPredictor(AbstractBaseModel):
             'model_id': self.model_id,
             'model_type': self.model_type.value,
             'is_trained': self._is_trained
+            # 🔧 Убраны метаданные
         }
         
         import json
