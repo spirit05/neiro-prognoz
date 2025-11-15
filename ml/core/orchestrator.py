@@ -197,3 +197,41 @@ class MLOrchestrator:
         model.load(path)
         self.register_model(model)
         self.logger.info(f"Model '{model_id}' loaded from {path}")
+
+    def train_model_with_strategy(
+        self, 
+        model_id: str,
+        strategy_id: str, 
+        data: DataBatch, 
+        config: TrainingConfig
+    ) -> TrainingResult:
+        """Обучение модели с указанной стратегией"""
+        if model_id not in self._models:
+            raise ValueError(f"Model '{model_id}' not found in registry")
+        
+        # Динамическая загрузка стратегии
+        if strategy_id == "basic":
+            from ml.training.strategies import BasicTrainingStrategy
+            strategy = BasicTrainingStrategy()
+        elif strategy_id == "incremental":
+            from ml.training.strategies import IncrementalTrainingStrategy
+            strategy = IncrementalTrainingStrategy()
+        else:
+            raise ValueError(f"Unknown strategy: {strategy_id}")
+        
+        # Добавляем callbacks оркестратора
+        def orchestrator_callback(message, progress=None):
+            self.logger.info(f"Training progress: {message}")
+        
+        strategy.add_callback(orchestrator_callback)
+        
+        # Запуск обучения
+        model = self._models[model_id]
+        result = strategy.train(model, data, config)
+        
+        # Обновляем статус модели в регистре
+        self._model_registry[model_id]['status'] = result.status
+        self._model_registry[model_id]['last_trained'] = datetime.now()
+        
+        return result
+

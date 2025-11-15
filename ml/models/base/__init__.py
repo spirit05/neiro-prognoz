@@ -1,5 +1,5 @@
 """
-Базовые модели - исправленный импорт
+Базовые модели
 """
 from .enhanced_predictor import EnhancedPredictor, EnhancedNumberPredictor
 

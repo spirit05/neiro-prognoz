@@ -178,6 +178,21 @@ class EnhancedPredictor(AbstractBaseModel):
             self.status = ModelStatus.FAILED
             raise
 
+    def initialize_model(self, input_size: int = None):
+        """Инициализация модели перед обучением"""
+        if input_size:
+            self.input_size = input_size
+        
+        if self.model is None:
+            self.model = EnhancedNumberPredictor(
+                input_size=self.input_size,
+                hidden_size=self.hidden_size
+            )
+            self.model.to(self.device)
+            self.logger.info(f"✅ Модель инициализирована: input_size={self.input_size}, hidden_size={self.hidden_size}")
+        
+        return self.model is not None
+
     def predict(self, data: DataBatch) -> PredictionResponse:
         """
         ПОЛНАЯ РЕАЛИЗАЦИЯ: предсказание на новых данных
