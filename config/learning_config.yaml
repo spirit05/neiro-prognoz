@@ -1,0 +1,20 @@
+# /opt/model/config/learning_config.yaml
+learning:
+  system:
+    class: "ml.learning.self_learning.SelfLearningSystem"
+    config:
+      learning_results_path: "data/analytics/learning_results.json"
+      max_history_size: 100
+      error_threshold: 5
+      performance_threshold: 0.3
+  
+  analyzers:
+    performance:
+      class: "ml.learning.analyzers.performance.PerformanceAnalyzer"
+    
+    error_patterns:
+      class: "ml.learning.analyzers.error_patterns.ErrorPatternAnalyzer"
+  
+  recommendations:
+    max_recommendations: 6
+    update_frequency: "1h"

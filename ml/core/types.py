@@ -101,3 +101,17 @@ class FeatureSpec(BaseModel):
     min_value: Optional[float] = None
     max_value: Optional[float] = None
     allowed_categories: Optional[List[str]] = None
+
+class AnalysisResult(BaseModel):
+    """Результат анализа производительности - ДЛЯ ЭТАПА 6"""
+    timestamp: str
+    performance_metrics: Dict[str, Any]
+    error_patterns: Dict[str, Any]
+    recommendations: Dict[str, Any]
+    ensemble_weights: Dict[str, float]
+
+class LearningHistory(BaseModel):
+    """История обучения системы - ДЛЯ ЭТАПА 6"""
+    last_analysis: Optional[str] = None
+    analysis_history: List[AnalysisResult] = Field(default_factory=list)
+    total_analyses: int = 0

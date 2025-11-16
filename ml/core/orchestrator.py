@@ -1,5 +1,6 @@
+# /opt/model/ml/core/orchestrator.py
 """
-Оркестратор ML пайплайнов
+Оркестратор ML пайплайнов - ИСПРАВЛЕННАЯ ВЕРСИЯ ДЛЯ ЭТАПА 6
 """
 from typing import Dict, List, Optional, Any
 from pathlib import Path
@@ -11,8 +12,9 @@ from .base_model import AbstractBaseModel
 from .types import (
     ModelType, ModelStatus, TrainingConfig, 
     DataBatch, PredictionRequest, PredictionResponse,
-    TrainingResult
+    TrainingResult, AnalysisResult  # ✅ ДОБАВЛЕНО AnalysisResult
 )
+from ml.ensemble.base_ensemble import AbstractEnsemblePredictor  # ✅ ДОБАВЛЕНО
 
 
 class MLOrchestrator:
@@ -31,6 +33,9 @@ class MLOrchestrator:
         # Статистика
         self._training_history: List[Dict[str, Any]] = []
         self._prediction_stats: Dict[str, int] = {}
+        
+        # Система самообучения (для ЭТАПА 6)
+        self.self_learning_system = None
 
     def register_model(self, model: AbstractBaseModel) -> None:
         """
@@ -235,3 +240,60 @@ class MLOrchestrator:
         
         return result
 
+    # ✅ НОВЫЕ МЕТОДЫ ДЛЯ ЭТАПА 6 - Self-Learning система
+    def setup_self_learning(self, config: Dict[str, Any]) -> None:
+        """Настройка системы самообучения для ЭТАПА 6"""
+        try:
+            from ml.learning.self_learning import SelfLearningSystem
+            
+            # Ищем ансамблевые модели для self-learning
+            ensemble_models = [
+                model for model in self._models.values()
+                if isinstance(model, AbstractEnsemblePredictor)
+            ]
+            
+            if not ensemble_models:
+                self.logger.warning("⚠️ Ансамблевые модели не найдены для self-learning")
+                return
+            
+            self.self_learning_system = SelfLearningSystem(
+                ensemble=ensemble_models[0],
+                config=config
+            )
+            
+            self.logger.info("✅ Система самообучения настроена")
+            
+        except ImportError as e:
+            self.logger.error(f"❌ Не удалось настроить систему самообучения: {e}")
+
+    def analyze_predictions(
+        self, 
+        predictions: List[PredictionResponse],
+        actual_results: List[List[int]]
+    ) -> Optional[AnalysisResult]:
+        """Анализ точности предсказаний через систему самообучения"""
+        if self.self_learning_system is None:
+            self.logger.warning("⚠️ Система самообучения не настроена")
+            return None
+        
+        try:
+            return self.self_learning_system.analyze_prediction_accuracy(
+                predictions, actual_results
+            )
+        except Exception as e:
+            self.logger.error(f"❌ Ошибка анализа предсказаний: {e}")
+            return None
+
+    def get_learning_recommendations(self) -> List[str]:
+        """Получение рекомендаций от системы самообучения"""
+        if self.self_learning_system is None:
+            return ["🔧 Настройте систему самообучения для получения рекомендаций"]
+        
+        return self.self_learning_system.get_learning_recommendations()
+
+    def get_performance_stats(self) -> Dict[str, Any]:
+        """Получение статистики производительности"""
+        if self.self_learning_system is None:
+            return {"status": "self_learning_not_configured"}
+        
+        return self.self_learning_system.get_performance_stats()

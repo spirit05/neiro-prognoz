@@ -1,3 +1,4 @@
+# /opt/model/ml/core/__init__.py
 """
 Пакет core новой архитектуры ML системы
 """
@@ -6,7 +7,7 @@ from .orchestrator import MLOrchestrator
 from .types import (
     ModelType, ModelStatus, TrainingConfig, ModelMetadata,
     TrainingResult, PredictionResponse, DataBatch, FeatureSpec,
-    PredictionRequest, DataType
+    PredictionRequest, DataType, AnalysisResult, LearningHistory  # ✅ ДОБАВЛЕНО
 )
 
 __all__ = [
@@ -22,5 +23,7 @@ __all__ = [
     'PredictionRequest',
     'DataBatch',
     'FeatureSpec',
-    'DataType'
+    'DataType',
+    'AnalysisResult',        # ✅ ДОБАВЛЕНО
+    'LearningHistory'        # ✅ ДОБАВЛЕНО
 ]
