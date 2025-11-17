@@ -1,19 +1,26 @@
 # /opt/model/config/learning_config.yaml
+# КОРРЕКТНАЯ КОНФИГУРАЦИЯ ДЛЯ SelfLearningSystem
 learning:
   system:
     class: "ml.learning.self_learning.SelfLearningSystem"
-    config:
-      learning_results_path: "data/analytics/learning_results.json"
-      max_history_size: 100
-      error_threshold: 5
-      performance_threshold: 0.3
+    params:
+      # 🔧 ПРАВИЛЬНЫЕ ПАРАМЕТРЫ для вашего конструктора SelfLearningSystem
+      model_id: "self_learning_system"
+      # Дополнительные параметры будут переданы через config
+      config:
+        learning_results_path: "data/analytics/learning_results.json"
+        max_history_size: 100
+        error_threshold: 5
+        performance_threshold: 0.3
   
   analyzers:
     performance:
       class: "ml.learning.analyzers.performance.PerformanceAnalyzer"
+      params: {}  # 🔧 ДОБАВЛЕНО params
     
     error_patterns:
       class: "ml.learning.analyzers.error_patterns.ErrorPatternAnalyzer"
+      params: {}  # 🔧 ДОБАВЛЕНО params
   
   recommendations:
     max_recommendations: 6

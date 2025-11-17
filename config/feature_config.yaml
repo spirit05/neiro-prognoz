@@ -1,4 +1,5 @@
-# Конфигурация фичей для новой модели
+# [file name]: config/feature_config.yaml
+# Конфигурация фичей для новой модели - ДОПОЛНЕННАЯ ВЕРСИЯ
 feature_groups:
   technical_indicators:
     - "sma_20"
@@ -32,3 +33,16 @@ feature_selection:
   method: "mutual_info"
   top_k_features: 50
   correlation_threshold: 0.85
+
+# ✅ ДОБАВЛЕНО для оркестратора
+enabled_engineers: ["statistical", "advanced"]
+
+engineers:
+  statistical:
+    class: "ml.features.engineers.statistical.StatisticalEngineer"
+    params:
+      history_size: 20
+  advanced:
+    class: "ml.features.engineers.advanced.AdvancedEngineer"
+    params:
+      history_size: 20

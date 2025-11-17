@@ -1,9 +1,15 @@
-# Конфигурация новой архитектуры модели
+# [file name]: config/model_config.yaml
+# КОРРЕКТНАЯ КОНФИГУРАЦИЯ ДЛЯ EnhancedPredictor
 model:
   name: "neiro-prognoz-v2"
   version: "1.0.0"
   framework: "pytorch"
   
+  class: "ml.models.base.enhanced_predictor.EnhancedPredictor"
+  params:
+    model_id: "enhanced_predictor_v2"
+    # 🔧 УБРАНЫ input_size и hidden_size - их нет в конструкторе EnhancedPredictor
+
 training:
   batch_size: 32
   learning_rate: 0.001
@@ -44,4 +50,3 @@ monitoring:
     - "f1_score"
   prometheus_enabled: true
   health_check_interval: 60
-

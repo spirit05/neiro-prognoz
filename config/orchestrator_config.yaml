@@ -1,0 +1,27 @@
+# [file name]: config/orchestrator_config.yaml
+orchestrator:
+  system_id: "ml_orchestrator_v1"
+  auto_initialize: true
+  health_check_interval: 30
+  
+components:
+  models:
+    - "enhanced_predictor_v2"
+    - "statistical_predictor"
+    - "pattern_predictor"
+    - "frequency_predictor"
+    - "weighted_ensemble_v1"
+  
+  feature_engineers:
+    - "statistical"
+    - "advanced"
+  
+  ensemble_predictors:
+    - "statistical"
+    - "pattern_based" 
+    - "frequency"
+    - "weighted_ensemble"
+
+logging:
+  level: "DEBUG"
+  enable_component_logs: true

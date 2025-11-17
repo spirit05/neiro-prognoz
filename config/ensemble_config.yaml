@@ -1,5 +1,5 @@
-# /opt/model/config/ensemble_config.yaml
-# Конфигурация ансамблевой системы - ЧИСТАЯ АРХИТЕКТУРА
+# [file name]: config/ensemble_config.yaml
+# КОРРЕКТНАЯ КОНФИГУРАЦИЯ ДЛЯ ПРЕДСКАЗАТЕЛЕЙ
 ensemble:
   model_id: "number_prediction_ensemble"
   combiners:
@@ -17,7 +17,7 @@ ensemble:
       class: "ml.ensemble.predictors.statistical.StatisticalPredictor"
       params:
         model_id: "statistical_predictor"
-        max_history_length: 100
+        # 🔧 УБРАН max_history_length - его нет в конструкторе
 
     pattern_based:
       class: "ml.ensemble.predictors.pattern_based.PatternBasedPredictor" 
@@ -28,6 +28,11 @@ ensemble:
       class: "ml.ensemble.predictors.frequency.FrequencyPredictor"
       params:
         model_id: "frequency_predictor"
+
+    weighted_ensemble:
+      class: "ml.ensemble.base_ensemble.WeightedEnsemblePredictor"
+      params:
+        model_id: "weighted_ensemble_v1"
 
 training:
   strategy: "basic"
