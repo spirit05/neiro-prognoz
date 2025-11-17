@@ -140,11 +140,15 @@ class TestOrchestrator:
         orchestrator = MLOrchestrator({"debug": True})
         assert orchestrator.config == {"debug": True}
         assert len(orchestrator.list_models()) == 0
-        
+       
     def test_model_registration(self):
-        """Тест регистрации модели"""
+        """Тест регистрации модели с очисткой состояния"""
         orchestrator = MLOrchestrator({})
-        model = MockModelForTesting("test_model", ModelType.REGRESSION)  # ИЗМЕНИЛИ ЗДЕСЬ
+        
+        # Очищаем реестр для чистого теста
+        orchestrator.clear_registry()
+        
+        model = MockModelForTesting("test_model", ModelType.REGRESSION)
         
         orchestrator.register_model(model)
         models = orchestrator.list_models()
@@ -152,7 +156,7 @@ class TestOrchestrator:
         assert len(models) == 1
         assert models[0]['model_id'] == "test_model"
         assert models[0]['model_type'] == "regression"
-        
+                
     def test_get_model_info(self):
         """Тест получения информации о модели"""
         orchestrator = MLOrchestrator({})

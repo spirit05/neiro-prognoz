@@ -366,7 +366,7 @@ class MLOrchestrator:
     def train_model_with_strategy(self, model_id: str, strategy_id: str, data: DataBatch, config: TrainingConfig) -> TrainingResult:
         """Обучение модели с указанной стратегией"""
         if model_id not in self._models:
-            raise ValueError(f"Model '{model_id}' не найдена в регистре")
+            raise ValueError(f"Model '{model_id}' not found in registry")
         
         # Динамическая загрузка стратегии
         if strategy_id == "basic":
@@ -376,7 +376,8 @@ class MLOrchestrator:
             from ml.training.strategies import IncrementalTrainingStrategy
             strategy = IncrementalTrainingStrategy()
         else:
-            raise ValueError(f"Неизвестная стратегия: {strategy_id}")
+            # 🔧 ИСПРАВЛЕНИЕ: английский язык для ошибок
+            raise ValueError(f"Unknown strategy: {strategy_id}")
         
         # Добавляем callbacks оркестратора
         def orchestrator_callback(message, progress=None):
@@ -515,6 +516,61 @@ class MLOrchestrator:
             'registry_entries': len(self._model_registry)
         }
 
+    def setup_self_learning(self, config: Dict[str, Any] = None) -> None:
+        """Настройка системы самообучения"""
+        if config:
+            # Обновляем конфигурацию и переинициализируем
+            learning_config = self.config.get('learning', {})
+            learning_config.update(config)
+            self.config['learning'] = learning_config
+            self._init_self_learning()
+        
+        if not self.self_learning_system:
+            self._init_self_learning()
+        
+        self.logger.info("✅ Система самообучения настроена")
+
+    def analyze_predictions(self, predictions: List[PredictionResponse], 
+                        actual_results: List[List[int]]) -> AnalysisResult:
+        """Анализ предсказаний через систему самообучения"""
+        if not self.self_learning_system:
+            raise ValueError("Self-learning system not initialized")
+        
+        return self.self_learning_system.analyze_prediction_accuracy(
+            predictions, actual_results
+        )
+
+    def get_learning_recommendations(self) -> List[str]:
+        """Получение рекомендаций по улучшению модели"""
+        if not self.self_learning_system:
+            return ["🔧 Система самообучения не инициализирована"]
+        
+        return self.self_learning_system.get_learning_recommendations()
+
+    def get_performance_stats(self) -> Dict[str, Any]:
+        """Получение статистики производительности системы"""
+        if not self.self_learning_system:
+            return {"status": "not_initialized", "message": "Self-learning system not available"}
+        
+        return self.self_learning_system.get_performance_stats()
+
+    def adjust_ensemble_weights(self, analysis_result: AnalysisResult) -> bool:
+        """Корректировка весов ансамбля на основе анализа"""
+        if not self.self_learning_system:
+            self.logger.warning("⚠️ Self-learning system not available for weight adjustment")
+            return False
+        
+        return self.self_learning_system.adjust_ensemble_weights(analysis_result)
+
+    def clear_registry(self) -> None:
+        """Очистка реестра моделей (для тестирования)"""
+        self._models.clear()
+        self._feature_engineers.clear() 
+        self._ensemble_predictors.clear()
+        self._model_registry.clear()
+        self._training_history.clear()
+        self._prediction_stats.clear()
+        self.logger.info("🧹 Реестр оркестратора очищен")
 
     def check_component_integration(self) -> Dict[str, Any]:
         """Проверка интеграции всех компонентов"""

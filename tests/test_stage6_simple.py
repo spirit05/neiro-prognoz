@@ -72,10 +72,10 @@ def test_basic_imports():
         assert self_learning is not None
         
         print("✅ Все базовые модули импортируются")
-        return True
+        assert True
     except ImportError as e:
         print(f"❌ Ошибка импорта: {e}")
-        return False
+        assert False
 
 if __name__ == "__main__":
     # Запускаем тесты
