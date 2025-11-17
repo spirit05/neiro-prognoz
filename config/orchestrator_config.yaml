@@ -22,6 +22,17 @@ components:
     - "frequency"
     - "weighted_ensemble"
 
+# 🔧 ДОБАВЛЕН DATA PROCESSING
+data_processing:
+  processor:
+    class: "ml.data.processors.data_processor.ModularDataProcessor"
+    params:
+      history_size: 20
+      feature_engineers: ["statistical", "advanced"]
+  
+  dataset_manager:
+    dataset_path: "/opt/model/data/datasets/dataset.json"
+
 logging:
   level: "DEBUG"
   enable_component_logs: true
