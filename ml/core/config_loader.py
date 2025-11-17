@@ -14,9 +14,17 @@ logger = logging.getLogger(__name__)
 class ConfigLoader:
     """Загрузчик конфигурации YAML файлов - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
     
-    def __init__(self, config_dir: str = "/opt/model/config"):
-        self.config_dir = Path(config_dir)
+    def __init__(self, config_dir: str = None):
+        # ✅ ИСПРАВЛЕНО: Динамическое определение пути к конфигам
+        if config_dir is None:
+            # Определяем корень проекта (где находится ml директория)
+            project_root = Path(__file__).parent.parent.parent
+            self.config_dir = project_root / "config"
+        else:
+            self.config_dir = Path(config_dir)
+        
         logger.info(f"🔧 ConfigLoader инициализирован с директорией: {self.config_dir}")
+        logger.info(f"📁 Содержимое config директории: {list(self.config_dir.glob('*.yaml')) if self.config_dir.exists() else 'DIR_NOT_EXISTS'}")
     
     def load_yaml_config(self, config_name: str) -> Dict[str, Any]:
         """Загрузка конфигурации из YAML файла - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
@@ -38,7 +46,7 @@ class ConfigLoader:
         except Exception as e:
             logger.error(f"❌ Ошибка загрузки конфигурации {config_name}: {e}")
             return {}
-    
+        
     def load_component_configs(self) -> Dict[str, Any]:
         """Загрузка всех конфигураций компонентов - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
         configs = {}
