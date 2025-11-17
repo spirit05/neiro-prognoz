@@ -117,14 +117,15 @@ class TestDataProcessingIntegration:
         finally:
             Path(temp_path).unlink(missing_ok=True)
     
+ 
     def test_complete_data_workflow(self):
         """Тест полного workflow обработки данных"""
         from ml.core.orchestrator import MLOrchestrator
-        
+
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
             json.dump([], f)
             temp_path = f.name
-        
+
         try:
             test_config = {
                 'data_processing': {
@@ -135,35 +136,35 @@ class TestDataProcessingIntegration:
                     'dataset_manager': {'dataset_path': temp_path}
                 }
             }
-            
+
             orchestrator = MLOrchestrator(test_config)
-            
+
             # Добавляем достаточное количество данных
             test_groups = [
                 "1 2 3 4", "5 6 7 8", "9 10 11 12", "13 14 15 16", "17 18 19 20",
                 "21 22 23 24", "1 3 5 7", "2 4 6 8", "10 11 12 13", "14 15 16 17",
                 "18 19 20 21", "22 23 24 25", "1 2 4 5", "3 6 7 8", "9 11 13 15"
             ]
-            
+
             # Тест добавления данных
             success = orchestrator.add_new_data(test_groups)
             assert success == True
-            
+
             # Тест создания фич для предсказания (используем достаточно групп)
             prediction_batch = orchestrator.create_prediction_features(test_groups[-5:])  # 5 групп = 20 чисел
-            assert prediction_batch.empty == False
-            
+            assert prediction_batch.data.empty == False  # ИСПРАВЛЕНО: используем prediction_batch.data.empty
+
             # Тест валидации предсказаний
             predictions = [(1, 2, 3, 4), (5, 6, 7, 8)]
             actuals = [[1, 2, 5, 6], [5, 6, 9, 10]]
-            
+
             accuracy_stats = orchestrator.validate_prediction_accuracy(predictions, actuals)
             assert accuracy_stats['total_comparisons'] == 2
-            
+
             # Тест бэкапа
             backup_success = orchestrator.backup_dataset()
             assert backup_success == True
-            
+
         finally:
             Path(temp_path).unlink(missing_ok=True)
             Path(temp_path).with_suffix('.backup.json').unlink(missing_ok=True)
