@@ -290,6 +290,77 @@ class MLOrchestrator:
         except Exception as e:
             self.logger.error(f"❌ Ошибка подготовки данных обучения: {e}")
             raise
+           
+    def register_model(self, model: AbstractBaseModel) -> None:
+        """Регистрация модели в оркестраторе"""
+        model_id = model.model_id
+        
+        if model_id in self._models:
+            self.logger.warning(f"⚠️ Model '{model_id}' уже зарегистрирована, перезаписываю")
+            
+        self._models[model_id] = model
+        self._model_registry[model_id] = {
+            'registered_at': datetime.now(),
+            'model_type': model.model_type,
+            'status': model.status
+        }
+        
+        self.logger.info(f"✅ Модель зарегистрирована: {model_id} (тип: {model.model_type})")
+
+    def list_models(self) -> List[Dict[str, Any]]:
+        """Список всех зарегистрированных моделей"""
+        return [
+            {
+                'model_id': model_id,
+                'model_type': info['model_type'].value,
+                'status': info['status'].value,
+                'registered_at': info['registered_at'],
+                'is_trained': self._models[model_id].is_trained
+            }
+            for model_id, info in self._model_registry.items()
+        ]
+
+    def get_model_info(self, model_id: str) -> Optional[Dict[str, Any]]:
+        """Получение информации о модели"""
+        if model_id not in self._model_registry:
+            return None
+            
+        model = self._models.get(model_id)
+        info = self._model_registry[model_id].copy()
+        info['model_id'] = model_id
+        
+        if model:
+            info.update({
+                'metadata': model.metadata.model_dump(),
+                'is_trained': model.is_trained,
+                'feature_specs': [spec.model_dump() for spec in getattr(model, '_feature_specs', [])]
+            })
+            
+        return info
+
+    def clear_registry(self) -> None:
+        """Очистка реестра моделей (для тестирования)"""
+        self._models.clear()
+        self._feature_engineers.clear() 
+        self._ensemble_predictors.clear()
+        self._model_registry.clear()
+        self._training_history.clear()
+        self._prediction_stats.clear()
+        self.logger.info("🧹 Реестр оркестратора очищен")
+
+    def setup_self_learning(self, config: Dict[str, Any] = None) -> None:
+        """Настройка системы самообучения"""
+        if config:
+            # Обновляем конфигурацию и переинициализируем
+            learning_config = self.config.get('learning', {})
+            learning_config.update(config)
+            self.config['learning'] = learning_config
+            self._init_self_learning()
+        
+        if not self.self_learning_system:
+            self._init_self_learning()
+        
+        self.logger.info("✅ Система самообучения настроена")
 
     def create_prediction_features(self, recent_groups: List[str]) -> DataBatch:
         """Создание фич для предсказания через Data Processor"""
