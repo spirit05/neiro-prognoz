@@ -101,6 +101,9 @@ class BasicTrainingStrategy(AbstractTrainingStrategy):
             )
             
             self._notify_progress(f"✅ Базовое обучение завершено! Финальный loss: {training_loss[-1]:.4f}")
+            # Устанавливаем флаг обучения модели
+            model._is_trained = True
+            model.status = ModelStatus.TRAINED
             return result
             
         except Exception as e:

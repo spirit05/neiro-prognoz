@@ -1,0 +1,28 @@
+# config/test_orchestrator_config.yaml
+orchestrator:
+  system_id: "ml_test_system"
+  auto_initialize: true
+
+components:
+  models:
+    - "enhanced_predictor_v2"
+  
+  feature_engineers:
+    - "statistical"
+    - "advanced"
+  
+  ensemble_predictors:
+    - "weighted_ensemble"
+
+data_processing:
+  processor:
+    class: "ml.data.processors.data_processor.ModularDataProcessor"
+    params:
+      history_size: 10  # Уменьшено для тестирования
+      feature_engineers: ["statistical", "advanced"]
+  
+  dataset_manager:
+    dataset_path: "data/datasets/test_dataset.json"
+
+logging:
+  level: "INFO"
