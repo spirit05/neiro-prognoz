@@ -19,13 +19,28 @@ class DatasetManager:
         if dataset_path:
             self.dataset_path = Path(dataset_path)
         else:
-            # Путь по умолчанию в новой архитектуре
-            self.dataset_path = Path("/opt/model/data/datasets/dataset.json")
+            self.dataset_path = self._get_project_root() / "data" / "datasets" / "dataset.json"
         
         # Создаем директорию если не существует
         self.dataset_path.parent.mkdir(parents=True, exist_ok=True)
         
         self.logger.info(f"✅ DatasetManager инициализирован с путем: {self.dataset_path}")
+
+    def _get_project_root(self) -> Path:
+        """Определяет корневую папку проекта по маркерным файлам"""
+        current_path = Path(__file__).absolute()
+        
+        # Поднимаемся вверх по директориям, пока не найдем корень проекта
+        for parent in current_path.parents:
+            # Проверяем наличие маркерных файлов проекта
+            if (parent / "setup_environment.py").exists():
+                return parent
+        
+        # Если маркеры не найдены, используем логическое предположение о структуре
+        # Из ml/data/providers/data_manager.py поднимаемся на 3 уровня вверх
+        fallback_root = current_path.parent.parent.parent
+        self.logger.warning(f"Маркеры проекта не найдены, используем fallback путь: {fallback_root}")
+        return fallback_root
 
     def load_dataset(self) -> List[str]:
         """Загрузка dataset.json"""
