@@ -105,7 +105,7 @@ def test_ensemble_with_realistic_data():
     assert all_unique > 0, "Должны быть уникальные прогнозы от разных стратегий"
     
     print("🎉 ТЕСТ РЕАЛЬНОЙ РАБОТОСПОСОБНОСТИ ПРОЙДЕН!")
-    return True
+    assert True
 
 
 def test_individual_predictors_detailed():
@@ -169,7 +169,7 @@ def test_individual_predictors_detailed():
     print(f"  Прогнозы на основе частот: {len(response.predictions)}")
     
     print("✅ ДЕТАЛЬНЫЙ ТЕСТ ПРОЙДЕН!")
-    return True
+    assert True
 
 
 if __name__ == "__main__":

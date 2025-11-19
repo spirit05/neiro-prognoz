@@ -26,11 +26,11 @@ def test_config_loader():
         assert 'features' in configs, "Конфигурация фич не загружена"
         
         print("✅ Загрузчик конфигурации работает")
-        return True
+        assert True
         
     except Exception as e:
         print(f"❌ Тест загрузчика конфигурации провален: {e}")
-        return False
+        assert False
 
 def test_orchestrator_initialization():
     """Тест инициализации оркестратора"""
@@ -49,11 +49,11 @@ def test_orchestrator_initialization():
         
         print(f"✅ Статус системы: {status}")
         print("✅ Оркестратор инициализирован")
-        return True
+        assert True
         
     except Exception as e:
         print(f"❌ Тест инициализации оркестратора провален: {e}")
-        return False
+        assert False
 
 def test_feature_engineers():
     """Тест работы feature engineers"""
@@ -77,11 +77,11 @@ def test_feature_engineers():
             assert isinstance(feature_array, np.ndarray), f"Фичи {name} не numpy array"
         
         print("✅ Feature engineers работают")
-        return True
+        assert True
         
     except Exception as e:
         print(f"❌ Тест feature engineers провален: {e}")
-        return False
+        assert False
 
 def test_ensemble_predictors():
     """Тест ансамблевых предсказателей"""
@@ -109,11 +109,11 @@ def test_ensemble_predictors():
                     assert isinstance(score, (int, float)), "Score не число"
         
         print("✅ Ансамблевые предсказатели работают")
-        return True
+        assert True
         
     except Exception as e:
         print(f"❌ Тест ансамблевых предсказателей провален: {e}")
-        return False
+        assert False
 
 def test_model_registration():
     """Тест регистрации моделей"""
@@ -130,10 +130,10 @@ def test_model_registration():
                 super().__init__("test_model", ModelType.REGRESSION)
             
             def train(self, data, config):
-                return None
+                assert None
             
             def predict(self, data):
-                return None
+                assert None
             
             def save(self, path):
                 pass
@@ -155,11 +155,11 @@ def test_model_registration():
         assert len(models_list) > 0, "Список моделей пуст"
         
         print("✅ Регистрация моделей работает")
-        return True
+        assert True
         
     except Exception as e:
         print(f"❌ Тест регистрации моделей провален: {e}")
-        return False
+        assert False
 
 if __name__ == "__main__":
     print("🧪 Запуск тестов ЭТАПА 7: ИНТЕГРАЦИЯ ORCHESTRATOR")

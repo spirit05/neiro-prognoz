@@ -51,7 +51,7 @@ def test_orchestrator_feature_registration():
         assert len(adv_features) > 0, "No advanced features"
         
         print("✅ Feature engineers work with orchestrator configuration")
-        return True
+        assert True
         
     except Exception as e:
         pytest.fail(f"Orchestrator integration test failed: {e}")
@@ -91,7 +91,7 @@ def test_feature_engineer_interface():
         assert len(adv_names) > 0, "No advanced feature names"
         
         print("✅ Feature engineer interface test passed")
-        return True
+        assert True
         
     except Exception as e:
         pytest.fail(f"Feature engineer interface test failed: {e}")

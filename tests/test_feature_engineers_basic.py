@@ -37,7 +37,7 @@ def test_statistical_engineer_functionality():
         assert all(isinstance(name, str) for name in feature_names), "Feature names are not strings"
         
         print(f"✅ StatisticalEngineer: {len(features)} features, {len(feature_names)} names")
-        return True
+        assert True
         
     except Exception as e:
         pytest.fail(f"StatisticalEngineer test failed: {e}")
@@ -68,7 +68,7 @@ def test_advanced_engineer_functionality():
         assert all(isinstance(name, str) for name in feature_names), "Feature names are not strings"
         
         print(f"✅ AdvancedEngineer: {len(features)} features, {len(feature_names)} names")
-        return True
+        assert True
         
     except Exception as e:
         pytest.fail(f"AdvancedEngineer test failed: {e}")
@@ -98,7 +98,7 @@ def test_edge_cases():
         assert small_features_adv.shape == (15,), "Small data should still return correct shape for AdvancedEngineer"
         
         print("✅ Edge cases handled correctly")
-        return True
+        assert True
         
     except Exception as e:
         pytest.fail(f"Edge cases test failed: {e}")

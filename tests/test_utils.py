@@ -8,9 +8,13 @@ from ml.core.orchestrator import MLOrchestrator
 from ml.core.config_loader import ConfigLoader
 
 class TestOrchestrator(MLOrchestrator):
+    __test__ = False
     """Оркестратор для тестирования с изолированным состоянием"""
     
     def __init__(self, config: Dict[str, Any] = None):
+        super().__init__(config)
+        self.test_mode = True
+
         # Отключаем автоматическую инициализацию для тестов
         self.config = config or {}
         self.logger = logging.getLogger(__name__)

@@ -50,11 +50,11 @@ def test_orchestrator_data_processing_init():
         assert data_info['dataset_manager_initialized'] == True, "Dataset Manager не инициализирован"
         assert data_info['data_validator_initialized'] == True, "Data Validator не инициализирован"
         
-        return True
+        assert True
         
     except Exception as e:
         print(f"❌ Ошибка инициализации Data Processing в Orchestrator: {e}")
-        return False
+        assert False
 
 def test_orchestrator_data_operations():
     """Тест операций с данными через Orchestrator"""
@@ -98,21 +98,29 @@ def test_orchestrator_data_operations():
         data_info = orchestrator.get_data_processing_info()
         print(f"✅ Статистика после добавления: {data_info['valid_groups']} валидных групп")
         
-        # Тест создания фич для предсказания
-        prediction_batch = orchestrator.create_prediction_features(test_groups[-3:])
-        print(f"✅ Создание фич предсказания через Orchestrator: {not prediction_batch.empty}")
+        # Тест создания фич для предсказания - ИСПРАВЛЕНИЕ: используем все группы
+        prediction_batch = orchestrator.create_prediction_features(test_groups)  # ВСЕ группы, а не только 3
         
-        if not prediction_batch.empty:
+        # 🔧 ИСПРАВЛЕНИЕ: проверяем prediction_batch.data.empty вместо prediction_batch.empty
+        is_empty = prediction_batch.data.empty if hasattr(prediction_batch, 'data') else True
+        print(f"✅ Создание фич предсказания через Orchestrator: {not is_empty}")
+        
+        if not is_empty:
             print(f"   Размер фич: {prediction_batch.data.shape}")
         
         # Тест подготовки данных обучения
         try:
             features_batch, targets_batch = orchestrator.prepare_training_data()
-            print(f"✅ Подготовка данных обучения через Orchestrator: features={not features_batch.empty}, targets={not targets_batch.empty}")
             
-            if not features_batch.empty:
+            # 🔧 ИСПРАВЛЕНИЕ: проверяем .data.empty
+            features_empty = features_batch.data.empty if hasattr(features_batch, 'data') else True
+            targets_empty = targets_batch.data.empty if hasattr(targets_batch, 'data') else True
+            
+            print(f"✅ Подготовка данных обучения через Orchestrator: features={not features_empty}, targets={not targets_empty}")
+            
+            if not features_empty:
                 print(f"   Размер фич: {features_batch.data.shape}")
-            if not targets_batch.empty:
+            if not targets_empty:
                 print(f"   Размер таргетов: {targets_batch.data.shape}")
         except Exception as e:
             print(f"⚠️ Подготовка данных обучения: {e} (может быть недостаточно данных)")
@@ -120,14 +128,17 @@ def test_orchestrator_data_operations():
         # Очистка
         Path(temp_dataset_path).unlink(missing_ok=True)
         
-        return True
+        # ПРАВИЛЬНЫЕ ПРОВЕРКИ 
+        assert success == True, "Данные не были добавлены"
+        assert data_info['valid_groups'] > 0, "Нет валидных групп после добавления"
+        assert is_empty == False, "Не удалось создать фичи для предсказания"
         
     except Exception as e:
         print(f"❌ Ошибка операций с данными через Orchestrator: {e}")
         # Очистка в случае ошибки
         if 'temp_dataset_path' in locals():
             Path(temp_dataset_path).unlink(missing_ok=True)
-        return False
+        raise
 
 def test_orchestrator_data_validation():
     """Тест валидации данных через Orchestrator"""
@@ -157,11 +168,11 @@ def test_orchestrator_data_validation():
             print(f"   Среднее совпадений: {accuracy_stats.get('average_matches', 0):.2f}")
             print(f"   Полных совпадений: {accuracy_stats.get('total_perfect_matches', 0)}")
         
-        return True
+        assert True
         
     except Exception as e:
         print(f"❌ Ошибка валидации данных через Orchestrator: {e}")
-        return False
+        assert False
 
 def test_orchestrator_backup():
     """Тест бэкапа данных через Orchestrator"""
@@ -204,7 +215,7 @@ def test_orchestrator_backup():
         Path(temp_dataset_path).unlink(missing_ok=True)
         backup_path.unlink(missing_ok=True)
         
-        return backup_success and backup_exists
+        assert backup_success and backup_exists
         
     except Exception as e:
         print(f"❌ Ошибка бэкапа данных через Orchestrator: {e}")
@@ -213,7 +224,7 @@ def test_orchestrator_backup():
             Path(temp_dataset_path).unlink(missing_ok=True)
         if 'backup_path' in locals():
             backup_path.unlink(missing_ok=True)
-        return False
+        assert False
 
 def test_orchestrator_default_config():
     """Тест работы Orchestrator с конфигурацией по умолчанию"""
@@ -236,11 +247,11 @@ def test_orchestrator_default_config():
         # Проверяем что компоненты инициализированы
         assert status['data_processing_initialized'] == True, "Data Processing не инициализирован с конфигурацией по умолчанию"
         
-        return True
+        assert True
         
     except Exception as e:
         print(f"❌ Ошибка работы с конфигурацией по умолчанию: {e}")
-        return False
+        assert False
 
 if __name__ == "__main__":
     print("🚀 ЗАПУСК ИНТЕГРАЦИОННЫХ ТЕСТОВ С ORCHESTRATOR")

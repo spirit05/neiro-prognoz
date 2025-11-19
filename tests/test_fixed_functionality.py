@@ -40,11 +40,11 @@ def test_data_processor_with_sufficient_data():
             print(f"   Prediction features shape: {prediction_batch.data.shape}")
             print(f"   Prediction features columns: {len(prediction_batch.data.columns)}")
         
-        return True
+        assert True
         
     except Exception as e:
         print(f"❌ Ошибка в DataProcessor с достаточными данными: {e}")
-        return False
+        assert False
 
 def test_feature_consistency():
     """Тест консистентности фич между старой и новой системой"""
@@ -80,11 +80,11 @@ def test_feature_consistency():
             adv_std = advanced_features.std()
             print(f"✅ Advanced features stats: mean={adv_mean:.3f}, std={adv_std:.3f}")
         
-        return len(statistical_features) == 50 and len(advanced_features) == 15
+        assert len(statistical_features) == 50 and len(advanced_features) == 15
         
     except Exception as e:
         print(f"❌ Ошибка в тесте консистентности фич: {e}")
-        return False
+        assert False
 
 def test_dataset_manager_comprehensive():
     """Комплексный тест DatasetManager"""
@@ -123,11 +123,11 @@ def test_dataset_manager_comprehensive():
         os.unlink(test_path)
         os.unlink("/tmp/test_comprehensive_dataset.backup.json")
         
-        return True
+        assert True
         
     except Exception as e:
         print(f"❌ Ошибка в комплексном тесте DatasetManager: {e}")
-        return False
+        assert False
 
 def test_data_validation_comprehensive():
     """Комплексный тест валидации данных"""
@@ -179,11 +179,11 @@ def test_data_validation_comprehensive():
         
         print(f"✅ Сравнение групп: {comparison_count}/{len(comparison_cases)} пройдено")
         
-        return valid_count == len(test_cases) and comparison_count == len(comparison_cases)
+        assert valid_count == len(test_cases) and comparison_count == len(comparison_cases)
         
     except Exception as e:
         print(f"❌ Ошибка в комплексном тесте валидации: {e}")
-        return False
+        assert False
 
 if __name__ == "__main__":
     print("🚀 ЗАПУСК ИСПРАВЛЕННЫХ ТЕСТОВ DATA PROCESSING МОДУЛЯ")

@@ -47,7 +47,7 @@ def test_feature_engineers_produce_consistent_output():
                 assert adv_features.shape == (15,), f"Advanced features wrong shape for dataset {i+1}"
         
         print("✅ Feature engineers produce consistent output format")
-        return True
+        assert True
         
     except Exception as e:
         pytest.fail(f"Feature output consistency test failed: {e}")
@@ -80,7 +80,7 @@ def test_ready_for_future_integration():
                 print(f"  ✅ {criterion_name}")
         
         print("✅ All feature engineers ready for future integration")
-        return True
+        assert True
         
     except Exception as e:
         pytest.fail(f"Future integration readiness test failed: {e}")

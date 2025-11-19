@@ -25,4 +25,4 @@ def test_data_validation():
         is_valid = validator.validate_group(group)
         logger.info(f"   {group} -> {'✅ Валидна' if is_valid else '❌ Невалидна'}")
     
-    return True
+    assert True

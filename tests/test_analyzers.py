@@ -27,11 +27,11 @@ def test_analyzers_import():
         assert error_analyzer is not None
         
         print("✅ Экземпляры анализаторов создаются корректно")
-        return True
+        assert True
         
     except ImportError as e:
         print(f"❌ Ошибка импорта анализаторов: {e}")
-        return False
+        assert False
 
 def test_analyzers_functionality():
     """Тест функциональности анализаторов"""
@@ -65,11 +65,11 @@ def test_analyzers_functionality():
         assert 'common_errors' in error_patterns
         print("✅ Анализатор ошибок работает")
         
-        return True
+        assert True
         
     except Exception as e:
         print(f"❌ Ошибка функциональности анализаторов: {e}")
-        return False
+        assert False
 
 if __name__ == "__main__":
     print("🧪 Тестирование анализаторов...")

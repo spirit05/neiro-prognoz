@@ -28,11 +28,11 @@ def test_data_processor_basic():
         feature_info = processor.get_feature_info()
         print(f"✅ Информация о фичах: {feature_info}")
         
-        return True
+        assert True
         
     except Exception as e:
         print(f"❌ Ошибка в базовой функциональности DataProcessor: {e}")
-        return False
+        assert False
 
 def test_dataset_manager_basic():
     """Тест базовой функциональности DatasetManager"""
@@ -67,11 +67,11 @@ def test_dataset_manager_basic():
         import os
         os.unlink(test_path)
         
-        return True
+        assert True
         
     except Exception as e:
         print(f"❌ Ошибка в базовой функциональности DatasetManager: {e}")
-        return False
+        assert False
 
 def test_data_validator_basic():
     """Тест базовой функциональности DataValidator"""
@@ -101,11 +101,11 @@ def test_data_validator_basic():
         validation_stats = validator.validate_dataset(test_groups)
         print(f"✅ Валидация dataset: {validation_stats}")
         
-        return True
+        assert True
         
     except Exception as e:
         print(f"❌ Ошибка в базовой функциональности DataValidator: {e}")
-        return False
+        assert False
 
 def test_data_processor_advanced():
     """Тест расширенной функциональности DataProcessor"""
@@ -137,11 +137,11 @@ def test_data_processor_advanced():
         if not prediction_batch.empty:
             print(f"   Prediction features shape: {prediction_batch.data.shape}")
         
-        return True
+        assert True
         
     except Exception as e:
         print(f"❌ Ошибка в расширенной функциональности DataProcessor: {e}")
-        return False
+        assert False
 
 if __name__ == "__main__":
     print("🚀 ЗАПУСК БАЗОВЫХ ТЕСТОВ DATA PROCESSING МОДУЛЯ")

@@ -59,7 +59,7 @@ def test_ml_core_complete():
         # Проверяем, что модель действительно обучена
         if not orchestrator._models[model_id]._is_trained:
             logger.error("❌ Модель не помечена как обученная после обучения!")
-            return False
+            assert False
         
         # 4. Генерация прогнозов после обучения
         logger.info("🔄 Шаг 4: Генерация прогнозов после обучения...")
@@ -110,7 +110,7 @@ def test_ml_core_complete():
                     
             except Exception as e:
                 logger.error(f"❌ Ошибка дообучения: {e}")
-                return False
+                assert False
         
         # 7. Система самообучения
         logger.info("🔄 Шаг 7: Система самообучения...")
@@ -144,16 +144,16 @@ def test_ml_core_complete():
         # Проверяем, что модель остается обученной
         if orchestrator._models[model_id]._is_trained:
             logger.info("🎉 ЭТАП 9 ЗАВЕРШЕН УСПЕШНО! ML-ядро готово к работе!")
-            return True
+            assert True
         else:
             logger.error("💥 Модель не осталась обученной после всех операций!")
-            return False
+            assert False
         
     except Exception as e:
         logger.error(f"💥 ОШИБКА: {e}")
         import traceback
         logger.error(f"Трассировка: {traceback.format_exc()}")
-        return False
+        assert False
 
 if __name__ == "__main__":
     print("=" * 60)

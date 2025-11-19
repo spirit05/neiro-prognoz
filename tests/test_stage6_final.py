@@ -127,13 +127,13 @@ def test_complete_self_learning_workflow():
             print("✅ Сохранение и загрузка данных работают корректно")
             
             print("\n🎉 ВСЕ ТЕСТЫ SELF-LEARNING СИСТЕМЫ ПРОЙДЕНЫ УСПЕШНО!")
-            return True
+            assert True
             
     except Exception as e:
         print(f"❌ Ошибка в финальном тесте: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        assert False
 
 def test_analyzers_functionality():
     """Тест функциональности анализаторов"""
@@ -176,11 +176,11 @@ def test_analyzers_functionality():
         assert 'number_frequency_analysis' in error_patterns
         print("✅ Анализатор ошибок работает корректно")
         
-        return True
+        assert True
         
     except Exception as e:
         print(f"❌ Ошибка в тесте анализаторов: {e}")
-        return False
+        assert False
 
 if __name__ == "__main__":
     print("=" * 60)

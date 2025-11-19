@@ -127,13 +127,13 @@ def test_comprehensive_self_learning():
             print("✅ Сохранение и загрузка истории работают")
             
             print("\n🎉 ВСЕ КОМПЛЕКСНЫЕ ТЕСТЫ ПРОЙДЕНЫ УСПЕШНО!")
-            return True
+            assert True
             
     except Exception as e:
         print(f"❌ Ошибка в комплексном тесте: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        assert False
 
 def test_edge_cases():
     """Тест граничных случаев"""
@@ -176,11 +176,11 @@ def test_edge_cases():
         assert result is not None
         print("✅ Обработка данных разной длины работает")
         
-        return True
+        assert True
         
     except Exception as e:
         print(f"❌ Ошибка в тесте граничных случаев: {e}")
-        return False
+        assert False
 
 if __name__ == "__main__":
     print("=" * 60)

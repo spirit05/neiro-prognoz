@@ -26,10 +26,10 @@ def test_ml_import():
         from ml.core.base_model import AbstractBaseModel
         
         print("✅ Базовые импорты работают")
-        return True
+        assert True
     except ImportError as e:
         print(f"❌ Ошибка импорта: {e}")
-        return False
+        assert False
 
 if __name__ == "__main__":
     test_python_path()

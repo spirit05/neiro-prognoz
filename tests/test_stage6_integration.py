@@ -99,13 +99,13 @@ def test_self_learning_integration():
             print("✅ Сохранение данных работает")
             
             print("🎉 Все интеграционные тесты Self-Learning пройдены!")
-            return True
+            assert True
             
     except Exception as e:
         print(f"❌ Ошибка в интеграционном тесте: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        assert False
 
 def test_orchestrator_integration():
     """Тест интеграции оркестратора с self-learning"""
@@ -136,11 +136,11 @@ def test_orchestrator_integration():
         print("✅ Получение статистики из оркестратора работает")
         
         print("🎉 Интеграция оркестратора с self-learning работает!")
-        return True
+        assert True
         
     except Exception as e:
         print(f"❌ Ошибка интеграции оркестратора: {e}")
-        return False
+        assert False
 
 if __name__ == "__main__":
     success1 = test_self_learning_integration()
