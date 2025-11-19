@@ -2,7 +2,6 @@
 __pycache__/
 *.py[codz]
 *$py.class
-dataset.json
 api_data/telegram_config.json
 # C extensions
 *.so

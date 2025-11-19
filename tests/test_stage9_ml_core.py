@@ -26,7 +26,7 @@ def test_ml_core_complete():
         # 1. Инициализация оркестратора
         logger.info("🔄 Шаг 1: Инициализация MLOrchestrator...")
         
-        orchestrator = MLOrchestrator()
+        orchestrator = MLOrchestrator()        
         status = orchestrator.get_system_status()
         logger.info(f"✅ Оркестратор инициализирован: {status}")
         
