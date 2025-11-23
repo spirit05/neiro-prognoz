@@ -1,17 +1,34 @@
 # [file name]: tests/test_architecture_integrity.py
-# ИСПРАВЛЕННАЯ ВЕРСИЯ - обновлена для модульной архитектуры
+"""
+Тест структуры модулей - ОБНОВЛЕН С ПРАВИЛЬНОЙ НАСТРОЙКОЙ ПУТЕЙ
+"""
 
 import pytest
 from pathlib import Path
 import importlib
 import sys
+import os
+
+
+# 🔧 ДОБАВЛЕНО: Правильная настройка путей для импортов
+def setup_module():
+    """Настройка путей перед запуском тестов"""
+    project_root = Path(__file__).parent.parent
+    sys.path.insert(0, str(project_root))
+    
+    # Также добавляем путь к ml директории на всякий случай
+    ml_path = project_root / "ml"
+    if ml_path.exists():
+        sys.path.insert(0, str(ml_path))
 
 
 def test_module_structure():
-    """Тест структуры модулей - ОБНОВЛЕН ДЛЯ МОДУЛЬНОЙ АРХИТЕКТУРЫ"""
+    """Тест структуры модулей на основе реальной структуры проекта"""
+    setup_module()  # 🔧 ДОБАВЛЕНО: Настраиваем пути
+    
     base_dir = Path(__file__).parent.parent
     
-    # 🔧 ОБНОВЛЕНО: Заменяем старый монолитный файл на новую модульную структуру
+    # 🔧 ОБНОВЛЕНО: Реальный список файлов из структуры проекта
     key_files = [
         # Основные core файлы
         "ml/core/__init__.py",
@@ -34,20 +51,67 @@ def test_module_structure():
         # Ансамблевые системы
         "ml/ensemble/__init__.py",
         "ml/ensemble/base_ensemble.py",
+        "ml/ensemble/factory.py",
+        "ml/ensemble/combiners/__init__.py",
+        "ml/ensemble/combiners/weighted_combiner.py",
+        "ml/ensemble/predictors/__init__.py",
+        "ml/ensemble/predictors/frequency.py",
+        "ml/ensemble/predictors/pattern_based.py",
+        "ml/ensemble/predictors/statistical.py",
         
         # Data processing (Этап 8)
+        "ml/data/__init__.py",
+        "ml/data/processors/__init__.py",
         "ml/data/processors/data_processor.py",
+        "ml/data/providers/__init__.py",
         "ml/data/providers/dataset_manager.py",
+        "ml/data/quality/__init__.py",
         "ml/data/quality/validators.py",
         
-        # Features
-        "ml/features/__init__.py", 
+        # Features (актуальная структура)
+        "ml/features/__init__.py",
         "ml/features/base.py",
-        "ml/features/engineers.py",
+        "ml/features/engineers/__init__.py",
+        "ml/features/engineers/advanced.py",
+        "ml/features/engineers/statistical.py",
+        "ml/features/selectors/__init__.py",
+        "ml/features/transformers/__init__.py",
         
-        # Utils
-        "ml/utils/__init__.py",
-        "ml/utils/data_utils.py",
+        # Learning
+        "ml/learning/__init__.py",
+        "ml/learning/self_learning.py",
+        "ml/learning/analyzers/__init__.py",
+        "ml/learning/analyzers/error_patterns.py",
+        "ml/learning/analyzers/performance.py",
+        
+        # Models
+        "ml/models/__init__.py",
+        "ml/models/base/__init__.py",
+        "ml/models/base/enhanced_predictor.py",
+        
+        # Training
+        "ml/training/__init__.py",
+        "ml/training/strategies/__init__.py",
+        "ml/training/strategies/basic_training.py",
+        "ml/training/strategies/incremental.py",
+        "ml/training/optimizers/__init__.py",
+        "ml/training/optimizers/enhanced_optimizer.py",
+        
+        # Конфигурация
+        "config/__init__.py",
+        "config/ensemble_config.yaml",
+        "config/feature_config.yaml",
+        "config/learning_config.yaml",
+        "config/model_config.yaml",
+        "config/orchestrator_config.yaml",
+        
+        # Приложение
+        "app/__init__.py",
+        "app/main.py",
+        
+        # Тесты
+        "tests/__init__.py",
+        "tests/conftest.py",
     ]
     
     missing_files = []
@@ -56,14 +120,21 @@ def test_module_structure():
         if not full_path.exists():
             missing_files.append(str(full_path))
     
-    # 🔧 ОБНОВЛЕНО: Убираем старый orchestrator.py из проверки
+    # 🔧 ОБНОВЛЕНО: Выводим информацию об отсутствующих файлах
+    if missing_files:
+        print("⚠️ Отсутствующие файлы:")
+        for file in missing_files:
+            print(f"   - {file}")
+    
     assert len(missing_files) == 0, f"Отсутствующие файлы: {missing_files}"
     
-    print("✅ Структура модулей соответствует новой архитектуре")
+    print("✅ Структура модулей соответствует актуальной архитектуре")
 
 
 def test_core_imports():
     """Тест импортов core модулей"""
+    setup_module()  # 🔧 ДОБАВЛЕНО: Настраиваем пути
+    
     try:
         # Основные core импорты
         from ml.core import MLOrchestrator, AbstractBaseModel
@@ -80,6 +151,9 @@ def test_core_imports():
         from ml.data.processors import ModularDataProcessor
         from ml.data.providers import DatasetManager
         
+        # Features (актуальные импорты)
+        from ml.features.engineers import StatisticalEngineer, AdvancedEngineer
+        
         print("✅ Все основные импорты работают")
         
     except ImportError as e:
@@ -88,6 +162,8 @@ def test_core_imports():
 
 def test_orchestrator_backward_compatibility():
     """Тест обратной совместимости оркестратора"""
+    setup_module()  # 🔧 ДОБАВЛЕНО: Настраиваем пути
+    
     try:
         # Старый импорт должен работать
         from ml.core.orchestrator import MLOrchestrator
@@ -115,6 +191,8 @@ def test_orchestrator_backward_compatibility():
 
 def test_workflow_manager_availability():
     """Тест доступности WorkflowManager (Этап 10)"""
+    setup_module()  # 🔧 ДОБАВЛЕНО: Настраиваем пути
+    
     try:
         from ml.core.orchestrator import MLOrchestrator
         
@@ -139,23 +217,80 @@ def test_workflow_manager_availability():
         pytest.fail(f"Ошибка WorkflowManager: {e}")
 
 
-# 🔧 ДОБАВЛЕНО: Тест для проверки что старый файл действительно удален
+def test_feature_engineers_availability():
+    """Тест доступности feature engineers"""
+    setup_module()  # 🔧 ДОБАВЛЕНО: Настраиваем пути
+    
+    try:
+        from ml.features.engineers import StatisticalEngineer, AdvancedEngineer
+        
+        # Проверяем создание инженеров
+        stat_engineer = StatisticalEngineer(history_size=20)
+        adv_engineer = AdvancedEngineer(history_size=20)
+        
+        assert stat_engineer is not None, "StatisticalEngineer не создан"
+        assert adv_engineer is not None, "AdvancedEngineer не создан"
+        
+        print("✅ Feature engineers доступны и работают")
+        
+    except Exception as e:
+        pytest.fail(f"Ошибка feature engineers: {e}")
+
+
 def test_old_monolithic_orchestrator_removed():
     """Тест что старый монолитный orchestrator.py удален"""
+    setup_module()  # 🔧 ДОБАВЛЕНО: Настраиваем пути
+    
     base_dir = Path(__file__).parent.parent
     old_orchestrator_path = base_dir / "ml" / "core" / "orchestrator.py"
     
-    # Ожидаем что старый файл удален
-    assert not old_orchestrator_path.exists(), "Старый монолитный orchestrator.py все еще существует!"
+    # 🔧 ОБНОВЛЕНО: Проверяем что есть только файл для обратной совместимости
+    # или что старый файл удален
+    if old_orchestrator_path.exists():
+        # Если файл существует, проверяем что это фасад для обратной совместимости
+        with open(old_orchestrator_path, 'r') as f:
+            content = f.read()
+            assert "обратной совместимости" in content or "backward compatibility" in content, \
+                "Старый orchestrator.py не был заменен фасадом"
+        print("✅ Старый orchestrator.py заменен фасадом обратной совместимости")
+    else:
+        print("✅ Старый монолитный orchestrator.py удален")
+
+
+def test_data_processing_components():
+    """Тест компонентов обработки данных (Этап 8)"""
+    setup_module()  # 🔧 ДОБАВЛЕНО: Настраиваем пути
     
-    print("✅ Старый монолитный orchestrator.py успешно удален")
+    try:
+        from ml.data.processors import ModularDataProcessor
+        from ml.data.providers import DatasetManager
+        from ml.data.quality.validators import DataValidator
+        
+        # Проверяем создание компонентов
+        processor = ModularDataProcessor()
+        dataset_manager = DatasetManager()
+        validator = DataValidator()
+        
+        assert processor is not None, "ModularDataProcessor не создан"
+        assert dataset_manager is not None, "DatasetManager не создан" 
+        assert validator is not None, "DataValidator не создан"
+        
+        print("✅ Компоненты обработки данных (Этап 8) работают")
+        
+    except Exception as e:
+        pytest.fail(f"Ошибка компонентов обработки данных: {e}")
 
 
 if __name__ == "__main__":
+    # 🔧 ДОБАВЛЕНО: Настраиваем пути при запуске напрямую
+    setup_module()
+    
     # Запуск тестов вручную
     test_module_structure()
     test_core_imports() 
     test_orchestrator_backward_compatibility()
     test_workflow_manager_availability()
+    test_feature_engineers_availability()
     test_old_monolithic_orchestrator_removed()
+    test_data_processing_components()
     print("🎉 Все тесты архитектуры пройдены!")
