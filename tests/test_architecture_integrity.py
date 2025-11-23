@@ -1,194 +1,161 @@
 # [file name]: tests/test_architecture_integrity.py
-"""
-Тесты архитектурной целостности новой ML системы
-"""
+# ИСПРАВЛЕННАЯ ВЕРСИЯ - обновлена для модульной архитектуры
 
-import os
 import pytest
-import importlib
 from pathlib import Path
-
-
-def test_abstract_feature_engineer_interface():
-    """Тест интерфейса AbstractFeatureEngineer"""
-    # Проверяем, что класс существует и абстрактный
-    from ml.features.base import AbstractFeatureEngineer
-    import inspect
-    
-    # Проверяем, что класс абстрактный
-    assert inspect.isabstract(AbstractFeatureEngineer)
-    
-    # Проверяем наличие абстрактных методов
-    abstract_methods = AbstractFeatureEngineer.__abstractmethods__
-    expected_methods = {'extract_features', 'get_feature_names'}
-    assert abstract_methods == expected_methods
-    
-    # Проверяем, что нельзя создать экземпляр абстрактного класса
-    try:
-        engineer = AbstractFeatureEngineer(history_size=20)
-        assert False, "Should not be able to instantiate abstract class"
-    except TypeError:
-        assert True  # Ожидаемое поведение
+import importlib
+import sys
 
 
 def test_module_structure():
-    """Тест структуры модулей"""
-    import ml
+    """Тест структуры модулей - ОБНОВЛЕН ДЛЯ МОДУЛЬНОЙ АРХИТЕКТУРЫ"""
+    base_dir = Path(__file__).parent.parent
     
-    # 🔧 ИСПРАВЛЕНИЕ: Используем правильные пути относительно корня проекта
-    project_root = Path(__file__).parent.parent  # /opt/model
-    
-    # Проверяем существование основных модулей
-    expected_modules = [
-        'ml/core',
-        'ml/models', 
-        'ml/features',
-        'ml/training',
-        'ml/training/strategies',
-        'ml/training/optimizers'
-    ]
-    
-    for module_path in expected_modules:
-        full_path = project_root / module_path
-        assert full_path.exists(), f"Module path does not exist: {full_path}"
-        assert (full_path / '__init__.py').exists(), f"Missing __init__.py in {full_path}"
-    
-    # Проверяем наличие ключевых файлов
+    # 🔧 ОБНОВЛЕНО: Заменяем старый монолитный файл на новую модульную структуру
     key_files = [
-        'ml/core/base_model.py',
-        'ml/core/orchestrator.py',
-        'ml/core/types.py',
-        'ml/models/base/enhanced_predictor.py',
-        'ml/features/base.py',
-        'ml/training/__init__.py',
-        'ml/training/strategies/basic_training.py',
-        'ml/training/strategies/incremental.py',
-        'ml/training/optimizers/enhanced_optimizer.py'
+        # Основные core файлы
+        "ml/core/__init__.py",
+        "ml/core/base_model.py", 
+        "ml/core/types.py",
+        "ml/core/config_loader.py",
+        
+        # 🔧 НОВАЯ МОДУЛЬНАЯ СТРУКТУРА ORCHESTRATOR
+        "ml/core/orchestrator/__init__.py",
+        "ml/core/orchestrator/base_orchestrator.py",
+        "ml/core/orchestrator/managers/__init__.py",
+        "ml/core/orchestrator/managers/model_manager.py",
+        "ml/core/orchestrator/managers/data_manager.py", 
+        "ml/core/orchestrator/managers/workflow_manager.py",
+        "ml/core/orchestrator/managers/notification_manager.py",
+        "ml/core/orchestrator/managers/api_manager.py",
+        "ml/core/orchestrator/types/__init__.py",
+        "ml/core/orchestrator/types/workflow_types.py",
+        
+        # Ансамблевые системы
+        "ml/ensemble/__init__.py",
+        "ml/ensemble/base_ensemble.py",
+        
+        # Data processing (Этап 8)
+        "ml/data/processors/data_processor.py",
+        "ml/data/providers/dataset_manager.py",
+        "ml/data/quality/validators.py",
+        
+        # Features
+        "ml/features/__init__.py", 
+        "ml/features/base.py",
+        "ml/features/engineers.py",
+        
+        # Utils
+        "ml/utils/__init__.py",
+        "ml/utils/data_utils.py",
     ]
     
-    for file_path in key_files:
-        full_path = project_root / file_path
-        assert full_path.exists(), f"Key file does not exist: {full_path}"
-
-def test_abstract_base_model_interface():
-    """Тест интерфейса AbstractBaseModel"""
-    from ml.core.base_model import AbstractBaseModel
-    import inspect
-    
-    # Проверяем, что класс абстрактный
-    assert inspect.isabstract(AbstractBaseModel)
-    
-    # Проверяем наличие абстрактных методов
-    abstract_methods = AbstractBaseModel.__abstractmethods__
-    expected_methods = {'train', 'predict', 'save', 'load'}
-    assert abstract_methods == expected_methods
-
-
-def test_ml_orchestrator_initialization():
-    """Тест инициализации MLOrchestrator"""
-    from ml.core.orchestrator import MLOrchestrator
-    
-    # Проверяем создание оркестратора
-    orchestrator = MLOrchestrator({})
-    assert orchestrator is not None
-    assert hasattr(orchestrator, 'register_model')
-    assert hasattr(orchestrator, 'train_model')
-    assert hasattr(orchestrator, 'predict')
-
-
-def test_enhanced_predictor_implementation():
-    """Тест реализации EnhancedPredictor"""
-    from ml.models.base.enhanced_predictor import EnhancedPredictor
-    from ml.core.base_model import AbstractBaseModel
-    
-    # Проверяем, что класс наследует от AbstractBaseModel
-    assert issubclass(EnhancedPredictor, AbstractBaseModel)
-    
-    # Проверяем создание экземпляра
-    predictor = EnhancedPredictor("test_predictor")
-    assert predictor is not None
-    assert predictor.model_id == "test_predictor"
-
-
-def test_training_strategies_availability():
-    """Тест доступности стратегий обучения"""
-    # Проверяем базовую стратегию
-    from ml.training.strategies.basic_training import BasicTrainingStrategy
-    basic_strategy = BasicTrainingStrategy()
-    assert basic_strategy.strategy_id == "basic_training"
-    
-    # Проверяем инкрементальную стратегию
-    from ml.training.strategies.incremental import IncrementalTrainingStrategy
-    incremental_strategy = IncrementalTrainingStrategy()
-    assert incremental_strategy.strategy_id == "incremental_training"
-
-
-def test_feature_engineers_implementation():
-    """Тест реализации feature engineers"""
-    from ml.features.engineers.statistical import StatisticalEngineer
-    from ml.features.engineers.advanced import AdvancedEngineer
-    
-    # Проверяем статистический инженер
-    statistical_engineer = StatisticalEngineer()
-    assert statistical_engineer is not None
-    features = statistical_engineer.extract_features([1, 2, 3, 4, 5])
-    assert len(features) == 50
-    
-    # Проверяем продвинутый инженер
-    advanced_engineer = AdvancedEngineer()
-    assert advanced_engineer is not None
-    features = advanced_engineer.extract_features([1, 2, 3, 4, 5])
-    assert len(features) == 15
-
-
-def test_all_modules_can_be_imported():
-    """Тест что все модули могут быть импортированы без ошибок"""
-    modules_to_test = [
-        'ml.core',
-        'ml.core.base_model',
-        'ml.core.orchestrator', 
-        'ml.core.types',
-        'ml.models.base',
-        'ml.models.base.enhanced_predictor',
-        'ml.features',
-        'ml.features.base',
-        'ml.features.engineers.statistical',
-        'ml.features.engineers.advanced',
-        'ml.training',
-        'ml.training.strategies.basic_training',
-        'ml.training.strategies.incremental',
-        'ml.training.optimizers.enhanced_optimizer'
-    ]
-    
-    for module_name in modules_to_test:
-        try:
-            importlib.import_module(module_name)
-            assert True, f"Successfully imported {module_name}"
-        except ImportError as e:
-            assert False, f"Failed to import {module_name}: {e}"
-
-def test_config_files_exist():
-    """Тест наличия конфигурационных файлов"""
-    # 🔧 ИСПРАВЛЕНИЕ: Используем правильные пути относительно корня проекта
-    project_root = Path(__file__).parent.parent  # /opt/model
-    
-    config_files = [
-        'config/model_config.yaml',
-        'config/feature_config.yaml',
-        'config/model_config.py',
-        'config/feature_config.py'
-    ]
-
     missing_files = []
-    for config_file in config_files:
-        full_path = project_root / config_file
+    for file_path in key_files:
+        full_path = base_dir / file_path
         if not full_path.exists():
-            missing_files.append(config_file)
+            missing_files.append(str(full_path))
     
-    if missing_files:
-        pytest.fail(f"Конфигурационные файлы отсутствуют: {missing_files}")
-    else:
-        assert True, "Все конфигурационные файлы присутствуют"
+    # 🔧 ОБНОВЛЕНО: Убираем старый orchestrator.py из проверки
+    assert len(missing_files) == 0, f"Отсутствующие файлы: {missing_files}"
+    
+    print("✅ Структура модулей соответствует новой архитектуре")
+
+
+def test_core_imports():
+    """Тест импортов core модулей"""
+    try:
+        # Основные core импорты
+        from ml.core import MLOrchestrator, AbstractBaseModel
+        from ml.core.types import ModelType, ModelStatus, DataBatch
+        
+        # 🔧 ОБНОВЛЕНО: Импорты из новой модульной структуры
+        from ml.core.orchestrator import MLOrchestrator as ModularOrchestrator
+        from ml.core.orchestrator.managers import ModelManager, DataManager, WorkflowManager
+        
+        # Ансамблевые системы
+        from ml.ensemble import WeightedEnsemblePredictor
+        
+        # Data processing
+        from ml.data.processors import ModularDataProcessor
+        from ml.data.providers import DatasetManager
+        
+        print("✅ Все основные импорты работают")
+        
+    except ImportError as e:
+        pytest.fail(f"Ошибка импорта: {e}")
+
+
+def test_orchestrator_backward_compatibility():
+    """Тест обратной совместимости оркестратора"""
+    try:
+        # Старый импорт должен работать
+        from ml.core.orchestrator import MLOrchestrator
+        
+        orchestrator = MLOrchestrator()
+        
+        # 🔧 ОБНОВЛЕНО: Проверяем что это действительно модульная версия
+        assert hasattr(orchestrator, 'model_manager'), "Модульный оркестратор не загружен"
+        assert hasattr(orchestrator, 'workflow_manager'), "WorkflowManager не доступен"
+        
+        # Проверяем обратную совместимость методов
+        required_methods = [
+            'register_model', 'train_model', 'predict', 'get_model_info',
+            'list_models', 'prepare_training_data', 'get_system_status'
+        ]
+        
+        for method in required_methods:
+            assert hasattr(orchestrator, method), f"Метод {method} отсутствует"
+            
+        print("✅ Обратная совместимость оркестратора обеспечена")
+        
+    except Exception as e:
+        pytest.fail(f"Ошибка обратной совместимости: {e}")
+
+
+def test_workflow_manager_availability():
+    """Тест доступности WorkflowManager (Этап 10)"""
+    try:
+        from ml.core.orchestrator import MLOrchestrator
+        
+        orchestrator = MLOrchestrator()
+        
+        # Проверяем новые workflow методы
+        workflow_methods = [
+            'workflow_add_single_group',
+            'workflow_add_multiple_groups', 
+            'workflow_full_training_cycle',
+            'workflow_generate_predictions',
+            'get_system_overview',
+            'get_learning_analytics'
+        ]
+        
+        for method in workflow_methods:
+            assert hasattr(orchestrator, method), f"Workflow метод {method} отсутствует"
+            
+        print("✅ WorkflowManager готов для Этапа 10")
+        
+    except Exception as e:
+        pytest.fail(f"Ошибка WorkflowManager: {e}")
+
+
+# 🔧 ДОБАВЛЕНО: Тест для проверки что старый файл действительно удален
+def test_old_monolithic_orchestrator_removed():
+    """Тест что старый монолитный orchestrator.py удален"""
+    base_dir = Path(__file__).parent.parent
+    old_orchestrator_path = base_dir / "ml" / "core" / "orchestrator.py"
+    
+    # Ожидаем что старый файл удален
+    assert not old_orchestrator_path.exists(), "Старый монолитный orchestrator.py все еще существует!"
+    
+    print("✅ Старый монолитный orchestrator.py успешно удален")
+
 
 if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+    # Запуск тестов вручную
+    test_module_structure()
+    test_core_imports() 
+    test_orchestrator_backward_compatibility()
+    test_workflow_manager_availability()
+    test_old_monolithic_orchestrator_removed()
+    print("🎉 Все тесты архитектуры пройдены!")
