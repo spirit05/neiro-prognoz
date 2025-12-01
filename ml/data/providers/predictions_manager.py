@@ -15,7 +15,7 @@ class PredictionsManager:
     """Менеджер для работы с прогнозами"""
 
     def __init__(self, predictions_path: str = None):
-        self.predictions_path = predictions_path or "data/predictions.json"
+        self.predictions_path = predictions_path or "data/analytics/predictions.json"
         self.logger = logging.getLogger(__name__)
         
         # Создаем директорию если не существует

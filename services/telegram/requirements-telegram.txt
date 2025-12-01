@@ -1,0 +1,14 @@
+# Зависимости для Telegram бота новой ML системы
+python-telegram-bot==20.7  # Не используется, но для совместимости
+requests>=2.31.0
+PyYAML>=6.0
+python-dotenv>=1.0.0
+
+# Уже установлены через основные requirements:
+# numpy
+# pandas
+# torch
+# scikit-learn
+# streamlit (для веб-интерфейса)
+
+# Устанавливается отдельно

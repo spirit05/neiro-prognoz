@@ -123,13 +123,6 @@ class MLIntegration:
             os.makedirs(directory, exist_ok=True)
             self.logger.debug(f"📁 Создана директория: {directory}")
         
-        # Проверяем наличие данных
-        dataset_path = os.path.join(self.project_root, 'data', 'datasets', 'dataset.json')
-        if not os.path.exists(dataset_path):
-            self.logger.warning("⚠️ Датасет не найден, создаем пустой")
-            dataset_manager = DatasetManager()
-            dataset_manager.save_dataset([])
-   
     def get_system_status(self) -> Dict[str, Any]:
         if not self.is_initialized or not self.orchestrator:
             return {

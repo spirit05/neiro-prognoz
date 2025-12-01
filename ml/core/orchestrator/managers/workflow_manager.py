@@ -121,7 +121,7 @@ class WorkflowManager:
                 predictions = self.orchestrator.model_manager.predict(request)
                 
                 # Сохраняем прогнозы
-                from ml.data.providers.predictions_manager import PredictionsManager
+                from ml.data.providers import PredictionsManager
                 predictions_manager = PredictionsManager()
                 
                 predictions_list = []
@@ -257,6 +257,7 @@ class WorkflowManager:
                 request = self._create_prediction_request(prediction_batch)
                 predictions = self.orchestrator.model_manager.predict(request)
                 
+                from ml.data.providers import PredictionsManager
                 predictions_manager = PredictionsManager()
                 predictions_manager.save_predictions([(pred, 0.5) for pred in predictions])
                 
@@ -404,7 +405,7 @@ class WorkflowManager:
                             
                             # 🔧 ИСПРАВЛЕНИЕ: Правильное сохранение прогнозов
                             try:
-                                from ml.data.providers.predictions_manager import PredictionsManager
+                                from ml.data.providers import PredictionsManager
                                 predictions_manager = PredictionsManager()
                                 predictions_list = []
                                 
@@ -457,6 +458,7 @@ class WorkflowManager:
                             except ImportError as e:
                                 self.logger.error(f"❌ PredictionsManager не найден: {e}")
                                 # Fallback если PredictionsManager не найден
+                                from ml.data.providers import PredictionsManager
                                 predictions_manager = PredictionsManager()
                                 predictions_manager.save_predictions([(pred, 0.5) for pred in predictions])
                                 self.logger.info(f"✅ Сгенерировано {predictions_generated} прогнозов (fallback)")
@@ -494,7 +496,7 @@ class WorkflowManager:
 
     def workflow_generate_predictions(self) -> WorkflowResult:
         """
-        Workflow генерации прогнозов
+        Workflow генерации прогнозов - ИСПРАВЛЕННАЯ ВЕРСИЯ
         """
         start_time = time.time()
         steps = []
@@ -506,7 +508,7 @@ class WorkflowManager:
             steps.append("model_validation")
             trained_models = [
                 model_id for model_id, model in self.orchestrator.models.items() 
-                if model.is_trained
+                if hasattr(model, 'is_trained') and model.is_trained
             ]
             
             if not trained_models:
@@ -521,7 +523,20 @@ class WorkflowManager:
             # Шаг 2: Подготовка данных для предсказания
             steps.append("data_preparation")
             dataset = self.orchestrator.dataset_manager.load_dataset()
-            recent_groups = dataset[-10:]
+            
+            if not dataset:
+                return WorkflowResult(
+                    status=WorkflowStatus.FAILED,
+                    message="Нет данных для предсказания",
+                    error="Dataset пуст",
+                    steps_completed=steps,
+                    execution_time=time.time() - start_time
+                )
+                
+            recent_count = min(10, len(dataset))
+            recent_groups = dataset[-recent_count:]
+            
+            self.logger.info(f"📊 Используем {len(recent_groups)} групп для предсказания")
             
             prediction_batch = self.orchestrator.data_manager.create_prediction_features(recent_groups)
             
@@ -531,9 +546,28 @@ class WorkflowManager:
             
             for model_id in trained_models:
                 try:
+                    self.logger.info(f"🎯 Генерация прогнозов моделью: {model_id}")
                     request = self._create_prediction_request(prediction_batch, model_id)
-                    predictions = self.orchestrator.model_manager.predict(request)
-                    all_predictions.extend(predictions.predictions)
+                    prediction_result = self.orchestrator.model_manager.predict(request)
+                    
+                    # 🔧 ИСПРАВЛЕНИЕ: Правильное извлечение прогнозов
+                    if hasattr(prediction_result, 'predictions') and prediction_result.predictions:
+                        self.logger.info(f"✅ Модель {model_id} вернула {len(prediction_result.predictions)} прогнозов")
+                        
+                        # Обрабатываем прогнозы
+                        for pred in prediction_result.predictions:
+                            if isinstance(pred, (list, tuple)) and len(pred) == 4:
+                                pred_tuple = tuple(pred) if isinstance(pred, list) else pred
+                                all_predictions.append((pred_tuple, 0.5))  # Примерный score
+                            elif isinstance(pred, int):
+                                # Одиночное число - создаем группу из 4 одинаковых чисел
+                                pred_tuple = (pred, pred, pred, pred)
+                                all_predictions.append((pred_tuple, 0.3))
+                            else:
+                                self.logger.warning(f"⚠️ Неизвестный формат прогноза: {pred}, тип: {type(pred)}")
+                    else:
+                        self.logger.warning(f"⚠️ Модель {model_id} не вернула прогнозы")
+                        
                 except Exception as e:
                     self.logger.error(f"❌ Ошибка предсказания моделью {model_id}: {e}")
             
@@ -541,15 +575,47 @@ class WorkflowManager:
                 return WorkflowResult(
                     status=WorkflowStatus.FAILED,
                     message="Не удалось сгенерировать прогнозы",
-                    error="Все модели вернули ошибку при предсказании",
+                    error="Все модели вернули пустые или невалидные прогнозы",
                     steps_completed=steps,
                     execution_time=time.time() - start_time
                 )
             
             # Шаг 4: Сохранение прогнозов
             steps.append("save_predictions")
-            predictions_manager = PredictionsManager()
-            predictions_manager.save_predictions([(pred, 0.5) for pred in predictions])
+            try:
+                from ml.data.providers import PredictionsManager
+                predictions_manager = PredictionsManager()
+                save_success = predictions_manager.save_predictions(all_predictions)
+                
+                if save_success:
+                    self.logger.info(f"✅ Сохранено {len(all_predictions)} прогнозов")
+                else:
+                    self.logger.error("❌ Не удалось сохранить прогнозы")
+                    # Fallback: сохраняем в файл для отладки
+                    try:
+                        import json
+                        import os
+                        debug_path = "data/debug_predictions_fallback.json"
+                        os.makedirs(os.path.dirname(debug_path), exist_ok=True)
+                        with open(debug_path, 'w', encoding='utf-8') as f:
+                            json.dump({
+                                "predictions": all_predictions,
+                                "timestamp": datetime.now().isoformat(),
+                                "source_groups": recent_groups
+                            }, f, indent=2, ensure_ascii=False)
+                        self.logger.info(f"🔍 Прогнозы сохранены в отладочный файл: {debug_path}")
+                    except Exception as debug_e:
+                        self.logger.error(f"❌ Не удалось сохранить отладочный файл: {debug_e}")
+                        
+            except Exception as e:
+                self.logger.error(f"❌ Ошибка сохранения прогнозов: {e}")
+                return WorkflowResult(
+                    status=WorkflowStatus.FAILED,
+                    message="Ошибка сохранения прогнозов",
+                    error=str(e),
+                    steps_completed=steps,
+                    execution_time=time.time() - start_time
+                )
             
             execution_time = time.time() - start_time
             
@@ -559,7 +625,7 @@ class WorkflowManager:
                 data={
                     "models_used": trained_models,
                     "predictions_generated": len(all_predictions),
-                    "source_groups": recent_groups
+                    "source_groups_count": len(recent_groups)
                 },
                 steps_completed=steps,
                 execution_time=execution_time

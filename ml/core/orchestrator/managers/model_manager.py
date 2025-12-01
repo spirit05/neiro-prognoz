@@ -98,6 +98,7 @@ class ModelManager:
         
         if model_id in self.orchestrator.models:
             self.logger.warning(f"⚠️ Model '{model_id}' уже зарегистрирована, перезаписываю")
+            return
             
         self.orchestrator.models[model_id] = model
         self.orchestrator.model_registry[model_id] = {
