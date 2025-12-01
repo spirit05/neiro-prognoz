@@ -1,6 +1,7 @@
 # [file name]: ml/core/orchestrator/managers/workflow_manager.py
 """
 WorkflowManager - управление сложными операциями и workflow
+ИСПРАВЛЕННАЯ ВЕРСИЯ С ВСЕМИ НЕОБХОДИМЫМИ МЕТОДАМИ
 """
 
 import time
@@ -14,7 +15,9 @@ from ..types.workflow_types import (
 
 
 class WorkflowManager:
-    """Менеджер workflow - сложные операции и бизнес-логика"""
+    """Менеджер workflow - сложные операции и бизнес-логика
+    ИСПРАВЛЕННАЯ ВЕРСИЯ С ВСЕМИ НЕОБХОДИМЫМИ МЕТОДАМИ
+    """
 
     def __init__(self, orchestrator):
         self.orchestrator = orchestrator
@@ -24,13 +27,7 @@ class WorkflowManager:
 
     def workflow_add_single_group(self, group: List[int]) -> WorkflowResult:
         """
-        Workflow добавления одной группы с полным циклом обработки
-        
-        Args:
-            group: Список из 4 чисел (группа)
-            
-        Returns:
-            WorkflowResult: Результат выполнения workflow
+        Workflow добавления одной группы с полным циклом обработки - ИСПРАВЛЕННАЯ ВЕРСИЯ
         """
         start_time = time.time()
         steps = []
@@ -41,8 +38,9 @@ class WorkflowManager:
             # Шаг 1: Валидация группы
             steps.append("validation")
             group_str = " ".join(str(x) for x in group)
-            from ml.utils.data_utils import validate_group
-            if not validate_group(group_str):
+            from ml.data.quality.validators import DataValidator
+            validator = DataValidator()
+            if not validator.validate_group(group_str):
                 return WorkflowResult(
                     status=WorkflowStatus.FAILED,
                     message="Невалидная группа",
@@ -53,7 +51,7 @@ class WorkflowManager:
             
             # Шаг 2: Добавление в dataset
             steps.append("add_to_dataset")
-            success = self.orchestrator.data_manager.add_new_data([group_str])
+            success = self.orchestrator.dataset_manager.add_groups([group_str])
             if not success:
                 return WorkflowResult(
                     status=WorkflowStatus.FAILED,
@@ -62,69 +60,95 @@ class WorkflowManager:
                     steps_completed=steps,
                     execution_time=time.time() - start_time
                 )
-            
-            # Шаг 3: Дообучение модели
+ 
+            # Шаг 3: Дообучение модели - 🔧 УЛУЧШЕННАЯ ВЕРСИЯ
             steps.append("retraining")
             try:
-                # Создаем DataBatch для новой группы
-                features_batch = self.orchestrator.data_manager.create_prediction_features([group_str])
+                dataset = self.orchestrator.dataset_manager.load_dataset()
                 
-                # Получаем основную модель для дообучения
-                model_id = list(self.orchestrator.models.keys())[0]  # Берем первую модель
-                training_config = self._create_training_config()
+                # 🔧 УЛУЧШЕНИЕ: Используем больше данных для дообучения
+                # Берем минимум 20 групп (80 чисел) для создания нескольких примеров
+                required_groups_count = min(20, len(dataset))
                 
-                # Дообучаем модель
-                result = self.orchestrator.model_manager.train_model(
-                    model_id, features_batch, training_config
-                )
-                
-                if result.status.value == "failed":
-                    return WorkflowResult(
-                        status=WorkflowStatus.FAILED,
-                        message="Ошибка дообучения",
-                        error="Модель не смогла дообучиться на новых данных",
-                        steps_completed=steps,
-                        execution_time=time.time() - start_time
+                if len(dataset) < 10:  # Минимум 10 групп для дообучения
+                    self.logger.warning(f"⚠️ Недостаточно групп для дообучения: {len(dataset)} < 10")
+                    steps.append("skipped_retraining_insufficient_data")
+                else:
+                    # Берем последние N групп (чем больше, тем лучше)
+                    recent_groups = dataset[-required_groups_count:]
+                    
+                    self.logger.info(f"📊 Используем {len(recent_groups)} групп для дообучения")
+                    
+                    # 🔧 УЛУЧШЕНИЕ: Используем prepare_training_data вместо create_prediction_features
+                    # для создания полноценных обучающих примеров
+                    features_batch, targets_batch = self.orchestrator.data_manager.prepare_training_data()
+                    
+                    # Для инкрементального обучения используем меньше эпох
+                    training_config = self._create_training_config()
+                    training_config.epochs = 10  # Меньше эпох для дообучения
+                    training_config.learning_rate = 0.0001  # Меньше learning rate
+                    
+                    model_id = list(self.orchestrator.models.keys())[0]
+                    result = self.orchestrator.model_manager.train_model(
+                        model_id, features_batch, training_config
                     )
                     
+                    if result.status.value == "failed":
+                        self.logger.error("❌ Модель не смогла дообучиться на новых данных")
+                        steps.append("retraining_failed")
+                    else:
+                        steps.append("retraining_success")
+                        self.logger.info(f"✅ Модель успешно дообучена, финальный loss: {result.metrics.get('final_training_loss', 'unknown')}")
+                        
             except Exception as e:
                 self.logger.error(f"❌ Ошибка дообучения: {e}")
-                return WorkflowResult(
-                    status=WorkflowStatus.FAILED,
-                    message="Ошибка дообучения",
-                    error=str(e),
-                    steps_completed=steps,
-                    execution_time=time.time() - start_time
-                )
-            
+                steps.append("retraining_error")
+                      
             # Шаг 4: Генерация новых прогнозов
             steps.append("prediction")
             try:
                 # Используем последние группы для предсказания
                 dataset = self.orchestrator.dataset_manager.load_dataset()
-                recent_groups = dataset[-10:]  # Последние 10 групп
+                # Берем достаточно групп для prediction
+                prediction_groups_count = min(10, len(dataset))
+                recent_groups = dataset[-prediction_groups_count:]
                 
                 prediction_batch = self.orchestrator.data_manager.create_prediction_features(recent_groups)
-                request = self._create_prediction_request(prediction_batch)
+                
+                # Создаем запрос на предсказание
+                model_id = list(self.orchestrator.models.keys())[0]
+                request = self._create_prediction_request(prediction_batch, model_id)
                 predictions = self.orchestrator.model_manager.predict(request)
                 
                 # Сохраняем прогнозы
-                from ml.utils.data_utils import save_predictions
-                save_predictions([(pred, 0.5) for pred in predictions.predictions])  # Примерный score
+                from ml.data.providers.predictions_manager import PredictionsManager
+                predictions_manager = PredictionsManager()
                 
+                predictions_list = []
+                for i, pred in enumerate(predictions.predictions):
+                    if isinstance(pred, (list, tuple)) and len(pred) == 4:
+                        pred_tuple = tuple(pred) if isinstance(pred, list) else pred
+                        predictions_list.append((pred_tuple, 0.5))
+                
+                if predictions_list:
+                    predictions_manager.save_predictions(predictions_list)
+                    self.logger.info(f"✅ Сгенерировано {len(predictions_list)} прогнозов")
+                else:
+                    self.logger.warning("⚠️ Не удалось сгенерировать прогнозы")
+                    
             except Exception as e:
                 self.logger.warning(f"⚠️ Ошибка генерации прогнозов: {e}")
-                # Не прерываем workflow, только логируем
+                steps.append("prediction_error")
             
             execution_time = time.time() - start_time
             
             return WorkflowResult(
                 status=WorkflowStatus.COMPLETED,
-                message="Группа успешно добавлена и модель дообучена",
+                message="Группа успешно добавлена" + (" и модель дообучена" if "retraining_success" in steps else ""),
                 data={
                     "group_added": group_str,
-                    "training_metrics": result.metrics,
-                    "predictions_generated": len(predictions.predictions) if 'predictions' in locals() else 0
+                    "steps_completed": steps,
+                    "predictions_generated": len(predictions_list) if 'predictions_list' in locals() else 0
                 },
                 steps_completed=steps,
                 execution_time=execution_time
@@ -143,13 +167,6 @@ class WorkflowManager:
     def workflow_add_multiple_groups(self, groups: List[List[int]], strategy: str = "full_retrain") -> WorkflowResult:
         """
         Workflow добавления нескольких групп
-        
-        Args:
-            groups: Список групп (каждая группа - список из 4 чисел)
-            strategy: Стратегия обработки ("full_retrain" или "incremental")
-            
-        Returns:
-            WorkflowResult: Результат выполнения workflow
         """
         start_time = time.time()
         steps = []
@@ -162,8 +179,9 @@ class WorkflowManager:
             valid_groups = []
             for group in groups:
                 group_str = " ".join(str(x) for x in group)
-                from ml.utils.data_utils import validate_group
-                if validate_group(group_str):
+                from ml.data.quality.validators import DataValidator
+                validator = DataValidator()
+                if validator.validate_group(group_str):
                     valid_groups.append(group_str)
             
             if not valid_groups:
@@ -239,8 +257,8 @@ class WorkflowManager:
                 request = self._create_prediction_request(prediction_batch)
                 predictions = self.orchestrator.model_manager.predict(request)
                 
-                from ml.utils.data_utils import save_predictions
-                save_predictions([(pred, 0.5) for pred in predictions.predictions])
+                predictions_manager = PredictionsManager()
+                predictions_manager.save_predictions([(pred, 0.5) for pred in predictions])
                 
             except Exception as e:
                 self.logger.warning(f"⚠️ Ошибка генерации прогнозов: {e}")
@@ -272,50 +290,183 @@ class WorkflowManager:
 
     def workflow_full_training_cycle(self) -> WorkflowResult:
         """
-        Workflow полного цикла обучения
-        
-        Returns:
-            WorkflowResult: Результат выполнения workflow
+        Workflow полного цикла обучения - ИСПРАВЛЕННАЯ ВЕРСИЯ
         """
         start_time = time.time()
         steps = []
         
+        self.logger.info("🎯 ВЫЗВАН: WorkflowManager.workflow_full_training_cycle()")
+        self.logger.info(f"🎯 Models в Orchestrator: {list(self.orchestrator.models.keys())}")
+
         try:
             self.logger.info("🔄 Запуск workflow полного цикла обучения")
+            
+            # 🔧 ИСПРАВЛЕНИЕ: Проверяем доступность моделей через публичные атрибуты
+            if not self.orchestrator.models:
+                self.logger.error("❌ Нет зарегистрированных моделей для обучения")
+                return WorkflowResult(
+                    status=WorkflowStatus.FAILED,
+                    message="Нет моделей для обучения",
+                    error="В оркестраторе не зарегистрированы модели",
+                    steps_completed=steps,
+                    execution_time=time.time() - start_time
+                )
             
             # Шаг 1: Подготовка данных
             steps.append("data_preparation")
             features_batch, targets_batch = self.orchestrator.data_manager.prepare_training_data()
             
+            if features_batch.data.empty or targets_batch.data.empty:
+                self.logger.error("❌ Не удалось подготовить данные для обучения")
+                return WorkflowResult(
+                    status=WorkflowStatus.FAILED,
+                    message="Ошибка подготовки данных",
+                    error="Не удалось подготовить данные обучения",
+                    steps_completed=steps,
+                    execution_time=time.time() - start_time
+                )
+            
+            self.logger.info(f"📊 Подготовлены данные: {len(features_batch.data)} примеров")
+
             # Шаг 2: Обучение всех моделей
             steps.append("training")
             training_results = {}
-            for model_id in self.orchestrator.models:
+            trained_model_ids = []
+            
+            self.logger.info(f"🎯 Начинаем обучение моделей: {list(self.orchestrator.models.keys())}")
+
+            for model_id, model in self.orchestrator.models.items():
+                self.logger.info(f"🎯 Обучаем модель: {model_id}")
                 try:
                     training_config = self._create_training_config()
                     result = self.orchestrator.model_manager.train_model(
                         model_id, features_batch, training_config
                     )
                     training_results[model_id] = result
+
+                    if hasattr(result, 'status') and result.status.value in ["trained", "ready", "completed"]:
+                        trained_model_ids.append(model_id)
+                        self.logger.info(f"✅ Модель {model_id} успешно обучена")
+                        
+                        # Сохранение модели
+                        model_save_path = f"data/models/{model_id}.pth"
+                        try:
+                            save_success = self.orchestrator.model_manager.save_model(model_id, model_save_path)
+                            
+                            if save_success:
+                                self.logger.info(f"💾 Модель {model_id} сохранена в {model_save_path}")
+                            else:
+                                self.logger.warning(f"⚠️ Не удалось сохранить модель {model_id} через ModelManager")
+                                
+                        except Exception as e:
+                            self.logger.warning(f"⚠️ Ошибка сохранения модели {model_id}: {e}")
+                    else:
+                        self.logger.warning(f"⚠️ Модель {model_id} не была успешно обучена. Статус: {result.status}")
+                            
                 except Exception as e:
                     self.logger.error(f"❌ Ошибка обучения модели {model_id}: {e}")
                     training_results[model_id] = {"error": str(e)}
             
+            if not trained_model_ids:
+                self.logger.error("❌ Ни одна модель не была успешно обучена")
+                return WorkflowResult(
+                    status=WorkflowStatus.FAILED,
+                    message="Обучение не удалось",
+                    error="Все модели завершили обучение с ошибкой",
+                    steps_completed=steps,
+                    execution_time=time.time() - start_time
+                )
+            
             # Шаг 3: Генерация прогнозов
             steps.append("prediction")
-            try:
-                dataset = self.orchestrator.dataset_manager.load_dataset()
-                recent_groups = dataset[-10:]
-                
-                prediction_batch = self.orchestrator.data_manager.create_prediction_features(recent_groups)
-                request = self._create_prediction_request(prediction_batch)
-                predictions = self.orchestrator.model_manager.predict(request)
-                
-                from ml.utils.data_utils import save_predictions
-                save_predictions([(pred, 0.5) for pred in predictions.predictions])
-                
-            except Exception as e:
-                self.logger.warning(f"⚠️ Ошибка генерации прогнозов: {e}")
+            predictions_generated = 0
+            
+            if trained_model_ids:
+                try:
+                    dataset = self.orchestrator.dataset_manager.load_dataset()
+                    
+                    if not dataset:
+                        self.logger.warning("⚠️ Нет данных для генерации прогнозов")
+                    else:
+                        recent_count = min(10, len(dataset))
+                        recent_groups = dataset[-recent_count:]
+                        
+                        self.logger.info(f"📊 Создание прогнозов из {len(recent_groups)} групп")
+                        
+                        prediction_batch = self.orchestrator.data_manager.create_prediction_features(recent_groups)
+                        
+                        model_id = trained_model_ids[0]
+                        request = self._create_prediction_request(prediction_batch, model_id)
+                        predictions = self.orchestrator.model_manager.predict(request)
+                        
+                        if hasattr(predictions, 'predictions') and predictions.predictions:
+                            predictions_generated = len(predictions.predictions)
+                            
+                            # 🔧 ИСПРАВЛЕНИЕ: Правильное сохранение прогнозов
+                            try:
+                                from ml.data.providers.predictions_manager import PredictionsManager
+                                predictions_manager = PredictionsManager()
+                                predictions_list = []
+                                
+                                # 🔧 ИСПРАВЛЕНИЕ: Детальная обработка прогнозов
+                                self.logger.info(f"🔍 Получено {len(predictions.predictions)} прогнозов от модели")
+                                
+                                for i, pred in enumerate(predictions.predictions):
+                                    self.logger.info(f"🔍 Прогноз {i}: {pred}, тип: {type(pred)}")
+                                    
+                                    # Обрабатываем разные форматы прогнозов
+                                    if isinstance(pred, (list, tuple)) and len(pred) == 4:
+                                        # Это правильный формат - список/кортеж из 4 чисел
+                                        pred_tuple = tuple(pred) if isinstance(pred, list) else pred
+                                        predictions_list.append((pred_tuple, 0.5))  # Примерный score
+                                        self.logger.info(f"✅ Прогноз {i} добавлен: {pred_tuple}")
+                                    elif isinstance(pred, int):
+                                        # Одиночное число - создаем группу из 4 одинаковых чисел
+                                        pred_tuple = (pred, pred, pred, pred)
+                                        predictions_list.append((pred_tuple, 0.3))
+                                        self.logger.info(f"🔄 Прогноз {i} преобразован в группу: {pred_tuple}")
+                                    else:
+                                        self.logger.warning(f"⚠️ Неизвестный формат прогноза {i}: {pred}, тип: {type(pred)}")
+                                
+                                if predictions_list:
+                                    # 🔧 ИСПРАВЛЕНИЕ: Сохраняем через PredictionsManager
+                                    success = predictions_manager.save_predictions(predictions_list)
+                                    if success:
+                                        self.logger.info(f"✅ Сгенерировано и сохранено {len(predictions_list)} прогнозов")
+                                    else:
+                                        self.logger.error("❌ PredictionsManager не смог сохранить прогнозы")
+                                        
+                                    # 🔧 ДОПОЛНИТЕЛЬНО: Сохраняем в файл для отладки
+                                    try:
+                                        import json
+                                        import os
+                                        debug_path = "data/debug_predictions.json"
+                                        os.makedirs(os.path.dirname(debug_path), exist_ok=True)
+                                        with open(debug_path, 'w', encoding='utf-8') as f:
+                                            json.dump({
+                                                "original_predictions": predictions.predictions,
+                                                "processed_predictions": predictions_list,
+                                                "timestamp": datetime.now().isoformat()
+                                            }, f, indent=2, ensure_ascii=False)
+                                        self.logger.info(f"🔍 Отладочная информация сохранена в {debug_path}")
+                                    except Exception as debug_e:
+                                        self.logger.warning(f"⚠️ Не удалось сохранить отладочную информацию: {debug_e}")
+                                else:
+                                    self.logger.error("❌ Не удалось обработать ни одного прогноза")
+                                    
+                            except ImportError as e:
+                                self.logger.error(f"❌ PredictionsManager не найден: {e}")
+                                # Fallback если PredictionsManager не найден
+                                predictions_manager = PredictionsManager()
+                                predictions_manager.save_predictions([(pred, 0.5) for pred in predictions])
+                                self.logger.info(f"✅ Сгенерировано {predictions_generated} прогнозов (fallback)")
+                        else:
+                            self.logger.warning("⚠️ Модель не вернула прогнозы")
+                            
+                except Exception as e:
+                    self.logger.error(f"❌ Ошибка генерации прогнозов: {e}")
+            else:
+                self.logger.warning("⚠️ Нет обученных моделей для генерации прогнозов")
             
             execution_time = time.time() - start_time
             
@@ -323,9 +474,9 @@ class WorkflowManager:
                 status=WorkflowStatus.COMPLETED,
                 message="Полный цикл обучения завершен",
                 data={
-                    "models_trained": len(training_results),
+                    "models_trained": len(trained_model_ids),
                     "training_results": training_results,
-                    "predictions_generated": len(predictions.predictions) if 'predictions' in locals() else 0
+                    "predictions_generated": predictions_generated
                 },
                 steps_completed=steps,
                 execution_time=execution_time
@@ -344,9 +495,6 @@ class WorkflowManager:
     def workflow_generate_predictions(self) -> WorkflowResult:
         """
         Workflow генерации прогнозов
-        
-        Returns:
-            WorkflowResult: Результат выполнения workflow
         """
         start_time = time.time()
         steps = []
@@ -373,7 +521,7 @@ class WorkflowManager:
             # Шаг 2: Подготовка данных для предсказания
             steps.append("data_preparation")
             dataset = self.orchestrator.dataset_manager.load_dataset()
-            recent_groups = dataset[-10:]  # Последние 10 групп для контекста
+            recent_groups = dataset[-10:]
             
             prediction_batch = self.orchestrator.data_manager.create_prediction_features(recent_groups)
             
@@ -400,8 +548,8 @@ class WorkflowManager:
             
             # Шаг 4: Сохранение прогнозов
             steps.append("save_predictions")
-            from ml.utils.data_utils import save_predictions
-            save_predictions([(pred, 0.5) for pred in all_predictions])
+            predictions_manager = PredictionsManager()
+            predictions_manager.save_predictions([(pred, 0.5) for pred in predictions])
             
             execution_time = time.time() - start_time
             
@@ -430,9 +578,6 @@ class WorkflowManager:
     def get_system_overview(self) -> SystemOverview:
         """
         Комплексный обзор системы
-        
-        Returns:
-            SystemOverview: Обзор системы
         """
         try:
             # Статус системы
@@ -481,7 +626,7 @@ class WorkflowManager:
                 data_status=data_status,
                 training_status=training_status,
                 last_training=last_training,
-                last_prediction=None,  # Можно добавить из prediction_stats
+                last_prediction=None,
                 total_groups=dataset_stats['total_groups'],
                 valid_groups=dataset_stats['valid_groups'],
                 model_metrics=model_metrics,
@@ -503,10 +648,7 @@ class WorkflowManager:
 
     def get_learning_analytics(self) -> LearningAnalytics:
         """
-        Аналитика обучения
-        
-        Returns:
-            LearningAnalytics: Аналитика обучения
+        Аналитика обучения - ДОБАВЛЕННЫЙ МЕТОД
         """
         try:
             # Базовая аналитика
@@ -611,9 +753,13 @@ class WorkflowManager:
         
         if model_id is None:
             model_id = list(self.orchestrator.models.keys())[0]
+        
+        # 🔧 ИСПРАВЛЕНИЕ: Преобразуем DataFrame в правильный формат для PredictionRequest
+        # Ключи должны быть строками, а не целыми числами
+        data_records = data_batch.data.rename(columns=str).to_dict('records')
             
         return PredictionRequest(
-            data=data_batch.data.to_dict('records'),
+            data=data_records,
             model_id=model_id,
             return_probabilities=True
         )

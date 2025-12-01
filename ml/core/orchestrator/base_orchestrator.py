@@ -1,6 +1,7 @@
 # [file name]: ml/core/orchestrator/base_orchestrator.py
 """
 Базовый класс оркестратора - общие атрибуты и методы
+ИСПРАВЛЕННАЯ ВЕРСИЯ ДЛЯ РЕГИСТРАЦИИ МОДЕЛЕЙ
 """
 
 import numpy as np
@@ -21,20 +22,21 @@ from ml.core.config_loader import ConfigLoader
 class BaseOrchestrator:
     """
     Базовый класс оркестратора - общая логика для всех менеджеров
+    ИСПРАВЛЕННАЯ ВЕРСИЯ ДЛЯ РЕГИСТРАЦИИ МОДЕЛЕЙ
     """
 
     def __init__(self, config: Dict[str, Any] = None):
         self.config = config or {}
         self.logger = logging.getLogger(__name__)
         
+        # 🔧 ИСПРАВЛЕНИЕ: Публичные атрибуты вместо приватных
+        self.models: Dict[str, Any] = {}
+        self.feature_engineers: Dict[str, Any] = {}
+        self.ensemble_predictors: Dict[str, Any] = {}
+        self.model_registry: Dict[str, Dict[str, Any]] = {}
+        
         # Общие компоненты системы
         self._config_loader = ConfigLoader()
-        
-        # Реестры компонентов (будут использоваться менеджерами)
-        self._models: Dict[str, Any] = {}
-        self._feature_engineers: Dict[str, Any] = {}
-        self._ensemble_predictors: Dict[str, Any] = {}
-        self._model_registry: Dict[str, Dict[str, Any]] = {}
         
         # Data Processing компоненты
         self.data_processor = None
@@ -45,8 +47,8 @@ class BaseOrchestrator:
         self.self_learning_system = None
         
         # Статистика
-        self._training_history: List[Dict[str, Any]] = []
-        self._prediction_stats: Dict[str, int] = {}
+        self.training_history: List[Dict[str, Any]] = []
+        self.prediction_stats: Dict[str, int] = {}
         
         # Автоматическая инициализация
         if not self.config:
@@ -150,9 +152,9 @@ class BaseOrchestrator:
                     if class_path:
                         engineer = self._config_loader.create_component(class_path, params)
                         if engineer:
-                            self._feature_engineers[engineer_name] = engineer
+                            self.feature_engineers[engineer_name] = engineer
             
-            self.logger.info(f"✅ Feature engineers инициализированы: {list(self._feature_engineers.keys())}")
+            self.logger.info(f"✅ Feature engineers инициализированы: {list(self.feature_engineers.keys())}")
             
         except Exception as e:
             self.logger.error(f"❌ Ошибка инициализации feature engineers: {e}")
@@ -186,9 +188,9 @@ class BaseOrchestrator:
                 if class_path:
                     predictor = self._config_loader.create_component(class_path, params)
                     if predictor:
-                        self._ensemble_predictors[predictor_name] = predictor
+                        self.ensemble_predictors[predictor_name] = predictor
                         
-            self.logger.info(f"✅ Ансамблевые системы инициализированы: {list(self._ensemble_predictors.keys())}")
+            self.logger.info(f"✅ Ансамблевые системы инициализированы: {list(self.ensemble_predictors.keys())}")
             
         except Exception as e:
             self.logger.error(f"❌ Ошибка инициализации ансамблевых систем: {e}")
@@ -219,11 +221,11 @@ class BaseOrchestrator:
     def _get_main_ensemble(self) -> Optional[Any]:
         """Получение основного ансамбля"""
         try:
-            for name, predictor in self._ensemble_predictors.items():
+            for name, predictor in self.ensemble_predictors.items():
                 if hasattr(predictor, 'predict'):
                     return predictor
             
-            for model_id, model in self._models.items():
+            for model_id, model in self.models.items():
                 if hasattr(model, 'combine_predictions'):
                     return model
             
@@ -237,8 +239,8 @@ class BaseOrchestrator:
         """Внутренняя регистрация модели"""
         model_id = getattr(model, 'model_id', str(id(model)))
         
-        self._models[model_id] = model
-        self._model_registry[model_id] = {
+        self.models[model_id] = model
+        self.model_registry[model_id] = {
             'registered_at': datetime.now(),
             'model_type': getattr(model, 'model_type', 'unknown'),
             'status': getattr(model, 'status', 'unknown')
@@ -260,42 +262,42 @@ class BaseOrchestrator:
         except:
             return False
 
-    # ========== СВОЙСТВА ДЛЯ ДОСТУПА К ОБЩИМ РЕСУРСАМ ==========
-    
-    @property
-    def models(self) -> Dict[str, Any]:
-        """Доступ к моделям"""
-        return self._models
-    
-    @property
-    def feature_engineers(self) -> Dict[str, Any]:
-        """Доступ к feature engineers"""
-        return self._feature_engineers
-    
-    @property
-    def ensemble_predictors(self) -> Dict[str, Any]:
-        """Доступ к ансамблевым предсказателям"""
-        return self._ensemble_predictors
-    
-    @property
-    def model_registry(self) -> Dict[str, Dict[str, Any]]:
-        """Доступ к реестру моделей"""
-        return self._model_registry
-    
-    @property
-    def training_history(self) -> List[Dict[str, Any]]:
-        """Доступ к истории обучения"""
-        return self._training_history
-    
-    @property
-    def prediction_stats(self) -> Dict[str, int]:
-        """Доступ к статистике предсказаний"""
-        return self._prediction_stats
-
     def add_training_record(self, record: Dict[str, Any]) -> None:
         """Добавление записи в историю обучения"""
-        self._training_history.append(record)
+        self.training_history.append(record)
 
     def increment_prediction_count(self, model_id: str) -> None:
         """Увеличение счетчика предсказаний для модели"""
-        self._prediction_stats[model_id] = self._prediction_stats.get(model_id, 0) + 1
+        self.prediction_stats[model_id] = self.prediction_stats.get(model_id, 0) + 1
+
+    # 🔧 ИСПРАВЛЕНИЕ: Добавляем методы регистрации моделей напрямую
+    def register_model_direct(self, model: Any) -> str:
+        """Прямая регистрация модели в оркестраторе (без делегирования менеджерам)"""
+        model_id = getattr(model, 'model_id', str(id(model)))
+        
+        if model_id in self.models:
+            self.logger.warning(f"⚠️ Модель '{model_id}' уже зарегистрирована, перезаписываю")
+        
+        self.models[model_id] = model
+        self.model_registry[model_id] = {
+            'registered_at': datetime.now(),
+            'model_type': getattr(model, 'model_type', 'unknown'),
+            'status': getattr(model, 'status', 'unknown')
+        }
+        
+        self.logger.info(f"✅ Модель зарегистрирована напрямую в оркестраторе: {model_id}")
+        return model_id
+
+    def register_default_models_direct(self) -> None:
+        """Прямая регистрация моделей по умолчанию"""
+        try:
+            from ml.models.base import EnhancedPredictor
+            
+            # Регистрируем основную модель
+            enhanced_model = EnhancedPredictor(model_id="enhanced_predictor_v2")
+            self.register_model_direct(enhanced_model)
+            
+            self.logger.info("✅ Модели по умолчанию зарегистрированы напрямую")
+            
+        except Exception as e:
+            self.logger.error(f"❌ Ошибка прямой регистрации моделей по умолчанию: {e}")

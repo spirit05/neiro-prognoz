@@ -1,6 +1,7 @@
 # [file name]: ml/core/orchestrator/managers/model_manager.py
 """
 ModelManager - управление моделями и обучением
+ИСПРАВЛЕННАЯ ВЕРСИЯ ДЛЯ ЗАГРУЗКИ
 """
 
 import numpy as np
@@ -24,8 +25,72 @@ class ModelManager:
     def __init__(self, orchestrator):
         self.orchestrator = orchestrator
         self.logger = logging.getLogger(__name__)
-        
+
+        self._sync_with_orchestrator_models()
+
         self.logger.info("✅ ModelManager инициализирован")
+
+    def load_model(self, model_id: str, path: str, model_class=None) -> bool:
+        """Загрузка модели из файла - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+        try:
+            import os
+            if not os.path.exists(path):
+                self.logger.error(f"❌ Файл модели не найден: {path}")
+                return False
+            
+            # 🔧 ИСПРАВЛЕНИЕ: Создаем экземпляр модели и загружаем
+            if model_class:
+                model = model_class()
+                model.load(path)
+                
+                # Регистрируем модель в оркестраторе
+                self.orchestrator.models[model_id] = model
+                
+                # Обновляем реестр
+                self.orchestrator.model_registry[model_id] = {
+                    'registered_at': datetime.now(),
+                    'model_type': model.model_type,
+                    'status': model.status,
+                    'last_loaded': datetime.now()
+                }
+                
+                self.logger.info(f"📥 Модель {model_id} загружена из {path}")
+                self.logger.info(f"📊 Статус загруженной модели: обучена={model.is_trained}")
+                return True
+            else:
+                self.logger.error(f"❌ Не указан класс модели для загрузки")
+                return False
+            
+        except Exception as e:
+            self.logger.error(f"❌ Ошибка загрузки модели {model_id}: {e}")
+            return False
+
+    def _sync_with_orchestrator_models(self) -> None:
+        """Синхронизация с моделями, уже зарегистрированными в оркестраторе"""
+        try:
+            for model_id, model in self.orchestrator.models.items():
+                # Если модель уже есть в оркестраторе, добавляем ее в реестр model_manager
+                if model_id not in self.orchestrator.model_registry:
+                    self.orchestrator.model_registry[model_id] = {
+                        'registered_at': datetime.now(),
+                        'model_type': getattr(model, 'model_type', 'unknown'),
+                        'status': getattr(model, 'status', 'unknown')
+                    }
+                    self.logger.info(f"✅ Синхронизирована модель из оркестратора: {model_id}")
+            
+            self.logger.info(f"✅ ModelManager синхронизирован с {len(self.orchestrator.models)} моделями")
+            
+        except Exception as e:
+            self.logger.error(f"❌ Ошибка синхронизации с моделями оркестратора: {e}")
+
+    def _sync_model_registry(self, model_id: str, model: Any) -> None:
+        """Синхронизация реестра для конкретной модели (вызывается из оркестратора)"""
+        if model_id not in self.orchestrator.model_registry:
+            self.orchestrator.model_registry[model_id] = {
+                'registered_at': datetime.now(),
+                'model_type': getattr(model, 'model_type', 'unknown'),
+                'status': getattr(model, 'status', 'unknown')
+            }
 
     def register_model(self, model: AbstractBaseModel) -> None:
         """Регистрация модели в системе"""
@@ -136,20 +201,29 @@ class ModelManager:
             for model_id, info in self.orchestrator.model_registry.items()
         ]
 
-    def save_model(self, model_id: str, path: Path) -> None:
-        """Сохранение модели"""
-        if model_id not in self.orchestrator.models:
-            raise ValueError(f"Model '{model_id}' не найдена")
+    def save_model(self, model_id: str, path: str) -> bool:
+        """Сохранение модели в файл"""
+        try:
+            if model_id not in self.orchestrator.models:
+                self.logger.error(f"❌ Модель {model_id} не найдена")
+                return False
             
-        self.orchestrator.models[model_id].save(path)
-        self.logger.info(f"💾 Model '{model_id}' сохранена в {path}")
-
-    def load_model(self, model_id: str, path: Path, model_class: type) -> None:
-        """Загрузка модели"""
-        model = model_class(model_id=model_id, model_type=ModelType.REGRESSION)
-        model.load(path)
-        self.register_model(model)
-        self.logger.info(f"📥 Model '{model_id}' загружена из {path}")
+            model = self.orchestrator.models[model_id]
+            
+            # 🔧 ИСПРАВЛЕНИЕ: Создаем директорию если не существует
+            import os
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            
+            # 🔧 ИСПРАВЛЕНИЕ: Просто вызываем метод save модели
+            # Модель сама преобразует путь в Path и создаст директорию
+            model.save(path)
+            
+            self.logger.info(f"💾 Модель {model_id} сохранена в {path}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"❌ Ошибка сохранения модели {model_id}: {e}")
+            return False
 
     def get_feature_engineers(self) -> Dict[str, Any]:
         """Получение всех feature engineers"""

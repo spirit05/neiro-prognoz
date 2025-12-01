@@ -2,6 +2,7 @@
 """
 Фасад MLOrchestrator - основной интерфейс системы
 СОХРАНЯЕТ ПОЛНУЮ ОБРАТНУЮ СОВМЕСТИМОСТЬ
+ИСПРАВЛЕННАЯ ВЕРСИЯ ДЛЯ РЕГИСТРАЦИИ МОДЕЛЕЙ
 """
 
 from .base_orchestrator import BaseOrchestrator
@@ -22,10 +23,14 @@ class MLOrchestrator(BaseOrchestrator):
     """
     Основной фасад оркестратора - делегирует операции менеджерам
     СОХРАНЯЕТ ПОЛНУЮ ОБРАТНУЮ СОВМЕСТИМОСТЬ С СУЩЕСТВУЮЩИМ API
+    ИСПРАВЛЕННАЯ ВЕРСИЯ ДЛЯ РЕГИСТРАЦИИ МОДЕЛЕЙ
     """
     
     def __init__(self, config: dict = None):
         super().__init__(config)
+        
+        # 🔧 ИСПРАВЛЕНИЕ: Регистрируем модели по умолчанию напрямую (до менеджеров)
+        self._register_default_models_direct()
         
         # Инициализация менеджеров
         self.model_manager = ModelManager(self)
@@ -34,7 +39,41 @@ class MLOrchestrator(BaseOrchestrator):
         self.notification_manager = NotificationManager(self)
         self.api_manager = ApiManager(self)
         
+        # 🔧 ИСПРАВЛЕНИЕ: Синхронизируем менеджеры с уже зарегистрированными моделями
+        self._sync_managers_with_registry()
+        
         self.logger.info("✅ Модульный MLOrchestrator инициализирован")
+    
+    def _register_default_models_direct(self) -> None:
+        """Прямая регистрация моделей по умолчанию для системы"""
+        try:
+            from ml.models.base import EnhancedPredictor
+            
+            # 🔧 ИСПРАВЛЕНИЕ: Создаем модель с адаптивным input_size
+            # Начальное значение 65 соответствует текущему DataProcessor
+            enhanced_model = EnhancedPredictor(
+                model_id="enhanced_predictor_v2", 
+                input_size=65  # 🔧 ИЗМЕНЕНО: 65 вместо 50
+            )
+            self.register_model_direct(enhanced_model)
+            
+            self.logger.info("✅ Модели по умолчанию зарегистрированы напрямую в MLOrchestrator")
+            
+        except Exception as e:
+            self.logger.error(f"❌ Ошибка прямой регистрации моделей по умолчанию: {e}")
+
+    def _sync_managers_with_registry(self) -> None:
+        """Синхронизация менеджеров с уже зарегистрированными моделями"""
+        try:
+            # Передаем информацию о зарегистрированных моделях в model_manager
+            for model_id, model in self.models.items():
+                if hasattr(self.model_manager, '_sync_model_registry'):
+                    self.model_manager._sync_model_registry(model_id, model)
+            
+            self.logger.info(f"✅ Менеджеры синхронизированы с {len(self.models)} моделями")
+            
+        except Exception as e:
+            self.logger.error(f"❌ Ошибка синхронизации менеджеров: {e}")
     
     # ========== ФАСАДНЫЕ МЕТОДЫ - ДЕЛЕГИРУЮТ МЕНЕДЖЕРАМ ==========
     
@@ -82,6 +121,14 @@ class MLOrchestrator(BaseOrchestrator):
     
     def workflow_full_training_cycle(self):
         """Workflow полного цикла обучения"""
+        self.logger.info("🎯 ВЫЗВАН: MLOrchestrator.workflow_full_training_cycle()")
+        self.logger.info(f"🎯 Models в оркестраторе: {list(self.models.keys())}")
+        if 'enhanced_predictor_v2' in self.models:
+            model = self.models['enhanced_predictor_v2']
+            self.logger.info(f"🎯 Модель enhanced_predictor_v2 обучена: {model.is_trained}")
+        else:
+            self.logger.error("❌ МОДЕЛЬ enhanced_predictor_v2 НЕ НАЙДЕНА")
+        
         return self.workflow_manager.workflow_full_training_cycle()
     
     def workflow_generate_predictions(self):
@@ -154,4 +201,4 @@ class MLOrchestrator(BaseOrchestrator):
 
 
 # Сохраняем обратную совместимость - старый импорт
-__all__ = ['MLOrchestrator'] + [name for name in dir() if not name.startswith('_')]
+__all__ = ['MLOrchestrator']
